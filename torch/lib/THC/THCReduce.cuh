@@ -339,35 +339,66 @@ bool THC_reduceDim(THCState* state,
   // (or vice versa), the contiguous tensor can be collapsed to one
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
-#define HANDLE_CASE(TYPE, OUT, IN)                                      \
-  if (contigReduction) {                                                \
-    kernelReduceContigDim<ModifyOp, ReduceOp, ReduceAccOp,              \
-                          typename TensorUtils<TensorType>::DataType,   \
-                          AccT,                                         \
-                          TYPE, OUT, IN>                                \
-      <<<grid, block, smemSize, THCState_getCurrentStream(state)>>>(    \
-        outInfo, inInfo, reductionSize,                                 \
-        (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
-  } else {                                                              \
-    if(block.y == 1){                                                   \
-        kernelReduceNoncontigDim<ModifyOp, ReduceOp, ReduceAccOp,       \
-                           typename TensorUtils<TensorType>::DataType,  \
-                           AccT,                                        \
-                           TYPE, OUT, IN>                               \
-        <<<grid, block, 0, THCState_getCurrentStream(state)>>>(         \
-                       outInfo, inInfo, reductionStride, reductionSize, \
-        (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
-    }else{                                                              \
-        kernelReduceNoncontigDim_shared<ModifyOp, ReduceOp,ReduceAccOp, \
-                           typename TensorUtils<TensorType>::DataType,  \
-                           AccT,                                        \
-                           TYPE, OUT, IN>                               \
-        <<<grid, block, 0, THCState_getCurrentStream(state)>>>(         \
-                       outInfo, inInfo, reductionStride, reductionSize, \
-                       (TYPE) outElements, init, modifyOp, reduceOp,    \
-                       reduceAccOp);                                    \
-    }                                                                   \
-  }                                                                     \
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(TYPE, OUT, IN)                                      \
+    if (contigReduction) {                                                \
+      hipLaunchKernelGGL(                                                 \
+        (kernelReduceContigDim<ModifyOp, ReduceOp,                        \
+                             typename TensorUtils<TensorType>::DataType,  \
+                             TYPE, OUT, IN>),                             \
+            grid, block, smemSize, THCState_getCurrentStream(state),      \
+            outInfo, inInfo, reductionSize,                               \
+            (TYPE) outElements, init, modifyOp, reduceOp);                \
+    } else {                                                              \
+      if(block.y == 1){                                                   \
+        hipLaunchKernelGGL(                                               \
+          (kernelReduceNoncontigDim<ModifyOp, ReduceOp,                   \
+                             typename TensorUtils<TensorType>::DataType,  \
+                             TYPE, OUT, IN>),                             \
+            grid, block, 0, THCState_getCurrentStream(state),             \
+            outInfo, inInfo, reductionStride, reductionSize,              \
+            (TYPE) outElements, init, modifyOp, reduceOp);                \
+      }else{                                                              \
+        hipLaunchKernelGGL(                                               \
+          (kernelReduceNoncontigDim_shared<ModifyOp, ReduceOp,            \
+                             typename TensorUtils<TensorType>::DataType,  \
+                             TYPE, OUT, IN>),                             \
+          grid, block, 0, THCState_getCurrentStream(state),               \
+          outInfo, inInfo, reductionStride, reductionSize,                \
+          (TYPE) outElements, init, modifyOp, reduceOp);                  \
+      }                                                                   \
+    }                        
+#else
+  #define HANDLE_CASE(TYPE, OUT, IN)                                      \
+    if (contigReduction) {                                                \
+      kernelReduceContigDim<ModifyOp, ReduceOp, ReduceAccOp,              \
+                            typename TensorUtils<TensorType>::DataType,   \
+                            AccT,                                         \
+                            TYPE, OUT, IN>                                \
+        <<<grid, block, smemSize, THCState_getCurrentStream(state)>>>(    \
+          outInfo, inInfo, reductionSize,                                 \
+          (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
+    } else {                                                              \
+      if(block.y == 1){                                                   \
+          kernelReduceNoncontigDim<ModifyOp, ReduceOp, ReduceAccOp,       \
+                             typename TensorUtils<TensorType>::DataType,  \
+                             AccT,                                        \
+                             TYPE, OUT, IN>                               \
+          <<<grid, block, 0, THCState_getCurrentStream(state)>>>(         \
+                         outInfo, inInfo, reductionStride, reductionSize, \
+          (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
+      }else{                                                              \
+          kernelReduceNoncontigDim_shared<ModifyOp, ReduceOp,ReduceAccOp, \
+                             typename TensorUtils<TensorType>::DataType,  \
+                             AccT,                                        \
+                             TYPE, OUT, IN>                               \
+          <<<grid, block, 0, THCState_getCurrentStream(state)>>>(         \
+                         outInfo, inInfo, reductionStride, reductionSize, \
+                         (TYPE) outElements, init, modifyOp, reduceOp,    \
+                         reduceAccOp);                                    \
+      }                                                                   \
+    }                       
+#endif
 
 #define HANDLE_IN_CASE(TYPE, OUT, IN)                     \
   {                                                       \
