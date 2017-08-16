@@ -259,12 +259,22 @@ bool THC_pointwiseApply1(THCState* state,
   // (or vice versa), the contiguous tensor can be collapsed to one
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
-#define HANDLE_CASE(TYPE, A)                                            \
-  kernelPointwiseApply1<Op,                                             \
-                        typename TensorUtils<TensorTypeA>::DataType,   \
-                        TYPE, A>                                        \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-      aInfo, (TYPE) totalElements, op);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(TYPE, A)                                            \
+    hipLaunchKernelGGL(                                                   \
+      (kernelPointwiseApply1<Op,                                          \
+                            typename TensorUtils<TensorTypeA>::DataType,  \
+                            TYPE, A>),                                    \
+         grid, block, 0, THCState_getCurrentStream(state),                \
+         aInfo, (TYPE) totalElements, op);
+#else
+  #define HANDLE_CASE(TYPE, A)                                            \
+    kernelPointwiseApply1<Op,                                             \
+                          typename TensorUtils<TensorTypeA>::DataType,   \
+                          TYPE, A>                                        \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+        aInfo, (TYPE) totalElements, op);
+#endif
 
 #define HANDLE_A_CASE(TYPE, A)                  \
   {                                             \
@@ -406,13 +416,24 @@ bool THC_pointwiseApply2(THCState* state,
   // (or vice versa), the contiguous tensor can be collapsed to one
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
-#define HANDLE_CASE(TYPE, A, B)                                         \
-  kernelPointwiseApply2<Op,                                             \
-                        typename TensorUtils<TensorTypeA>::DataType,    \
-                        typename TensorUtils<TensorTypeB>::DataType,    \
-                        TYPE, A, B>                                     \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-      aInfo, bInfo, (TYPE) totalElements, op);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(TYPE, A, B)                                         \
+   hipLaunchKernelGGL(                                                    \
+      (kernelPointwiseApply2<Op,                                          \
+                            typename TensorUtils<TensorTypeA>::DataType,  \
+                            typename TensorUtils<TensorTypeB>::DataType,  \
+                            TYPE, A, B>),                                 \
+        grid, block, 0, THCState_getCurrentStream(state),                 \
+        aInfo, bInfo, (TYPE) totalElements, op);
+#else
+  #define HANDLE_CASE(TYPE, A, B)                                         \
+    kernelPointwiseApply2<Op,                                             \
+                          typename TensorUtils<TensorTypeA>::DataType,    \
+                          typename TensorUtils<TensorTypeB>::DataType,    \
+                          TYPE, A, B>                                     \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+        aInfo, bInfo, (TYPE) totalElements, op);
+#endif
 
 #define HANDLE_B_CASE(TYPE, A, B)               \
   {                                             \
@@ -596,14 +617,26 @@ bool THC_pointwiseApply3(THCState* state,
     c = TensorUtils<TensorTypeC>::newContiguous(state, c);
   }
 
-#define HANDLE_CASE(TYPE, A, B, C)                                      \
-  kernelPointwiseApply3<Op,                                             \
-                        typename TensorUtils<TensorTypeA>::DataType,    \
-                        typename TensorUtils<TensorTypeB>::DataType,    \
-                        typename TensorUtils<TensorTypeC>::DataType,    \
-                        TYPE, A, B, C>                                  \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-      aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(TYPE, A, B, C)                                      \
+    hipLaunchKernelGGL(                                                   \
+      (kernelPointwiseApply3<Op,                                          \
+                            typename TensorUtils<TensorTypeA>::DataType,  \
+                            typename TensorUtils<TensorTypeB>::DataType,  \
+                            typename TensorUtils<TensorTypeC>::DataType,  \
+                            TYPE, A, B, C>),                              \
+        grid, block, 0, THCState_getCurrentStream(state),                 \
+        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+#else
+  #define HANDLE_CASE(TYPE, A, B, C)                                      \
+    kernelPointwiseApply3<Op,                                             \
+                          typename TensorUtils<TensorTypeA>::DataType,    \
+                          typename TensorUtils<TensorTypeB>::DataType,    \
+                          typename TensorUtils<TensorTypeC>::DataType,    \
+                          TYPE, A, B, C>                                  \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+#endif
 
 #define HANDLE_C_CASE(TYPE, A, B, C)            \
   {                                             \

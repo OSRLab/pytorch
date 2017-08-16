@@ -2,12 +2,22 @@
 #define THC_GENERIC_FILE "generic/VolumetricDilatedMaxPooling.cu"
 #else
 
-#define UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW:                         \
-  cuda_VolumetricDilatedMaxPooling_updateOutput<KW><<<grid, block,             \
-    0, THCState_getCurrentStream(state)>>>(                             \
-    cudaInput, cudaIndices, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW,\
-    dilationT, dilationH, dilationW, offsetZ); \
-    break
+#if defined(__HIP_PLATFORM_HCC__)
+  #define UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW:                         \
+    hipLaunchKernelGGL(                                                   \
+    (cuda_VolumetricDilatedMaxPooling_updateOutput<KW>), grid, block,     \
+      0, THCState_getCurrentStream(state),                                \
+      cudaInput, cudaIndices, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW,\
+      dilationT, dilationH, dilationW, offsetZ); \
+      break
+#else
+  #define UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW:                         \
+    cuda_VolumetricDilatedMaxPooling_updateOutput<KW><<<grid, block,             \
+      0, THCState_getCurrentStream(state)>>>(                             \
+      cudaInput, cudaIndices, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW,\
+      dilationT, dilationH, dilationW, offsetZ); \
+      break
+#endif
 
 static inline void THNN_(VolumetricDilatedMaxPooling_shapeCheck)(
                          THCState *state,
