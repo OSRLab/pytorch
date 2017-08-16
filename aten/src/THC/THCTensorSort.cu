@@ -24,10 +24,18 @@ void THCudaLongTensor_fillSliceWithIndex(THCState* state,
 
   dim3 block(numThreads);
 
-#define FILL_INDEX(T, DIM)                                       \
-  fillSliceWithIndex<T, DIM>                                     \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(      \
-      info, numSlices, sliceSize, info.strides[collapseDim])
+#if defined(__HIP_PLATFORM_HCC__)
+  #define FILL_INDEX(T, DIM)                                       \
+    hipLaunchKernelGGL(                                            \
+      (fillSliceWithIndex<T, DIM>),                                \
+        grid, block, 0, THCState_getCurrentStream(state),          \
+          info, numSlices, sliceSize, info.strides[collapseDim])
+#else
+  #define FILL_INDEX(T, DIM)                                       \
+    fillSliceWithIndex<T, DIM>                                     \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(      \
+        info, numSlices, sliceSize, info.strides[collapseDim])
+#endif
 
   if (TensorUtils<THCudaLongTensor>::canUse32BitIndexMath(state, t)) {
     TensorInfo<int64_t, uint32_t> info =
