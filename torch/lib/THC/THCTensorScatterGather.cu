@@ -76,9 +76,9 @@ struct IndexToScatterGatherOffsets<IndexType, Real, -1> {
 
 template <typename IndexType, typename Real, int Dims>
 __global__ void THCudaTensor_gatherKernel(
-    TensorInfo<Real, IndexType> tensor,
-    TensorInfo<Real, IndexType> src,
-    TensorInfo<long, IndexType> index,
+    reference_to_const(TensorInfo<Real, IndexType>) tensor,
+    reference_to_const(TensorInfo<Real, IndexType>) src,
+    reference_to_const(TensorInfo<long, IndexType>) index,
     const int dim,
     const IndexType totalElements) {
   for (IndexType linearId = blockIdx.x * blockDim.x + threadIdx.x;
@@ -103,9 +103,9 @@ __global__ void THCudaTensor_gatherKernel(
 
 template <typename IndexType, typename Real, int Dims>
 __global__ void THCudaTensor_scatterKernel(
-    TensorInfo<Real, IndexType> tensor,
-    TensorInfo<Real, IndexType> src,
-    TensorInfo<long, IndexType> index,
+    reference_to_const(TensorInfo<Real, IndexType>) tensor,
+    reference_to_const(TensorInfo<Real, IndexType>) src,
+    reference_to_const(TensorInfo<long, IndexType>) index,
     const int dim,
     const IndexType totalElements) {
   for (IndexType linearId = blockIdx.x * blockDim.x + threadIdx.x;
@@ -130,9 +130,9 @@ __global__ void THCudaTensor_scatterKernel(
 
 template <typename IndexType, typename Real, int Dims>
 __global__ void THCudaTensor_scatterAddKernel(
-    TensorInfo<Real, IndexType> tensor,
-    TensorInfo<Real, IndexType> src,
-    TensorInfo<long, IndexType> index,
+    reference_to_const(TensorInfo<Real, IndexType>) tensor,
+    reference_to_const(TensorInfo<Real, IndexType>) src,
+    reference_to_const(TensorInfo<long, IndexType>) index,
     const int dim,
     const IndexType totalElements) {
   for (IndexType linearId = blockIdx.x * blockDim.x + threadIdx.x;
@@ -157,8 +157,8 @@ __global__ void THCudaTensor_scatterAddKernel(
 
 template <typename IndexType, typename Real, int Dims>
 __global__ void THCudaTensor_scatterFillKernel(
-    TensorInfo<Real, IndexType> tensor,
-    TensorInfo<long, IndexType> index,
+    reference_to_const(TensorInfo<Real, IndexType>) tensor,
+    reference_to_const(TensorInfo<long, IndexType>) index,
     Real value,
     const int dim,
     const IndexType totalElements) {
