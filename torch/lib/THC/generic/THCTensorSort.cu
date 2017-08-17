@@ -59,22 +59,22 @@ THC_API void THCTensor_(sortKeyValueInplace)(THCState* state,
         hipLaunchKernelGGL(                                               \
           (bitonicSortKVInPlace<real, int64_t, A, -1, GTComp<real>, TYPE, SIZE>), \
             grid, block, 0, THCState_getCurrentStream(state),             \
-            keyInfo,                                                      \
+            make_magic_wrapper(keyInfo),                                  \
             keySlices,                                                    \
             (TYPE) keySliceSize,                                          \
             (TYPE) keyInfo.strides[collapseKeyDim],                       \
-            valueInfo,                                                    \
+            make_magic_wrapper(valueInfo),                                \
             (TYPE) valueInfo.strides[collapseValueDim],                   \
             GTComp<real>());                                              \
       } else {                                                            \
         hipLaunchKernelGGL(                                               \
           (bitonicSortKVInPlace<real, int64_t, A, -1, LTComp<real>, TYPE, SIZE>), \
             grid, block, 0, THCState_getCurrentStream(state),             \
-            keyInfo,                                                      \
+            make_magic_wrapper(keyInfo),                                  \
             keySlices,                                                    \
             (TYPE) keySliceSize,                                          \
             (TYPE) keyInfo.strides[collapseKeyDim],                       \
-            valueInfo,                                                    \
+            make_magic_wrapper(valueInfo),                                \
             (TYPE) valueInfo.strides[collapseValueDim],                   \
             LTComp<real>());                                              \
       }                                                                   \
