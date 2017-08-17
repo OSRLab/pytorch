@@ -136,11 +136,11 @@ template <typename K, typename V,
           typename Comparator, typename IndexType, int Power2SortSize>
 __launch_bounds__(1024)
 __global__ void
-bitonicSortKVInPlace(TensorInfo<K, IndexType> keys,
+bitonicSortKVInPlace(reference_to_const(TensorInfo<K, IndexType>) keys,
                      IndexType keySlices,
                      IndexType keySliceSize,
                      IndexType keySliceStride,
-                     TensorInfo<V, IndexType> values,
+                     reference_to_const(TensorInfo<V, IndexType>) values,
                      IndexType valueSliceStride,
                      const Comparator& comp) {
   // Find the slice of the tensor that we are sorting
