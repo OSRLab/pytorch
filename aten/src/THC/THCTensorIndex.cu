@@ -23,9 +23,9 @@
 // indexCopyLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
-__global__ void indexCopySmallIndex(TensorInfo<T, IndexType> dst,
-                                    TensorInfo<T, IndexType> src,
-                                    TensorInfo<int64_t, IndexType> indices,
+__global__ void indexCopySmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                    reference_to_const(TensorInfo<T, IndexType>) src,
+                                    reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                     int dstCopyDim,
                                     int srcCopyDim,
                                     IndexType innerSize,
@@ -66,11 +66,21 @@ __global__ void indexCopySmallIndex(TensorInfo<T, IndexType> dst,
 // the number of indices chosen is small, then the
 // indexCopySmallIndex kernel is a better choice to reduce memory
 // accesses.
+<<<<<<< HEAD:aten/src/THC/THCTensorIndex.cu
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim,
           bool IndexIsMajor>
+=======
+template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM:torch/lib/THC/THCTensorIndex.cu
 __global__ void indexCopyLargeIndex(TensorInfo<T, IndexType> dst,
                                     TensorInfo<T, IndexType> src,
                                     TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexCopyLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                    reference_to_const(TensorInfo<T, IndexType>) src,
+                                    reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                     int dstCopyDim,
                                     int srcCopyDim,
                                     IndexType totalSize,
@@ -115,9 +125,15 @@ __global__ void indexCopyLargeIndex(TensorInfo<T, IndexType> dst,
 // indexAddLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
 __global__ void indexAddSmallIndex(TensorInfo<T, IndexType> dst,
                                    TensorInfo<T, IndexType> src,
                                    TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexAddSmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                   reference_to_const(TensorInfo<T, IndexType>) src,
+                                   reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                    int dstAddDim,
                                    int srcAddDim,
                                    IndexType innerSize,
@@ -157,11 +173,21 @@ __global__ void indexAddSmallIndex(TensorInfo<T, IndexType> dst,
 // the number of indices chosen is small, then the
 // indexAddSmallIndex kernel is a better choice to reduce memory
 // accesses.
+<<<<<<< HEAD:aten/src/THC/THCTensorIndex.cu
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim,
           bool IndexIsMajor>
+=======
+template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM:torch/lib/THC/THCTensorIndex.cu
 __global__ void indexAddLargeIndex(TensorInfo<T, IndexType> dst,
                                    TensorInfo<T, IndexType> src,
                                    TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexAddLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                   reference_to_const(TensorInfo<T, IndexType>) src,
+                                   reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                    int dstAddDim,
                                    int srcAddDim,
                                    IndexType totalSize,
@@ -206,8 +232,13 @@ __global__ void indexAddLargeIndex(TensorInfo<T, IndexType> dst,
 // indexFillLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
 __global__ void indexFillSmallIndex(TensorInfo<T, IndexType> dst,
                                     TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexFillSmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                    reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                     int dstFillDim,
                                     IndexType innerSize,
                                     int64_t dstFillDimSize,
@@ -243,10 +274,19 @@ __global__ void indexFillSmallIndex(TensorInfo<T, IndexType> dst,
 // the number of indices chosen is small, then the
 // indexFillSmallIndex kernel is a better choice to reduce memory
 // accesses.
+<<<<<<< HEAD:aten/src/THC/THCTensorIndex.cu
 template <typename T, typename IndexType, int DstDim, int IdxDim,
           bool IndexIsMajor>
+=======
+template <typename T, typename IndexType, int DstDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM:torch/lib/THC/THCTensorIndex.cu
 __global__ void indexFillLargeIndex(TensorInfo<T, IndexType> dst,
                                     TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexFillLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                    reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                     int dstFillDim,
                                     IndexType totalSize,
                                     IndexType innerSize,
@@ -287,9 +327,15 @@ __global__ void indexFillLargeIndex(TensorInfo<T, IndexType> dst,
 // indexSelectLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
 __global__ void indexSelectSmallIndex(TensorInfo<T, IndexType> dst,
                                       TensorInfo<T, IndexType> src,
                                       TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexSelectSmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                      reference_to_const(TensorInfo<T, IndexType>) src,
+                                      reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                       int dstSelectDim,
                                       int srcSelectDim,
                                       IndexType innerSize,
@@ -329,11 +375,21 @@ __global__ void indexSelectSmallIndex(TensorInfo<T, IndexType> dst,
 // the number of indices chosen is small, then the
 // indexSelectSmallIndex kernel is a better choice to reduce memory
 // accesses.
+<<<<<<< HEAD:aten/src/THC/THCTensorIndex.cu
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim,
           bool IndexIsMajor>
+=======
+template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
+<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM:torch/lib/THC/THCTensorIndex.cu
 __global__ void indexSelectLargeIndex(TensorInfo<T, IndexType> dst,
                                       TensorInfo<T, IndexType> src,
                                       TensorInfo<int64_t, IndexType> indices,
+=======
+__global__ void indexSelectLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
+                                      reference_to_const(TensorInfo<T, IndexType>) src,
+                                      reference_to_const(TensorInfo<long, IndexType>) indices,
+>>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
                                       int dstSelectDim,
                                       int srcSelectDim,
                                       IndexType totalSize,

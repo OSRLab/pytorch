@@ -131,11 +131,29 @@ void THCTensor_(indexCopy)(THCState *state, THCTensor *dst, int dim, THCudaLongT
 
   int mpc = THCState_getCurrentDeviceProperties(state)->multiProcessorCount;
 
-<<<<<<< HEAD:aten/src/THC/generic/THCTensorIndex.cu
-#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-  indexCopySmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>       \
-    <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(           \
-      dstInfo, srcInfo, indicesInfo,                            \
+#if defined(__HIP_PLATFORM_HCC__)
+#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)      \
+  hipLaunchKernelGGL(                                                  \
+  (indexCopySmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
+      smallIndexGrid, smallIndexBlock, 0, stream,                      \
+      dstInfo, srcInfo, indicesInfo,                                   \
+      dstCopyDim, srcCopyDim, sliceSize, dstCopyDimSize);
+
+#define LARGE_INDEX(TENSOR_TYPE, TYPE,                           \
+                    DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)     \
+  hipLaunchKernelGGL(                                            \
+  (indexCopyLargeIndex<TENSOR_TYPE, TYPE,                        \
+                      DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR>), \
+      largeIndexGrid, largeIndexBlock, 0, stream,                \
+      dstInfo, srcInfo, indicesInfo,                             \
+      dstCopyDim, srcCopyDim, srcTotalSize,                      \
+      (IDX_IS_MAJOR) ? sliceSize : numIndices,                   \
+      dstCopyDimSize);
+#else
+#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)   \
+  indexCopySmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
+    <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(               \
+      dstInfo, srcInfo, indicesInfo,                                \
       dstCopyDim, srcCopyDim, sliceSize, dstCopyDimSize);
 
 #define LARGE_INDEX(TENSOR_TYPE, TYPE,                         \
@@ -147,35 +165,7 @@ void THCTensor_(indexCopy)(THCState *state, THCTensor *dst, int dim, THCudaLongT
       dstCopyDim, srcCopyDim, srcTotalSize,                    \
       (IDX_IS_MAJOR) ? sliceSize : numIndices,                 \
       dstCopyDimSize);
-=======
-#if defined(__HIP_PLATFORM_HCC__)
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                             \
-      (indexCopySmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        smallIndexGrid, smallIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo, indicesInfo,                              \
-        dstCopyDim, srcCopyDim, sliceSize, dstCopyDimSize);
-
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                             \
-    (indexCopyLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        largeIndexGrid, largeIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo, indicesInfo,                              \
-        dstCopyDim, srcCopyDim, sliceSize, dstCopyDimSize);
-#else
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    indexCopySmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>       \
-      <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(           \
-        dstInfo, srcInfo, indicesInfo,                            \
-        dstCopyDim, srcCopyDim, sliceSize, dstCopyDimSize);
-
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    indexCopyLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>       \
-      <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(           \
-        dstInfo, srcInfo, indicesInfo,                            \
-        dstCopyDim, srcCopyDim, sliceSize, dstCopyDimSize);
 #endif
->>>>>>> Add hipified kernel launches alongside cuda kernel launches in macros:torch/lib/THC/generic/THCTensorIndex.cu
 
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
   dim3 smallIndexBlock(std::min(sliceSize, (ptrdiff_t)128));
@@ -362,52 +352,43 @@ void THCTensor_(indexAdd)(THCState *state, THCTensor *dst, int dim, THCudaLongTe
 
   int mpc = THCState_getCurrentDeviceProperties(state)->multiProcessorCount;
 
-<<<<<<< HEAD:aten/src/THC/generic/THCTensorIndex.cu
-#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-  indexAddSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
-    <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(   \
-      dstInfo, srcInfo, indicesInfo,                    \
+#if defined(__HIP_PLATFORM_HCC__)
+#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)  \
+  hipLaunchKernelGGL(                                              \
+    (indexAddSmallIndex<TENSOR_TYPE, TYPE,                         \
+                        DST_DIM, SRC_DIM, IDX_DIM>),               \
+      smallIndexGrid, smallIndexBlock, 0, stream,                  \
+      dstInfo, srcInfo, indicesInfo,                               \
       dstAddDim, srcAddDim, sliceSize, dstAddDimSize);
 
-#define LARGE_INDEX(TENSOR_TYPE, TYPE,                        \
-                    DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)  \
-  indexAddLargeIndex<TENSOR_TYPE, TYPE,                       \
-                     DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR> \
-    <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(         \
-      dstInfo, srcInfo, indicesInfo,                          \
-      dstAddDim, srcAddDim, srcTotalSize,                     \
-      (IDX_IS_MAJOR) ? sliceSize : numIndices,                \
+#define LARGE_INDEX(TENSOR_TYPE, TYPE,                             \
+                    DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)       \
+  hipLaunchKernelGGL(                                              \
+  (indexAddLargeIndex<TENSOR_TYPE, TYPE,                           \
+                     DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR>),    \
+      largeIndexGrid, largeIndexBlock, 0, stream,                  \
+      dstInfo, srcInfo, indicesInfo,                               \
+      dstAddDim, srcAddDim, srcTotalSize,                          \
+      (IDX_IS_MAJOR) ? sliceSize : numIndices,                     \
       dstAddDimSize);
-
-=======
-#if defined(__HIP_PLATFORM_HCC__)
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                             \
-      (indexAddSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        smallIndexGrid, smallIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo, indicesInfo,                              \
-        dstAddDim, srcAddDim, sliceSize, dstAddDimSize);
-
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                             \
-      (indexAddLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        largeIndexGrid, largeIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo, indicesInfo,                              \
-        dstAddDim, srcAddDim, sliceSize, dstAddDimSize);
 #else
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    indexAddSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
-      <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(   \
-        dstInfo, srcInfo, indicesInfo,                    \
-        dstAddDim, srcAddDim, sliceSize, dstAddDimSize);
+#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)  \
+  indexAddSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
+    <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(              \
+      dstInfo, srcInfo, indicesInfo,                               \
+      dstAddDim, srcAddDim, sliceSize, dstAddDimSize);
 
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    indexAddLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
-      <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(   \
-        dstInfo, srcInfo, indicesInfo,                    \
-        dstAddDim, srcAddDim, sliceSize, dstAddDimSize);
+#define LARGE_INDEX(TENSOR_TYPE, TYPE,                             \
+                    DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)       \
+  indexAddLargeIndex<TENSOR_TYPE, TYPE,                            \
+                     DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR>      \
+    <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(              \
+      dstInfo, srcInfo, indicesInfo,                               \
+      dstAddDim, srcAddDim, srcTotalSize,                          \
+      (IDX_IS_MAJOR) ? sliceSize : numIndices,                     \
+      dstAddDimSize);
 #endif
->>>>>>> Add hipified kernel launches alongside cuda kernel launches in macros:torch/lib/THC/generic/THCTensorIndex.cu
+
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
   dim3 smallIndexBlock(std::min(sliceSize, (ptrdiff_t)128));
 
@@ -554,6 +535,7 @@ void THCTensor_(indexFill)(THCState *state, THCTensor *dst, int dim, THCudaLongT
       (IDX_IS_MAJOR) ? sliceSize : numIndices,                           \
       dstFillDimSize, val);
 #endif
+
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
   dim3 smallIndexBlock(std::min(sliceSize, (ptrdiff_t)128));
 
@@ -684,51 +666,42 @@ void THCTensor_(indexSelect)(THCState *state, THCTensor *dst, THCTensor *src, in
 
   int mpc = THCState_getCurrentDeviceProperties(state)->multiProcessorCount;
 
-<<<<<<< HEAD:aten/src/THC/generic/THCTensorIndex.cu
-#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-  indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>     \
-    <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(           \
-      dstInfo, srcInfo, indicesInfo,                            \
-      dstSelectDim, srcSelectDim, sliceSize, srcSelectDimSize);
-
-#define LARGE_INDEX(TENSOR_TYPE, TYPE,                           \
-                    DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)     \
-  indexSelectLargeIndex<TENSOR_TYPE, TYPE,                       \
-                        DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR> \
-    <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(            \
-      dstInfo, srcInfo, indicesInfo,                             \
-      dstSelectDim, srcSelectDim, dstTotalSize,                  \
-      (IDX_IS_MAJOR) ? sliceSize : numIndices,                   \
-      srcSelectDimSize);
-=======
 #if defined(__HIP_PLATFORM_HCC__)
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                             \
-    (indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        smallIndexGrid, smallIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo, indicesInfo,                              \
+  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)\
+    hipLaunchKernelGGL(                                            \
+    (indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM,             \
+                           SRC_DIM, IDX_DIM>),                     \
+        smallIndexGrid, smallIndexBlock, 0, stream,                \
+        dstInfo, srcInfo, indicesInfo,                             \
         dstSelectDim, srcSelectDim, sliceSize, srcSelectDimSize);
 
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                                     \
-      (indexSelectLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        largeIndexGrid, largeIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo, indicesInfo,                              \
-        dstSelectDim, srcSelectDim, dstTotalSize, sliceSize, srcSelectDimSize);
-#else
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>     \
-      <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(           \
-        dstInfo, srcInfo, indicesInfo,                            \
+  #define LARGE_INDEX(TENSOR_TYPE, TYPE,                           \
+                      DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)     \
+    hipLaunchKernelGGL(                                            \
+    (indexSelectLargeIndex<TENSOR_TYPE, TYPE, DST_DIM,             \
+                           SRC_DIM, IDX_DIM, IDX_IS_MAJOR>),       \
+       largeIndexGrid, largeIndexBlock, 0, stream,                 \
+        dstInfo, srcInfo, indicesInfo,                             \
+        dstSelectDim, srcSelectDim, dstTotalSize,                  \
+        (IDX_IS_MAJOR) ? sliceSize : numIndices,                   \
+        srcSelectDimSize);
+  #else
+  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)     \
+    indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
+      <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(                 \
+        dstInfo, srcInfo, indicesInfo,                                  \
         dstSelectDim, srcSelectDim, sliceSize, srcSelectDimSize);
 
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)         \
-    indexSelectLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>     \
-      <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(                   \
-        dstInfo, srcInfo, indicesInfo,                                    \
-        dstSelectDim, srcSelectDim, dstTotalSize, sliceSize, srcSelectDimSize);
+  #define LARGE_INDEX(TENSOR_TYPE, TYPE,                                 \
+                      DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR)           \
+    indexSelectLargeIndex<TENSOR_TYPE, TYPE,                             \
+                          DST_DIM, SRC_DIM, IDX_DIM, IDX_IS_MAJOR>       \
+      <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(                  \
+        dstInfo, srcInfo, indicesInfo,                                   \
+        dstSelectDim, srcSelectDim, dstTotalSize,                        \
+        (IDX_IS_MAJOR) ? sliceSize : numIndices,                         \
+        srcSelectDimSize);
 #endif
->>>>>>> Add hipified kernel launches alongside cuda kernel launches in macros:torch/lib/THC/generic/THCTensorIndex.cu
 
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
   dim3 smallIndexBlock(std::min(sliceSize, (ptrdiff_t)128));
