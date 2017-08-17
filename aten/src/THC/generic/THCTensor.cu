@@ -2,6 +2,7 @@
 #define THC_GENERIC_FILE "generic/THCTensor.cu"
 #else
 
+#if defined(__NVCC__)
 cudaTextureObject_t THCTensor_(getTextureObject)(THCState *state, THCTensor *self)
 {
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 1, self));
@@ -32,5 +33,5 @@ THC_API int THCTensor_(getDevice)(THCState* state, const THCTensor* tensor) {
   if (!tensor->storage) return -1;
   return THCStorage_(getDevice)(state, tensor->storage);
 }
-
+#endif
 #endif
