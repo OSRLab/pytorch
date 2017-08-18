@@ -8,6 +8,10 @@
 
 template <typename T>
 struct TensorAddConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorAddConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in + val;
@@ -17,6 +21,11 @@ struct TensorAddConstantOp {
     *v += val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorAddConstantOp() {}
+#endif
+
   const T val;
 };
 
@@ -24,13 +33,19 @@ struct TensorAddConstantOp {
 template <>
 struct TensorAddConstantOp<half> {
 #ifdef CUDA_HALF_INSTRUCTIONS
+  #if defined(__HIP_PLATFORM_HCC__)
+    __host__ __device__
+    explicit
+  #endif
   TensorAddConstantOp(half v) : val(v) {}
 #else
   TensorAddConstantOp(half v) : fval(THC_half2float(v)) {}
 #endif
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined (__HIP_PLATFORM_HCC__)
+    *out = *in + val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *out = __hadd(*in, val);
 #else
     float fin = __half2float(*in);
@@ -40,7 +55,9 @@ struct TensorAddConstantOp<half> {
   }
 
   __device__ __forceinline__ void operator()(half* v) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined (__HIP_PLATFORM_HCC__)
+    *v += val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *v = __hadd(*v, val);
 #else
     float fv = __half2float(*v);
@@ -49,7 +66,7 @@ struct TensorAddConstantOp<half> {
 #endif
   }
 
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS) || defined(__HIP_PLATFORM_HCC__)
   const half val;
 #else
   const float fval;
@@ -60,6 +77,10 @@ struct TensorAddConstantOp<half> {
 
 template <typename T>
 struct TensorSubConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorSubConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in - val;
@@ -69,6 +90,11 @@ struct TensorSubConstantOp {
     *v -= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorSubConstantOp() {}
+#endif
+
   const T val;
 };
 
@@ -76,14 +102,20 @@ struct TensorSubConstantOp {
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorSubConstantOp<half> {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+  TensorSubConstantOp(half v) : val{v} {}
+#elif defined(CUDA_HALF_INSTRUCTIONS)
   TensorSubConstantOp(half v): val(THC_float2half(-(THC_half2float(v)))) {}
 #else
   TensorSubConstantOp(half v): fval(-(THC_half2float(v))) {}
 #endif
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+  *out = *in + val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *out = __hadd(*in, val);
 #else
     float fin = __half2float(*in);
@@ -93,7 +125,9 @@ struct TensorSubConstantOp<half> {
   }
 
   __device__ __forceinline__ void operator()(half* v) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+    *v += val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *v = __hadd(*v, val);
 #else
     float fv = __half2float(*v);
@@ -102,7 +136,7 @@ struct TensorSubConstantOp<half> {
 #endif
   }
 
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS) || defined(__HIP_PLATFORM_HCC__)
   const half val;
 #else
   const float fval;
@@ -113,6 +147,10 @@ struct TensorSubConstantOp<half> {
 
 template <typename T>
 struct TensorMulConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorMulConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in * val;
@@ -122,20 +160,30 @@ struct TensorMulConstantOp {
     *v *= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorMulConstantOp() {}
+#endif
   const T val;
 };
 
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorMulConstantOp<half> {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+  TensorMulConstantOp(half v) : val(v) {}
+#elif defined(CUDA_HALF_INSTRUCTIONS)
   TensorMulConstantOp(half v) : val(v) {}
 #else
   TensorMulConstantOp(half v) : fval(THC_half2float(v)) {}
 #endif
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+    *out = *in * val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *out = __hmul(*in, val);
 #else
     float fin = __half2float(*in);
@@ -145,7 +193,9 @@ struct TensorMulConstantOp<half> {
   }
 
   __device__ __forceinline__ void operator()(half* v) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+    *v = *v * val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *v = __hmul(*v, val);
 #else
     float fv = __half2float(*v);
@@ -154,7 +204,7 @@ struct TensorMulConstantOp<half> {
 #endif
   }
 
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS) || defined(__HIP_PLATFORM_HCC__)
   const half val;
 #else
   const float fval;
@@ -164,6 +214,10 @@ struct TensorMulConstantOp<half> {
 
 template <typename T>
 struct TensorDivConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorDivConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in / val;
@@ -173,11 +227,20 @@ struct TensorDivConstantOp {
     *v /= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorDivConstantOp() {}
+#endif
+
   const T val;
 };
 
 template <>
 struct TensorDivConstantOp<float> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorDivConstantOp(float v) : val(1.f / v) {}
   __device__ __forceinline__ void operator()(float* out, float* in) {
     *out = *in * val;
@@ -187,11 +250,20 @@ struct TensorDivConstantOp<float> {
     *v *= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorDivConstantOp() {}
+#endif
+
   const float val;
 };
 
 template <>
 struct TensorDivConstantOp<double> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorDivConstantOp(double v) : val(1. / v) {}
   __device__ __forceinline__ void operator()(double* out, double* in) {
     *out = *in * val;
@@ -201,19 +273,30 @@ struct TensorDivConstantOp<double> {
     *v *= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorDivConstantOp() {}
+#endif
+
   const double val;
 };
 
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorDivConstantOp<half> {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+  TensorDivConstantOp(half v) : val(ScalarInv<half>::to(v)) {}
+#elif defined(CUDA_HALF_INSTRUCTIONS)
   TensorDivConstantOp(half v) : val(ScalarInv<half>::to(v)) {}
 #else
   TensorDivConstantOp(half v) : fval(1.f / THC_half2float(v)) {}
 #endif
   __device__ __forceinline__ void operator()(half* out, half* in) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+    *out = *in * val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *out = __hmul(*in, val);
 #else
     float fin = __half2float(*in);
@@ -223,7 +306,9 @@ struct TensorDivConstantOp<half> {
   }
 
   __device__ __forceinline__ void operator()(half* v) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+    *v = *v * val;
+#elif defined(CUDA_HALF_INSTRUCTIONS)
     *v = __hmul(*v, val);
 #else
     float fv = __half2float(*v);
@@ -232,7 +317,7 @@ struct TensorDivConstantOp<half> {
 #endif
   }
 
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS) || define(__HIP_PLATFORM_HCC__)
   const half val;
 #else
   const float fval;
@@ -242,6 +327,9 @@ struct TensorDivConstantOp<half> {
 
 template <typename T>
 struct TensorRemainderOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorRemainderOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in % val;
@@ -257,11 +345,19 @@ struct TensorRemainderOp {
     }
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~TensorRemainderOp() {}  
+#endif
+
   const T val;
 };
 
 template <>
 struct TensorRemainderOp<float> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorRemainderOp(float v) : val(v) {}
   __device__ __forceinline__ void operator()(float* out, float* in) {
     *out = *in - val * floorf(*in / val);
@@ -271,11 +367,18 @@ struct TensorRemainderOp<float> {
     *v = *v - val * floorf(*v / val);
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorRemainderOp() {};
+#endif
+
   const float val;
 };
 
 template <>
 struct TensorRemainderOp<double> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorRemainderOp(double v) : val(v) {}
   __device__ __forceinline__ void operator()(double* out, double* in) {
     *out = *in - val * floor(*in / val);
@@ -285,13 +388,19 @@ struct TensorRemainderOp<double> {
     *v = *v - val * floor(*v / val);
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorRemainderOp() {};
+#endif
+
   const double val;
 };
 
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorRemainderOp<half> {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#elif defined(CUDA_HALF_INSTRUCTIONS)
   TensorRemainderOp(half v) : val(v) {}
 #else
   TensorRemainderOp(half v): fval(THC_half2float(v)) {}
@@ -317,7 +426,7 @@ struct TensorRemainderOp<half> {
 #endif
   }
 
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS) || defined(__HIP_PLATFORM_HCC__)
   const half val;
 #else
   const float fval;
@@ -327,6 +436,9 @@ struct TensorRemainderOp<half> {
 
 template <typename T>
 struct TensorFmodOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorFmodOp(T v) : val((float)v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = (T) fmodf((float) *in, val);
@@ -341,6 +453,9 @@ struct TensorFmodOp {
 
 template <>
 struct TensorFmodOp<double> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorFmodOp(double v) : val(v) {}
   __device__ __forceinline__ void operator()(double* out, double* in) {
     *out = fmod(*in, val);
@@ -356,7 +471,12 @@ struct TensorFmodOp<double> {
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorFmodOp<half> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  TensorFmodOp(half v): fval(v) {}
+#else
   TensorFmodOp(half v): fval(THC_half2float(v)) {}
+#endif
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
     *out = __float2half(fmodf(__half2float(*in), fval));
@@ -407,6 +527,9 @@ struct TensorTriOp {
 
 template <typename T>
 struct TensorLShiftConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorLShiftConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in << val;
@@ -416,11 +539,18 @@ struct TensorLShiftConstantOp {
     *v <<= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorLShiftConstantOp() {};
+#endif
+
   const T val;
 };
 
 template <typename T>
 struct TensorRShiftConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorRShiftConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in >> val;
@@ -430,11 +560,17 @@ struct TensorRShiftConstantOp {
     *v >>= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorRShiftConstantOp() {};
+#endif
   const T val;
 };
 
 template <typename T>
 struct TensorBitAndConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorBitAndConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in & val;
@@ -444,11 +580,17 @@ struct TensorBitAndConstantOp {
     *v &= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorBitAndConstantOp() {}
+#endif
   const T val;
 };
 
 template <typename T>
 struct TensorBitOrConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorBitOrConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in | val;
@@ -458,11 +600,18 @@ struct TensorBitOrConstantOp {
     *v |= val;
   }
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorBitOrConstantOp() {}
+#endif
+
   const T val;
 };
 
 template <typename T>
 struct TensorBitXorConstantOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorBitXorConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in ^ val;
@@ -471,6 +620,10 @@ struct TensorBitXorConstantOp {
   __device__ __forceinline__ void operator()(T* v) {
     *v ^= val;
   }
+
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorBitXorConstantOp() {}
+#endif
 
   const T val;
 };

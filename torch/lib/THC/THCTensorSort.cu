@@ -29,7 +29,8 @@ void THCudaLongTensor_fillSliceWithIndex(THCState* state,
     hipLaunchKernelGGL(                                            \
       (fillSliceWithIndex<T, DIM>),                                \
         grid, block, 0, THCState_getCurrentStream(state),          \
-          info, numSlices, sliceSize, info.strides[collapseDim])
+          make_magic_wrapper(info), numSlices, sliceSize,          \
+          info.strides[collapseDim])
 #else
   #define FILL_INDEX(T, DIM)                                       \
     fillSliceWithIndex<T, DIM>                                     \
