@@ -828,7 +828,7 @@ void THCTensor_(calculateAdvancedIndexingOffsets)(
         THCudaLongTensor_data(state, output),                                                     \
         nElement,                                                                                 \
         baseOffset,                                                                               \
-        data                                                                                      \
+        make_magic_wrapper(data)                                                                  \
     );                                                                                            \
   }
 #else
