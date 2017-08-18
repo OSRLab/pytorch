@@ -791,27 +791,52 @@ void THCTensor_(calculateAdvancedIndexingOffsets)(
   dim3 grid;
   THAssert(getApplyGrid(state, nElement, grid));
 
-#define HANDLE_CASE(INDEX_TYPE, DIMS)                                                           \
-{                                                                                               \
-  LinearIndexCalcData<INDEX_TYPE, DIMS> data;                                                   \
-  for (int i = 0; i < DIMS; ++i) {                                                              \
-    data.baseSizes[i] = THCTensor_(size)(state, indexed, i);                                    \
-    data.sizes[i] = indexers[i] != NULL ?                                                       \
-      THCudaLongTensor_nElement(state, indexers[i]) :                                           \
-        THCTensor_(size)(state, indexed, i);                                                    \
-    data.strides[i] = THCTensor_(stride)(state, indexed, i);                                    \
-    data.advIndexTensors[i] = indexers[i] != NULL ?                                             \
-      THCudaLongTensor_data(state, indexers[i]) : NULL;                                         \
-  }                                                                                             \
-                                                                                                \
-  calculateLinearIndices<INDEX_TYPE, DIMS>                                                      \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(                                     \
-    THCudaLongTensor_data(state, output),                                                       \
-    nElement,                                                                                   \
-    baseOffset,                                                                                 \
-    data                                                                                        \
-  );                                                                                            \
-}
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(INDEX_TYPE, DIMS)                                                           \
+  {                                                                                               \
+    LinearIndexCalcData<INDEX_TYPE, DIMS> data;                                                   \
+    for (int i = 0; i < DIMS; ++i) {                                                              \
+      data.baseSizes[i] = THCTensor_(size)(state, indexed, i);                                    \
+      data.sizes[i] = indexers[i] != NULL ?                                                       \
+        THCudaLongTensor_nElement(state, indexers[i]) :                                           \
+          THCTensor_(size)(state, indexed, i);                                                    \
+      data.strides[i] = THCTensor_(stride)(state, indexed, i);                                    \
+      data.advIndexTensors[i] = indexers[i] != NULL ?                                             \
+        THCudaLongTensor_data(state, indexers[i]) : NULL;                                         \
+    }                                                                                             \
+                                                                                                  \
+    hipLaunchKernelGGL(                                                                           \
+      (calculateLinearIndices<INDEX_TYPE, DIMS>),                                                 \
+        grid, block, 0, THCState_getCurrentStream(state),                                         \
+        THCudaLongTensor_data(state, output),                                                     \
+        nElement,                                                                                 \
+        baseOffset,                                                                               \
+        data                                                                                      \
+    );                                                                                            \
+  }
+#else
+  #define HANDLE_CASE(INDEX_TYPE, DIMS)                                                           \
+  {                                                                                               \
+    LinearIndexCalcData<INDEX_TYPE, DIMS> data;                                                   \
+    for (int i = 0; i < DIMS; ++i) {                                                              \
+      data.baseSizes[i] = THCTensor_(size)(state, indexed, i);                                    \
+      data.sizes[i] = indexers[i] != NULL ?                                                       \
+        THCudaLongTensor_nElement(state, indexers[i]) :                                           \
+          THCTensor_(size)(state, indexed, i);                                                    \
+      data.strides[i] = THCTensor_(stride)(state, indexed, i);                                    \
+      data.advIndexTensors[i] = indexers[i] != NULL ?                                             \
+        THCudaLongTensor_data(state, indexers[i]) : NULL;                                         \
+    }                                                                                             \
+                                                                                                  \
+    calculateLinearIndices<INDEX_TYPE, DIMS>                                                      \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(                                     \
+      THCudaLongTensor_data(state, output),                                                       \
+      nElement,                                                                                   \
+      baseOffset,                                                                                 \
+      data                                                                                        \
+    );                                                                                            \
+  }
+#endif
 
 #define RUN_T(INDEX_TYPE)         \
   switch (ndim) {                 \
