@@ -109,7 +109,12 @@ struct THCNumerics<long> {
   static inline __host__ __device__  long mul(long a, long b) { return a * b; }
   static inline __host__ __device__  long sub(long a, long b) { return a - b; }
   static inline __host__ __device__  long div(long a, long b) { return a / b; };
+#if defined(__HIP_PLATFORM_HCC__)
+  static inline __host__ long abs(long a) { return std::abs(a); }
+  static inline __device__ long abs(long a) { return a < 0 ? -a : a; }
+#else
   static inline __host__ __device__  long abs(long a) { return labs(a); }
+#endif
 };
 
 #ifdef CUDA_HALF_TENSOR
