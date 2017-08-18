@@ -22,8 +22,15 @@
 
 template <typename T>
 struct TensorFillOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   TensorFillOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* v) { *v = val; }
+
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorFillOp() {}
+#endif
 
   const T val;
 };
