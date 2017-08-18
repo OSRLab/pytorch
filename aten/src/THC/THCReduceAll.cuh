@@ -204,7 +204,7 @@ void callReduceAll(THCState* state,
 
     kernelReduceAllPass1<ModifyOp, ReduceOp, ReduceAccOp, InT, AccT, IndexType, ADims>
       <<<grid, block, smemSize, THCState_getCurrentStream(state)>>>(
-        in, (IndexType) totalElements, init, modifyOp, reduceOp, reduceAccOp,
+        make_magic_wrapper(in), (IndexType) totalElements, init, modifyOp, reduceOp, reduceAccOp,
         (AccT*) scratchSpace);
 
     int numPass1Blocks = grid.x;
@@ -225,7 +225,7 @@ void callReduceAll(THCState* state,
 
     kernelReduceAll<ModifyOp, ReduceOp, ReduceAccOp, InT, AccT, IndexType, ADims>
       <<<grid, block, smemSize, THCState_getCurrentStream(state)>>>(
-        in, (IndexType) totalElements, init, modifyOp, reduceOp, reduceAccOp, devOut);
+        make_magic_wrapper(in), (IndexType) totalElements, init, modifyOp, reduceOp, reduceAccOp, devOut);
   }
 }
 
