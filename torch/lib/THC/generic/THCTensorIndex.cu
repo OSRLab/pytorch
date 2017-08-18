@@ -492,7 +492,7 @@ void THCTensor_(indexSelect)(THCState *state, THCTensor *dst, THCTensor *src, in
         largeIndexGrid, largeIndexBlock, 0, stream,                 \
         make_magic_wrapper(dstInfo), make_magic_wrapper(srcInfo),   \
         make_magic_wrapper(indicesInfo),                            \
-        dstSelectDim, srcSelectDim, sliceSize, srcSelectDimSize);
+        dstSelectDim, srcSelectDim, dstTotalSize, sliceSize, srcSelectDimSize);
 #else
   #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
     indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>     \
@@ -622,7 +622,7 @@ void THCTensor_(calculateAdvancedIndexingOffsets)(
         THCudaLongTensor_data(state, output),                                                     \
         nElement,                                                                                 \
         baseOffset,                                                                               \
-        data                                                                                      \
+        make_magic_wrapper(data)                                                                  \
     );                                                                                            \
   }
 #else
