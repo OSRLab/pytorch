@@ -116,7 +116,12 @@ struct THCNumerics<int64_t> {
   static inline __host__ __device__  int64_t mul(int64_t a, int64_t b) { return a * b; }
   static inline __host__ __device__  int64_t sub(int64_t a, int64_t b) { return a - b; }
   static inline __host__ __device__  int64_t div(int64_t a, int64_t b) { return a / b; };
+#if defined(__HIP_PLATFORM_HCC__)
+  static inline __host__ long abs(long a) { return std::abs(a); }
+  static inline __device__ long abs(long a) { return a < 0 ? -a : a; }
+#else
   static inline __host__ __device__  int64_t abs(int64_t a) { return labs(a); }
+#endif
 };
 
 #ifdef CUDA_HALF_TENSOR
