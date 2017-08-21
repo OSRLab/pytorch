@@ -343,29 +343,35 @@ bool THC_reduceDim(THCState* state,
   #define HANDLE_CASE(TYPE, OUT, IN)                                      \
     if (contigReduction) {                                                \
       hipLaunchKernelGGL(                                                 \
-        (kernelReduceContigDim<ModifyOp, ReduceOp,                        \
+        (kernelReduceContigDim<ModifyOp, ReduceOp, ReduceAccOp,           \
                              typename TensorUtils<TensorType>::DataType,  \
+                             AccT,                                        \
                              TYPE, OUT, IN>),                             \
             grid, block, smemSize, THCState_getCurrentStream(state),      \
-            outInfo, inInfo, reductionSize,                               \
-            (TYPE) outElements, init, modifyOp, reduceOp);                \
+            make_magic_wrapper(outInfo), make_magic_wrapper(inInfo),      \
+            reductionSize,                                                \
+            (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);   \
     } else {                                                              \
       if(block.y == 1){                                                   \
         hipLaunchKernelGGL(                                               \
-          (kernelReduceNoncontigDim<ModifyOp, ReduceOp,                   \
+          (kernelReduceNoncontigDim<ModifyOp, ReduceOp, ReduceAccOp,      \
                              typename TensorUtils<TensorType>::DataType,  \
+                             AccT,                                        \
                              TYPE, OUT, IN>),                             \
             grid, block, 0, THCState_getCurrentStream(state),             \
-            outInfo, inInfo, reductionStride, reductionSize,              \
-            (TYPE) outElements, init, modifyOp, reduceOp);                \
+            make_magic_wrapper(outInfo), make_magic_wrapper(inInfo),      \
+            reductionStride, reductionSize,                               \
+            (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);   \
       }else{                                                              \
         hipLaunchKernelGGL(                                               \
-          (kernelReduceNoncontigDim_shared<ModifyOp, ReduceOp,            \
+          (kernelReduceNoncontigDim_shared<ModifyOp, ReduceOp, ReduceAccOp, \
                              typename TensorUtils<TensorType>::DataType,  \
+                             AccT,                                        \
                              TYPE, OUT, IN>),                             \
           grid, block, 0, THCState_getCurrentStream(state),               \
-          outInfo, inInfo, reductionStride, reductionSize,                \
-          (TYPE) outElements, init, modifyOp, reduceOp);                  \
+          make_magic_wrapper(outInfo), make_magic_wrapper(inInfo),        \
+          reductionStride, reductionSize,                                 \
+          (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
       }                                                                   \
     }                        
 #else
