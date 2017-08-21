@@ -32,7 +32,7 @@ struct TensorAddConstantOp {
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorAddConstantOp<half> {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined (UDA_HALF_INSTRUCTIONS)|| defined (__HIP_PLATFORM_HCC__)
   #if defined(__HIP_PLATFORM_HCC__)
     __host__ __device__
     explicit
@@ -317,7 +317,7 @@ struct TensorDivConstantOp<half> {
 #endif
   }
 
-#if defined(CUDA_HALF_INSTRUCTIONS) || define(__HIP_PLATFORM_HCC__)
+#if defined(CUDA_HALF_INSTRUCTIONS) || defined(__HIP_PLATFORM_HCC__)
   const half val;
 #else
   const float fval;
@@ -400,15 +400,17 @@ template <>
 struct TensorRemainderOp<half> {
 #if defined(__HIP_PLATFORM_HCC__)
   __host__ __device__
-#elif defined(CUDA_HALF_INSTRUCTIONS)
   TensorRemainderOp(half v) : val(v) {}
+#elif defined(CUDA_HALF_INSTRUCTIONS)
 #else
   TensorRemainderOp(half v): fval(THC_half2float(v)) {}
 #endif
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS) 
     *out = __hsub(*in,  __hmul(val, hfloor(__hdiv(*in,  val))));
+#elif defined(__HIP_PLATFORM_HCC__)
+    *out = __hsub(*in,  __hmul(val, hfloor(hdiv(*in,  val))));
 #else
     float fin = __half2float(*in);
     float fout = fin - fval * floorf(fin / fval);
@@ -417,8 +419,10 @@ struct TensorRemainderOp<half> {
   }
 
   __device__ __forceinline__ void operator()(half* v) {
-#ifdef CUDA_HALF_INSTRUCTIONS
+#if defined(CUDA_HALF_INSTRUCTIONS)
     *v = __hsub(*v, __hmul(val, hfloor(__hdiv(*v, val))));
+#elif defined(__HIP_PLATFORM_HCC__)
+    *v = __hsub(*v, __hmul(val, hfloor(hdiv(*v, val))));
 #else
     float fv = __half2float(*v);
     fv = fv - fval * floorf(fv / fval);
