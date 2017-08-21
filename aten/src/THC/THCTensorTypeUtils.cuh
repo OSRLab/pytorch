@@ -138,6 +138,51 @@ struct ScalarInv {
   static __host__ __device__ T to(const T v) { return ((T) 1) / v; }
 };
 
+#if defined(__HIP_PLATFORM_HCC__)
+    template <>
+    struct ScalarNegate<half> {
+      __host__
+      static
+      half to(half v)
+      {
+          return -v;
+      }
+
+      __device__
+      static
+      half to(half v)
+      {
+          return -v;
+      }
+    };
+
+    template <>
+    struct ScalarInv<half> {
+      __host__
+      static
+      half to(half v)
+      {
+        float fv = THC_half2float(v);
+        fv = 1.0f / fv;
+        return THC_float2half(fv);
+      }
+
+      __device__
+      static
+      half to(half v)
+      {
+          return static_cast<half>(1) / v;
+      }
+    };
+
+// inline bool operator==(half a, half b) {
+//   return a == b;
+// }
+// 
+// inline bool operator!=(half a, half b) {
+//   return a != b;
+// }
+#else
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct ScalarNegate<half> {
@@ -196,5 +241,6 @@ inline bool operator!=(half a, half b) {
 }
 
 #endif // CUDA_HALF_TENSOR
+#endif
 
 #endif // THC_TENSOR_TYPE_UTILS_INC
