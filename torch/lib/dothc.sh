@@ -15,6 +15,9 @@ cp THC/THCBlas.cu.hip THC/hip/THCBlas.cu
 cp THC/THCApply.cuh.hip THC/hip/THCApply.cuh
 cp THC/THCTensorRandom.cu.hip THC/hip/THCTensorRandom.cu
 cp THC/THCTensorRandom.cuh.hip THC/hip/THCTensorRandom.cuh
+cp THC/THCTensorRandom.h.hip THC/hip/THCTensorRandom.h
+cp THC/THCNumerics.cuh.hip THC/hip/THCNumerics.cuh
+cp THC/generic/THCTensorRandom.cu.hip THC/hip/generic/THCTensorRandom.cu
 /root/wst_HIP/bin/hipconvertinplace-perl.sh THC/hip/
 /root/wst_HIP/bin/hipify-perl THC/hip/THCGeneral.h.in
 find THC/hip -name "*.prehip" -type f -delete
