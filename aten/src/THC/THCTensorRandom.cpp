@@ -1,8 +1,11 @@
 #include "THCTensorRandom.h"
 
 #include <random>
+#if defined(__HIP_PLATFORM_HCC__)
+#include <hiprng.h>
+#else
 #include <curand.h>
-
+#endif
 
 void initializeGenerator(THCState *state, THCGenerator* gen);
 void createGeneratorState(THCGenerator* gen, uint64_t seed);
@@ -83,7 +86,11 @@ THCGenerator* THCRandom_getGenerator(THCState* state)
   return gen;
 }
 
+#if defined(__HIP_PLATFORM_HCC__)
+hiprngStateMtgp32* THCRandom_generatorStates(struct THCState* state)
+#else
 struct curandStateMtgp32* THCRandom_generatorStates(struct THCState* state)
+#endif
 {
   return THCRandom_getGenerator(state)->gen_states;
 }
