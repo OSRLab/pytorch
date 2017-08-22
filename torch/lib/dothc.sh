@@ -65,6 +65,31 @@ find THC/hip -name "*.prehip" -type f -delete
   #             -DNO_CUDA=$((1-$WITH_CUDA)) \
   #             -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
   cmake -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" ../../THC/hip
+               -DTorch_FOUND="1" \
+               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
+               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
+               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
+               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
+               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
+               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
+               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
+               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
+               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
+               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
+               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
+               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
+               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
+               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+               -DTH_SO_VERSION=1 \
+               -DTHC_SO_VERSION=1 \
+               -DTHNN_SO_VERSION=1 \
+               -DTHCUNN_SO_VERSION=1 \
+               -DTHD_SO_VERSION=1 \
+               -DNO_CUDA=$((1-$WITH_CUDA)) \
+               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
+               ../../THC/hip
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
 
@@ -84,4 +109,3 @@ find THC/hip -name "*.prehip" -type f -delete
   fi
 # }
 
-build THC
