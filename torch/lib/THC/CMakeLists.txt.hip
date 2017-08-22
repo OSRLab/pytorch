@@ -131,7 +131,7 @@ SET(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 SET(src
     THCCachingAllocator.cpp
     THCCachingHostAllocator.cpp
-    THCGeneral.c
+    THCGeneral.cc
     THCStorageCopy.c
     THCStream.cpp
     THCTensor.c
