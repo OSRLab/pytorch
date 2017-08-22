@@ -37,7 +37,9 @@ THCStream* THCStream_newWithPriority(int flags, int priority)
   THCStream* self = (THCStream*) malloc(sizeof(THCStream));
   self->refcount = 1;
   THCudaCheck(cudaGetDevice(&self->device));
+#if defined(__NVCC__)
   THCudaCheck(cudaStreamCreateWithPriority(&self->stream, flags, priority));
+#endif
   return self;
 }
 
