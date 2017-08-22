@@ -350,6 +350,10 @@ struct TensorPowOp<double> {
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorPowOp<half> {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  explicit
+#endif
   TensorPowOp(half v) : val(v) {}
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
@@ -367,6 +371,10 @@ struct TensorPowOp<half> {
     float fout = powf(fv, fval);
     *v = __float2half(fout);
   }
+
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ ~TensorPowOp() {}
+#endif
 
   const half val;
 };
