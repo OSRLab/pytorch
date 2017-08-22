@@ -108,10 +108,11 @@ struct Bitfield<uint64_t> {
 };
 #endif
 
-__device__ __forceinline__ int getLaneId() {
 #if defined(__HIP_PLATFORM_HCC__)
+__device__ __forceinline__ inline int getLaneId() {
     return hc::__lane_id();
 #else
+__device__ __forceinline__ int getLaneId() {
   int laneId;
   asm("mov.s32 %0, %laneid;" : "=r"(laneId) );
   return laneId;
@@ -119,9 +120,7 @@ __device__ __forceinline__ int getLaneId() {
 }
 
 #if defined(__HIP_PLATFORM_HCC__)
-  __device__
-  inline
-  std::uint64_t getLaneMaskLt()
+  __device__ inline std::uint64_t getLaneMaskLt()
   {
     std::uint64_t m = (1ull << getLaneId()) - 1ull;
     return m;
@@ -135,9 +134,7 @@ __device__ __forceinline__ unsigned getLaneMaskLt() {
 #endif
 
 #if defined(__HIP_PLATFORM_HCC__)
-  __device__
-  inline
-  std::uint64_t getLaneMaskLe()
+  __device__ inline std::uint64_t getLaneMaskLe()
   {
     std::uint64_t m = (1ull << (getLaneId() + 1ull)) - 1ull;
     return m;
@@ -151,9 +148,7 @@ __device__ __forceinline__ unsigned getLaneMaskLe() {
 #endif
 
 #if defined(__HIP_PLATFORM_HCC__)
-  __device__
-  inline
-  std::uint64_t getLaneMaskGt()
+  __device__ inline std::uint64_t getLaneMaskGt()
   {
     std::uint64_t m = getLaneMaskLe();
     return m ? ~m : m;
@@ -167,9 +162,7 @@ __device__ __forceinline__ unsigned getLaneMaskGt() {
 #endif
 
 #if defined(__HIP_PLATFORM_HCC__)
-  __device__
-  inline
-  std::uint64_t getLaneMaskGe()
+  __device__ inline std::uint64_t getLaneMaskGe()
   {
     std::uint64_t m = getLaneMaskLt();
     return ~m;
