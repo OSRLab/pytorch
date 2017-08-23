@@ -182,7 +182,7 @@ sampleMultinomialOnce(long* dest,
     // Broadcast sum and sample value
     if (hipThreadIdx_x == 0) {
       // Make sure the sum of our distribution didn't overflow
-      assert(!isinf(sum));
+      // assert(!isinf(sum));
 
       asmem[0] = sum;
       smem[0] = sampled[curDist];
