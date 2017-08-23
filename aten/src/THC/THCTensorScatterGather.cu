@@ -97,7 +97,9 @@ __global__ void THCudaTensor_gatherKernel(
                                                           src, &srcOffset);
 
     int64_t indexValue = index.data[indexOffset] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(indexValue >= 0 && indexValue < src.sizes[dim]);
+#endif
     srcOffset += indexValue * src.strides[dim];
 
     tensor.data[tensorOffset] = src.data[srcOffset];
@@ -124,7 +126,9 @@ __global__ void THCudaTensor_scatterKernel(
                                                           tensor, &tensorOffset);
 
     int64_t indexValue = index.data[indexOffset] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(indexValue >= 0 && indexValue < tensor.sizes[dim]);
+#endif
     tensorOffset += indexValue * tensor.strides[dim];
 
     tensor.data[tensorOffset] = src.data[srcOffset];
@@ -151,7 +155,9 @@ __global__ void THCudaTensor_scatterAddKernel(
                                                           tensor, &tensorOffset);
 
     int64_t indexValue = index.data[indexOffset] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(indexValue >= 0 && indexValue < tensor.sizes[dim]);
+#endif
     tensorOffset += indexValue * tensor.strides[dim];
 
     atomicAdd(&tensor.data[tensorOffset], src.data[srcOffset]);
@@ -176,7 +182,9 @@ __global__ void THCudaTensor_scatterFillKernel(
                                                           tensor, &tensorOffset);
 
     int64_t indexValue = index.data[indexOffset] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(indexValue >= 0 && indexValue < tensor.sizes[dim]);
+#endif
     tensorOffset += indexValue * tensor.strides[dim];
 
     tensor.data[tensorOffset] = value;
