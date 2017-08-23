@@ -17,6 +17,11 @@ struct kl_functor
       Acctype yAcc = ScalarConvert<Dtype, Acctype>::to(y);
       return y > 0 ? yAcc * (THCNumerics<Acctype>::log(yAcc) - x) : Acctype(0);
   }
+
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~kl_functor() {}
+#endif
 };
 
 template <typename Dtype>
@@ -24,6 +29,15 @@ struct kl_updateGradInput_functor
 {
   const Dtype norm;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  kl_updateGradInput_functor() = default;
+
+  __host__ __device__
+  kl_updateGradInput_functor(const kl_updateGradInput_functor& f) = default;
+
+  __host__ __device__
+#endif
   kl_updateGradInput_functor(Dtype norm_)
     : norm(norm_)
   {}
