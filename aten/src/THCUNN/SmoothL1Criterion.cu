@@ -16,6 +16,9 @@
 template <typename Dtype, typename Acctype>
 struct smoothl1_functor
 {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+#endif
   smoothl1_functor() {}
 
   __host__ __device__ Acctype operator()(const Dtype &x, const Dtype &y) const
@@ -23,6 +26,11 @@ struct smoothl1_functor
     Acctype z = ScalarConvert<Dtype, Acctype>::to(THCNumerics<Dtype>::abs(x-y));
     return z < Acctype(1) ? 0.5f*z*z : z - 0.5f;
   }
+
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~smoothl1_functor() {}
+#endif
 };
 
 template <typename Dtype>
@@ -70,9 +78,21 @@ struct smoothl1_updateGradInput_functor
   const Dtype norm;
   const Dtype gradOutput;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  smoothl1_updateGradInput_functor() = default;
+
+  __host__ __device__
+  smoothl1_updateGradInput_functor(const smoothl1_updateGradInput_functor& f) = default;
+
+  __host__ __device__
+  ~smoothl1_updateGradInput_functor() {}
+
+  __host__ __device__
   smoothl1_updateGradInput_functor(Dtype norm_, Dtype gradOutput_)
     : norm(norm_), gradOutput(gradOutput_)
   {}
+#endif
 
   __host__ __device__ Dtype operator()(const Dtype &x, const Dtype &y) const
   {
