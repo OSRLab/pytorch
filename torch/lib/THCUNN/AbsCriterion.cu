@@ -17,6 +17,11 @@ struct abs_functor
     Dtype z = x-y;
     return ScalarConvert<Dtype, Acctype>::to(z >= 0 ? z : -z);
   }
+
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ~abs_functor() {}
+#endif
 };
 
 template <typename Dtype>
@@ -24,6 +29,18 @@ struct abs_updateGradInput_functor
 {
   const Dtype norm;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  abs_updateGradInput_functor() = default;
+
+  __host__ __device__
+  abs_updateGradInput_functor(const abs_updateGradInput_functor& f) = default;
+
+  __host__ __device__
+  ~abs_updateGradInput_functor() {}
+
+  __host__ __device__
+#endif
   abs_updateGradInput_functor(Dtype norm_)
     : norm(norm_)
   {}

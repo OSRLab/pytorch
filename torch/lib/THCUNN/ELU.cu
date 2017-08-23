@@ -8,6 +8,18 @@ struct ELUupdateOutput_functor
 {
   const T alpha_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ 
+  ELUupdateOutput_functor() = default;
+
+  __host__ __device__ 
+  ELUupdateOutput_functor(const ELUupdateOutput_functor& f) = default;
+
+  __host__ __device__ 
+  ~ELUupdateOutput_functor() {}
+
+  __host__ __device__ 
+#endif
   ELUupdateOutput_functor(T alpha)
     : alpha_(alpha)
   {}
@@ -24,6 +36,18 @@ struct ELUupdateOutputIP_functor
 {
   const T alpha_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ 
+  ELUupdateOutputIP_functor() = default;
+
+  __host__ __device__ 
+  ELUupdateOutputIP_functor(const ELUupdateOutputIP_functor& f) = default;
+
+  __host__ __device__ 
+  ~ELUupdateOutputIP_functor() {}
+
+  __host__ __device__ 
+#endif
   ELUupdateOutputIP_functor(T alpha)
     : alpha_(alpha)
   {}
@@ -39,6 +63,18 @@ struct ELUupdateGradInput_functor
 {
   const T alpha_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ 
+  ELUupdateGradInput_functor() = default;
+
+  __host__ __device__ 
+  ELUupdateGradInput_functor(const ELUupdateGradInput_functor& f) = default;
+
+  __host__ __device__ 
+  ~ELUupdateGradInput_functor() {}
+
+  __host__ __device__ 
+#endif
   ELUupdateGradInput_functor(T alpha)
     : alpha_(alpha)
   {}
@@ -54,6 +90,18 @@ struct ELUupdateGradInputIP_functor
 {
   const T alpha_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__ 
+  ELUupdateGradInputIP_functor() = default;
+
+  __host__ __device__ 
+  ELUupdateGradInputIP_functor(const ELUupdateGradInputIP_functor& f) = default;
+
+  __host__ __device__ 
+  ~ELUupdateGradInputIP_functor() {}
+
+  __host__ __device__ 
+#endif
   ELUupdateGradInputIP_functor(T alpha)
     : alpha_(alpha)
   {}
