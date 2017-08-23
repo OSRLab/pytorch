@@ -182,7 +182,7 @@ template <typename T, int Dim,
 __host__ __device__ THCDeviceTensor<T, Dim, IndexT, PtrTraits>
 THCDeviceTensor<T, Dim, IndexT, PtrTraits>::transpose(int dim1,
                                                       int dim2) const {
-#ifdef __CUDA_ARCH__
+#ifdef __CUDA_ARCH__ && !defined(__HIP_PLATFORM_HCC__)
   // Device code
   assert(dim1 >= 0 && dim1 < Dim);
   assert(dim1 >= 0 && dim2 < Dim);
