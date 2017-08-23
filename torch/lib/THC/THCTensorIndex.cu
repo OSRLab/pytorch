@@ -35,8 +35,9 @@ __global__ void indexCopySmallIndex(reference_to_const(TensorInfo<T, IndexType>)
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(dstIndex < dstCopyDimSize);
-
+#endif
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -63,15 +64,9 @@ __global__ void indexCopySmallIndex(reference_to_const(TensorInfo<T, IndexType>)
 // indexCopySmallIndex kernel is a better choice to reduce memory
 // accesses.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexCopyLargeIndex(TensorInfo<T, IndexType> dst,
-                                    TensorInfo<T, IndexType> src,
-                                    TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexCopyLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
                                     reference_to_const(TensorInfo<T, IndexType>) src,
-                                    reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                    reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                     int dstCopyDim,
                                     int srcCopyDim,
                                     IndexType innerSize,
@@ -87,8 +82,9 @@ __global__ void indexCopyLargeIndex(reference_to_const(TensorInfo<T, IndexType>)
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(dstIndex < dstCopyDimSize);
-
+#endif
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex * dst.strides[dstCopyDim];
@@ -108,15 +104,9 @@ __global__ void indexCopyLargeIndex(reference_to_const(TensorInfo<T, IndexType>)
 // indexAddLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexAddSmallIndex(TensorInfo<T, IndexType> dst,
-                                   TensorInfo<T, IndexType> src,
-                                   TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexAddSmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
                                    reference_to_const(TensorInfo<T, IndexType>) src,
-                                   reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                   reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                    int dstAddDim,
                                    int srcAddDim,
                                    IndexType innerSize,
@@ -130,8 +120,9 @@ __global__ void indexAddSmallIndex(reference_to_const(TensorInfo<T, IndexType>) 
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(dstIndex < dstAddDimSize);
-
+#endif
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -157,15 +148,9 @@ __global__ void indexAddSmallIndex(reference_to_const(TensorInfo<T, IndexType>) 
 // indexAddSmallIndex kernel is a better choice to reduce memory
 // accesses.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexAddLargeIndex(TensorInfo<T, IndexType> dst,
-                                   TensorInfo<T, IndexType> src,
-                                   TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexAddLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
                                    reference_to_const(TensorInfo<T, IndexType>) src,
-                                   reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                   reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                    int dstAddDim,
                                    int srcAddDim,
                                    IndexType innerSize,
@@ -181,8 +166,9 @@ __global__ void indexAddLargeIndex(reference_to_const(TensorInfo<T, IndexType>) 
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(dstIndex < dstAddDimSize);
-
+#endif
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex * dst.strides[dstAddDim];
@@ -202,13 +188,8 @@ __global__ void indexAddLargeIndex(reference_to_const(TensorInfo<T, IndexType>) 
 // indexFillLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexFillSmallIndex(TensorInfo<T, IndexType> dst,
-                                    TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexFillSmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
-                                    reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                    reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                     int dstFillDim,
                                     IndexType innerSize,
                                     int64_t dstFillDimSize,
@@ -222,8 +203,9 @@ __global__ void indexFillSmallIndex(reference_to_const(TensorInfo<T, IndexType>)
     // Lua indices begin at 1
     IndexType dstIndex_ =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(dstIndex < dstFillDimSize);
-
+#endif
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -245,13 +227,8 @@ __global__ void indexFillSmallIndex(reference_to_const(TensorInfo<T, IndexType>)
 // indexFillSmallIndex kernel is a better choice to reduce memory
 // accesses.
 template <typename T, typename IndexType, int DstDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexFillLargeIndex(TensorInfo<T, IndexType> dst,
-                                    TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexFillLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
-                                    reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                    reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                     int dstFillDim,
                                     IndexType innerSize,
                                     int64_t dstFillDimSize,
@@ -267,8 +244,9 @@ __global__ void indexFillLargeIndex(reference_to_const(TensorInfo<T, IndexType>)
     // Lua indices begin at 1
     IndexType dstIndex_ =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(dstIndex_ < dstFillDimSize);
-
+#endif
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex_ * dst.strides[dstFillDim];
@@ -284,15 +262,9 @@ __global__ void indexFillLargeIndex(reference_to_const(TensorInfo<T, IndexType>)
 // indexSelectLargeIndex kernel is a better choice to increase
 // parallelism.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexSelectSmallIndex(TensorInfo<T, IndexType> dst,
-                                      TensorInfo<T, IndexType> src,
-                                      TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexSelectSmallIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
                                       reference_to_const(TensorInfo<T, IndexType>) src,
-                                      reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                      reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                       int dstSelectDim,
                                       int srcSelectDim,
                                       IndexType innerSize,
@@ -306,8 +278,9 @@ __global__ void indexSelectSmallIndex(reference_to_const(TensorInfo<T, IndexType
     // Lua indices begin at 1
     IndexType srcIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(srcIndex < srcSelectDimSize);
-
+#endif
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -333,15 +306,9 @@ __global__ void indexSelectSmallIndex(reference_to_const(TensorInfo<T, IndexType
 // indexSelectSmallIndex kernel is a better choice to reduce memory
 // accesses.
 template <typename T, typename IndexType, int DstDim, int SrcDim, int IdxDim>
-<<<<<<< 5dd182d2ed7422beba1ff860a89d24ed6b5bfcaa
-__global__ void indexSelectLargeIndex(TensorInfo<T, IndexType> dst,
-                                      TensorInfo<T, IndexType> src,
-                                      TensorInfo<int64_t, IndexType> indices,
-=======
 __global__ void indexSelectLargeIndex(reference_to_const(TensorInfo<T, IndexType>) dst,
                                       reference_to_const(TensorInfo<T, IndexType>) src,
-                                      reference_to_const(TensorInfo<long, IndexType>) indices,
->>>>>>> Add magic_wrapper and reference_to_const functionality for ROCM
+                                      reference_to_const(TensorInfo<int64_t, IndexType>) indices,
                                       int dstSelectDim,
                                       int srcSelectDim,
                                       IndexType totalSize,
@@ -358,8 +325,9 @@ __global__ void indexSelectLargeIndex(reference_to_const(TensorInfo<T, IndexType
     // Lua indices begin at 1
     IndexType srcIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
+#if defined(__NVCC__)
     assert(srcIndex < srcSelectDimSize);
-
+#endif
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex * dst.strides[dstSelectDim];
@@ -415,7 +383,9 @@ __device__ __forceinline__ int64_t calculateOffset(
       indexAtDim = index - nextIndex * sizeAtDim;
     }
 
+#if defined(__NVCC__)
     assert(indexAtDim < data.baseSizes[dim]);
+#endif
     offset += indexAtDim * strideAtDim;
     index = nextIndex;
   }
