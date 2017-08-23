@@ -12,6 +12,18 @@
 template <typename Dtype, typename Acctype>
 struct margin_functor
 {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  margin_functor() = default;
+
+  __host__ __device__
+  margin_functor(const margin_functor& f) = default;
+
+  __host__ __device__
+  ~margin_functor() {}
+
+  __host__ __device__
+#endif
   margin_functor(Acctype margin)
     : margin(margin)
   {}
@@ -30,6 +42,18 @@ struct margin_updateGradInput_functor
 {
   const Acctype margin, norm;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  margin_updateGradInput_functor() = default;
+
+  __host__ __device__
+  margin_updateGradInput_functor(const margin_updateGradInput_functor& f) = default;
+
+  __host__ __device__
+  ~margin_updateGradInput_functor() {}
+
+  __host__ __device__
+#endif
   margin_updateGradInput_functor(Acctype margin_, Acctype norm_)
     : margin(margin_)
     , norm(norm_)

@@ -9,6 +9,18 @@ struct hardtanhupdateOutput_functor
   const T max_val_;
   const T min_val_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  hardtanhupdateOutput_functor() = default;
+
+  __host__ __device__
+  hardtanhupdateOutput_functor(const hardtanhupdateOutput_functor& f) = default;
+
+  __host__ __device__
+  ~hardtanhupdateOutput_functor() {}
+
+  __host__ __device__
+#endif
   hardtanhupdateOutput_functor(T min_val, T max_val)
     : min_val_(min_val)
     , max_val_(max_val)
@@ -39,6 +51,18 @@ struct hardtanhupdateGradInput_functor
   const T max_val_;
   const T min_val_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  hardtanhupdateGradInput_functor() = default;
+
+  __host__ __device__
+  hardtanhupdateGradInput_functor(const hardtanhupdateGradInput_functor& f) = default;
+
+  __host__ __device__
+  ~hardtanhupdateGradInput_functor() {}
+
+  __host__ __device__
+#endif
   hardtanhupdateGradInput_functor(T min_val, T max_val)
     : min_val_(min_val)
     , max_val_(max_val)
