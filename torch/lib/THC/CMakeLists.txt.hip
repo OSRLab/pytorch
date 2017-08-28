@@ -45,8 +45,9 @@ EXECUTE_PROCESS(COMMAND ${HIP_PATH}/bin/hipconfig -P OUTPUT_VARIABLE PLATFORM)
 EXECUTE_PROCESS(COMMAND ${HIP_PATH}/bin/hipconfig --cpp_config OUTPUT_VARIABLE HIP_CXX_FLAGS)
 SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
 
-SET(HIP_CXX_FLAGS "-D__HIP_PLATFORM_HCC__  -I/opt/rocm/hip/include -I/opt/rocm/hcc/include")
+SET(HIP_CXX_FLAGS "-D__HIP_PLATFORM_HCC__ -I/opt/rocm/hip/include -I/opt/rocm/hcc/include" ${HIP_CXX_FLAGS})
 
+SET(HIP_HIPCC_FLAGS "-DGENERIC_GRID_LAUNCH=1 ${CMAKE_CXX_FLAGS}")
 SET(HIP_HIPCC_FLAGS "-DGENERIC_GRID_LAUNCH=1 ${HIP_HIPCC_FLAGS}")
 SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
 SET(CMAKE_C_COMPILER ${HIP_HIPCC_EXECUTABLE})
@@ -167,7 +168,8 @@ SET(src-cuda
   )
 
 # loop over all types
-foreach(THC_TYPE Byte Char Short Int Long Half Float Double)
+#foreach(THC_TYPE Byte Char Short Int Long Half Float Double)
+foreach(THC_TYPE Float Double)
    # loop over files which need to be split between types (because of long compile times)
    foreach(THC_FILE TensorSort TensorMathCompareT TensorMathPointwise TensorMathCompare TensorMathReduce TensorMasked)
       if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/THC${THC_FILE}${THC_TYPE}.cu")
@@ -186,7 +188,7 @@ SET(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DGENERIC_GRID_LAUNCH=1 -Wall")
 FIND_LIBRARY(HIPBLAS_LIBRARY hipblas-hcc HINTS ${HIPBLAS_PATH}/lib)
 FIND_LIBRARY(HIPRNG_LIBRARY hiprng_hcc HINTS ${HIPRNG_PATH}/lib)
 HIP_ADD_LIBRARY(THC SHARED ${src} ${src-cuda}) 
-TARGET_LINK_LIBRARIES(THC TH hip_hcc ${HIPBLAS_LIBRARY} ${HIPRNG_LIBRARY})
+TARGET_LINK_LIBRARIES(THC ${TH_LIBRARIES} hip_hcc ${HIPBLAS_LIBRARY} ${HIPRNG_LIBRARY})
 
 IF(NOT THC_SO_VERSION)
   SET(THC_SO_VERSION 0)
