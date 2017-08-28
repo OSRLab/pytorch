@@ -1,3 +1,26 @@
+cd "$(dirname "$0")/../.."
+BASE_DIR=$(pwd)
+cd torch/lib
+INSTALL_DIR="$(pwd)/tmp_install"
+C_FLAGS=" -DTH_INDEX_BASE=0 -I$INSTALL_DIR/include \
+  -I$INSTALL_DIR/include/TH -I$INSTALL_DIR/include/THC \
+  -I$INSTALL_DIR/include/THS -I$INSTALL_DIR/include/THCS \
+  -I$INSTALL_DIR/include/THPP -I$INSTALL_DIR/include/THNN \
+  -I$INSTALL_DIR/include/THCUNN"
+LDFLAGS="-L$INSTALL_DIR/lib "
+LD_POSTFIX=".so.1"
+LD_POSTFIX_UNVERSIONED=".so"
+if [[ $(uname) == 'Darwin' ]]; then
+    LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
+    LD_POSTFIX=".1.dylib"
+    LD_POSTFIX_UNVERSIONED=".dylib"
+else
+    LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
+fi
+
+echo $INSTALL_DIR
+echo $C_FLAGS
+
 #!/bin/bash
 mkdir -p THC/hip
 mkdir -p THC/hip/generic
@@ -64,7 +87,7 @@ find THC/hip -name "*.prehip" -type f -delete
   #             -DTHD_SO_VERSION=1 \
   #             -DNO_CUDA=$((1-$WITH_CUDA)) \
   #             -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
-  cmake -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" ../../THC/hip
+  cmake ../../THC/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
                -DTorch_FOUND="1" \
                -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
                -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
@@ -87,9 +110,8 @@ find THC/hip -name "*.prehip" -type f -delete
                -DTHNN_SO_VERSION=1 \
                -DTHCUNN_SO_VERSION=1 \
                -DTHD_SO_VERSION=1 \
-               -DNO_CUDA=$((1-$WITH_CUDA)) \
-               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
-               ../../THC/hip
+               -DNO_CUDA=0 \
+               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
 
