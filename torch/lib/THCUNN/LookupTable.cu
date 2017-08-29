@@ -1,3 +1,4 @@
+#if defined(__NVCC__)
 #include "THCUNN.h"
 #include "common.h"
 
@@ -195,3 +196,4 @@ struct multiply_s
 
 #include "generic/LookupTable.cu"
 #include "THCGenerateFloatTypes.h"
+#endif
