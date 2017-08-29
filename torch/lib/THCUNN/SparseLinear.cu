@@ -1,3 +1,4 @@
+#if defined(__NVCC__)
 #include "THCUNN.h"
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
@@ -84,3 +85,4 @@ void THNN_CudaHalfSparseLinear_updateParameters(
 #include "THCGenerateFloatType.h"
 #include "generic/SparseLinear.cu"
 #include "THCGenerateDoubleType.h"
+#endif
