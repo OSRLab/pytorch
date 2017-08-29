@@ -31,6 +31,8 @@ inline __host__ __device__ double fmaxType(double x, double y) {
 
 // arithmetic functions
 
+#if defined(__HIP_PLATFORM_HCC__)
+#else
 inline __host__ __device__ half operator+(half a, half b) {
   return THCNumerics<half>::add(a, b);
 }
@@ -159,6 +161,7 @@ inline __host__ __device__ half& operator/=(half &lhs, const half &rhs) {
   lhs = lhs / rhs;
   return lhs;
 }
+#endif
 
 inline __host__ __device__ half abs(half a) {
   return THCNumerics<half>::abs(a);
@@ -204,6 +207,8 @@ inline __host__ __device__ half operator*(half a, bool b) {
 
 // comparison functions
 
+#if defined(__HIP_PLATFORM_HCC__)
+#else
 inline __host__ __device__ bool operator<(half a, half b) {
   return THCNumerics<half>::lt(a, b);
 }
@@ -235,6 +240,7 @@ inline __host__ __device__ bool operator>=(half a, half b) {
 inline __host__ __device__ bool operator>=(half a, int b) {
   return THCNumerics<half>::ge(a, ScalarConvert<int ,half>::to(b));
 }
+#endif
 
 #endif
 #endif

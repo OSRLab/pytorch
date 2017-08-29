@@ -1,3 +1,4 @@
+#if defined(__NVCC__)
 #include "THCUNN.h"
 #include "common.h"
 #include "THCThrustAllocator.cuh"
@@ -228,3 +229,4 @@ void calculate_norms_and_renorm(DType *weights,
 
 #include "generic/LookupTable.cu"
 #include "THCGenerateFloatTypes.h"
+#endif

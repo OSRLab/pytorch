@@ -1,3 +1,5 @@
+#if defined(__HIP_PLATFORM_HCC__)
+#else
 #include "THCUNN.h"
 #include "common.h"
 #include "THCHalf.h"
@@ -288,3 +290,4 @@ __global__ void BatchNormalizationBackward_kernel(
 
 #include "generic/BatchNormalization.cu"
 #include "THCGenerateFloatTypes.h"
+#endif
