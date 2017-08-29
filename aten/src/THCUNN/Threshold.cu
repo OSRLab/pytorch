@@ -9,6 +9,18 @@ struct ThresholdUpdateOutput
   const T threshold_;
   const T val_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ThresholdUpdateOutput() = default;
+
+  __host__ __device__
+  ThresholdUpdateOutput(const ThresholdUpdateOutput& t) = default;
+
+  __host__ __device__
+  ~ThresholdUpdateOutput() {}
+
+  __host__ __device__
+#endif
   ThresholdUpdateOutput(T threshold, T val)
     : threshold_(threshold)
     , val_(val)
@@ -28,6 +40,18 @@ struct ThresholdUpdateOutputIP
   const T threshold_;
   const T val_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ThresholdUpdateOutputIP() = default;
+
+  __host__ __device__
+  ThresholdUpdateOutputIP(const ThresholdUpdateOutputIP& t) = default;
+
+  __host__ __device__  
+  ~ThresholdUpdateOutputIP() {}
+
+  __host__ __device__  
+#endif
   ThresholdUpdateOutputIP(T threshold, T val)
     : threshold_(threshold)
     , val_(val)
@@ -44,6 +68,18 @@ struct ThresholdUpdateGradInput
 {
   const T threshold_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ThresholdUpdateGradInput() = default;
+
+  __host__ __device__
+  ThresholdUpdateGradInput(const ThresholdUpdateGradInput& t) = default;
+
+  __host__ __device__
+  ~ThresholdUpdateGradInput() {}
+
+  __host__ __device__
+#endif
   ThresholdUpdateGradInput(T threshold)
     : threshold_(threshold)
   {}
@@ -60,6 +96,18 @@ struct ThresholdUpdateGradInputIP
 {
   const T threshold_;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__ __device__
+  ThresholdUpdateGradInputIP() = default;
+
+  __host__ __device__
+  ThresholdUpdateGradInputIP(const ThresholdUpdateGradInputIP& t) = default;
+
+  __host__ __device__
+  ~ThresholdUpdateGradInputIP() {}
+
+  __host__ __device__
+#endif
   ThresholdUpdateGradInputIP(T threshold)
     : threshold_(threshold)
   {}
