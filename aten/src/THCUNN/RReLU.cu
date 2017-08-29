@@ -1,3 +1,4 @@
+#if defined(__NVCC__)
 #include "THCUNN.h"
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
@@ -122,3 +123,4 @@ struct RReLUupdateGradInputEvalIP_functor
 
 #include "generic/RReLU.cu"
 #include "THCGenerateFloatTypes.h"
+#endif
