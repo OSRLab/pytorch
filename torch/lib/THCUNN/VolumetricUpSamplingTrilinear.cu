@@ -62,6 +62,17 @@ __global__ void caffe_gpu_interp2_kernel(const int n,
     //
     for (int n = 0; n < batchsize ; n++){
         for (int c = 0; c < channels; ++c) {
+#if defined(__HIP_PLATFORM_HCC__)
+        const Acctype val = t0lambda * (h0lambda * (w0lambda * (data1[n][c][t1][h1][w1]).template as<Acctype>()
+                                                  + w1lambda * (data1[n][c][t1][h1][w1+w1p]).template as<Acctype>())
+                                      + h1lambda * (w0lambda * (data1[n][c][t1][h1+h1p][w1]).template as<Acctype>()
+                                                  + w1lambda * (data1[n][c][t1][h1+h1p][w1+w1p]).template as<Acctype>()))
+                          + t1lambda * (h0lambda * (w0lambda * (data1[n][c][t1+t1p][h1][w1]).template as<Acctype>() 
+                                                  + w1lambda * (data1[n][c][t1+t1p][h1][w1+w1p]).template as<Acctype>())
+                                      + h1lambda * (w0lambda * (data1[n][c][t1+t1p][h1+h1p][w1]).template as<Acctype>()
+                                                  + w1lambda * (data1[n][c][t1+t1p][h1+h1p][w1+w1p]).template as<Acctype>()));
+        data2[n][c][t2][h2][w2] = ScalarConvert<Acctype, Dtype>::to(val);
+#else
         const Acctype val = t0lambda * (h0lambda * (w0lambda * data1[n][c][t1][h1][w1] 
                                                   + w1lambda * data1[n][c][t1][h1][w1+w1p])
                                       + h1lambda * (w0lambda * data1[n][c][t1][h1+h1p][w1]
@@ -71,6 +82,7 @@ __global__ void caffe_gpu_interp2_kernel(const int n,
                                       + h1lambda * (w0lambda * data1[n][c][t1+t1p][h1+h1p][w1]
                                                   + w1lambda * data1[n][c][t1+t1p][h1+h1p][w1+w1p]));
         data2[n][c][t2][h2][w2] = ScalarConvert<Acctype, Dtype>::to(val);
+#endif
       }
     }
   }
@@ -103,7 +115,11 @@ __global__ void caffe_gpu_interp2_kernel_backward(const int n,
       for (int n = 0; n < batchsize ; n++){
         for (int c = 0; c < channels; ++c) {
           const Dtype val = data2[n][c][t1][h1][w1];
+#if defined(__HIP_PLATFORM_HCC__)
+          (data1[n][c][t2][h2][w2]).template as<Acctype>() += val;
+#else
           data1[n][c][t2][h2][w2] += val;
+#endif
         }
       }
       return;
