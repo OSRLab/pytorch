@@ -17,14 +17,18 @@ __global__ void cunn_ClassNLLCriterion_updateOutput_kernel1(Dtype *output,
                                                            int size_average,
                                                            int n_classes,
                                                            long ignore_index) {
+#if defined(__NVCC__)
   assert(threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0);
+#endif
 
   // TODO: T4951791 Reuse code between updateOutput_kernel1 and
   // updateOutput_kernel.
 
   int t = (int)*target - TH_INDEX_BASE;
   if (t != ignore_index) {
+#if defined(__NVCC__)
     assert(t >= 0 && t < n_classes);
+#endif
     Dtype cur_weight = weights ? weights[t] : ScalarConvert<int, Dtype>::to(1);
     *output = -cur_weight * input[t];
     *total_weight = cur_weight;
@@ -54,7 +58,9 @@ __global__ void cunn_ClassNLLCriterion_updateOutput_kernel(Dtype *output,
   for (i = threadIdx.x; i < nframe; i += NTHREADS) {
       t = target[i] - TH_INDEX_BASE;
       if (t != ignore_index) {
+#if defined(__NVCC__)
         assert(t >= 0 && t < n_classes);
+#endif
         cur_weight = weights ? weights[t] : ScalarConvert<int, Dtype>::to(1);
         shInputs[threadIdx.x] -= input[i * ndim + t] * cur_weight;
         acc_weight[threadIdx.x] += cur_weight;
@@ -99,7 +105,9 @@ __global__ void cunn_ClassNLLCriterion_updateGradInput_kernel1(
   Dtype norm = size_average ? (ScalarConvert<int, Dtype>::to(1) / *total_weight) : ScalarConvert<int, Dtype>::to(1);
   int t = (int)*target - TH_INDEX_BASE;
   if (t != ignore_index) {
+#if defined(__NVCC__)
     assert(t >= 0 && t < n_classes);
+#endif
     gradInput[t] = -(weights ? weights[t] : ScalarConvert<int, Dtype>::to(1)) * norm;
   }
 }
@@ -125,7 +133,9 @@ __global__ void cunn_ClassNLLCriterion_updateGradInput_kernel(
   for (i = threadIdx.x; i < nframe; i += NTHREADS) {
     t = (int)target[i] - TH_INDEX_BASE;
     if (t != ignore_index) {
+#if defined(__NVCC__)
       assert(t >= 0 && t < n_classes);
+#endif
       gradInput[i * ndim + t] = -(weights ? weights[t] : ScalarConvert<int, Dtype>::to(1)) * norm;
     }
   }

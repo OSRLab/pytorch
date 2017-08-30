@@ -38,7 +38,9 @@ __global__ void cunn_LookupTableBag_updateOutputKernel(
       Dtype*  weightFeat = weight + featureDim;
       long begin = offsets[bag] - TH_INDEX_BASE;
       long end = (bag < numBags - 1) ? (offsets[bag + 1] - TH_INDEX_BASE) : numIndices;
+#if defined(__NVCC__)
       assert(end >= begin);
+#endif
       Acctype weightFeatSum = ScalarConvert<float, Acctype>::to(0);
       long bag_size_ = 0;
       for (long emb = begin; emb < end; emb++) {
