@@ -467,30 +467,39 @@ __global__ void
     hipLaunchKernelGGL(                                           \
     (THNN_(LSTMForward) <DATATYPE, ITYPE, DIM>),                  \
     grid, block, 0, THCState_getCurrentStream(state),             \
-     inputI, hiddenI,                                             \
-     bias1I, bias2I, cxI, hyI, cyI,                               \
+     make_magic_wrapper(inputI), make_magic_wrapper(hiddenI),     \
+     make_magic_wrapper(bias1I), make_magic_wrapper(bias2I),      \
+     make_magic_wrapper(cxI), make_magic_wrapper(hyI),            \
+     make_magic_wrapper(cyI),                                     \
      hid_size, totalElements);
   
   #define LSTM_BACKWARD(ITYPE, DIM)                               \
     hipLaunchKernelGGL(                                           \
     (THNN_(LSTMBackward) <DATATYPE, ITYPE, DIM>),                 \
     grid, block, 0, THCState_getCurrentStream(state),             \
-     storageI, gradingatesI, cxI, cyI,                            \
-     gradoutI, gradoutcI, gradincxI,                              \
+     make_magic_wrapper(storageI), make_magic_wrapper(gradingatesI), \
+     make_magic_wrapper(cxI), make_magic_wrapper(cyI),            \
+     make_magic_wrapper(gradoutI), make_magic_wrapper(gradoutcI), \
+     make_magic_wrapper(gradincxI),                               \
      hid_size, totalElements);
   
   #define GRU_FORWARD(ITYPE, DIM)                                         \
     hipLaunchKernelGGL(                                                   \
     (THNN_(GRUForward) <DATATYPE, ITYPE, DIM>),                           \
      grid, block, 0, THCState_getCurrentStream(state),                    \
-     inputI, hiddenI, bias1I, bias2I, hxI, hyI, storageI,                 \
+     make_magic_wrapper(inputI), make_magic_wrapper(hiddenI),             \
+     make_magic_wrapper(bias1I), make_magic_wrapper(bias2I),              \
+     make_magic_wrapper(hxI), make_magic_wrapper(hyI),                    \
+     make_magic_wrapper(storageI),                                        \
      hid_size, totalElements);
   
   #define GRU_BACKWARD(ITYPE, DIM)                                        \
     hipLaunchKernelGGL(                                                   \
     (THNN_(GRUBackward) <DATATYPE, ITYPE, DIM>),                          \
      grid, block, 0, THCState_getCurrentStream(state),                    \
-     gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,          \
+     make_magic_wrapper(gradininputI), make_magic_wrapper(gradinhiddenI), \
+     make_magic_wrapper(gradoutI), make_magic_wrapper(gradinhxI),         \
+     make_magic_wrapper(storageI),                                        \
      hid_size, totalElements);
 #else
   #define LSTM_FORWARD(ITYPE, DIM) THNN_(LSTMForward)             \
