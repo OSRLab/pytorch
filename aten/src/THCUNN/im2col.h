@@ -51,6 +51,15 @@ void im2col(cudaStream_t stream, const Dtype* data_im, const int channels,
                   / stride_w + 1;
   int num_kernels = channels * height_col * width_col;
   // Launch
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL((im2col_kernel), dim3(GET_BLOCKS(num_kernels)), dim3(CUDA_NUM_THREADS), 0, stream,
+      num_kernels, data_im, height, width, ksize_h, ksize_w,
+      pad_h, pad_w, stride_h, stride_w,
+      dilation_h, dilation_w,
+      height_col, width_col, data_col
+  );
+  THCudaCheck(hipGetLastError());
+#else
   im2col_kernel <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>> (
       num_kernels, data_im, height, width, ksize_h, ksize_w,
       pad_h, pad_w, stride_h, stride_w,
@@ -58,6 +67,7 @@ void im2col(cudaStream_t stream, const Dtype* data_im, const int channels,
       height_col, width_col, data_col
   );
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 template <typename Dtype, typename Acctype>
@@ -119,6 +129,15 @@ void col2im(cudaStream_t stream, const Dtype* data_col, const int channels,
   int num_kernels = channels * height * width;
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL((col2im_kernel<Dtype, Acctype>), dim3(GET_BLOCKS(num_kernels)), dim3(CUDA_NUM_THREADS), 0, stream,
+      num_kernels, data_col, height, width, channels,
+      patch_h, patch_w, pad_h, pad_w, stride_h, stride_w,
+      dilation_h, dilation_w,
+      height_col, width_col, data_im
+  );
+  THCudaCheck(hipGetLastError());
+#else
   col2im_kernel<Dtype, Acctype> <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>> (
       num_kernels, data_col, height, width, channels,
       patch_h, patch_w, pad_h, pad_w, stride_h, stride_w,
@@ -126,6 +145,7 @@ void col2im(cudaStream_t stream, const Dtype* data_col, const int channels,
       output_height, output_width, data_im
   );
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 #endif

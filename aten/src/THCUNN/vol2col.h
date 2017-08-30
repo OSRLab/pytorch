@@ -57,6 +57,15 @@ void vol2col(cudaStream_t stream, const Dtype* data_vol, const int channels,
   int width_col = (width + 2 * pad_w - (dilation_w * (ksize_w - 1) + 1)) / stride_w + 1;
   int num_kernels = channels * depth_col * height_col * width_col;
   // Launch
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL((vol2col_kernel), dim3(GET_BLOCKS(num_kernels)), dim3(CUDA_NUM_THREADS), 0, stream,
+      num_kernels, data_vol, depth, height, width, ksize_t, ksize_h, ksize_w,
+      pad_t, pad_h, pad_w, stride_t, stride_h, stride_w,
+      dilation_t, dilation_h, dilation_w,
+      depth_col, height_col, width_col, data_col
+  );
+  THCudaCheck(hipGetLastError());
+#else
   vol2col_kernel <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>> (
       num_kernels, data_vol, depth, height, width, ksize_t, ksize_h, ksize_w,
       pad_t, pad_h, pad_w, stride_t, stride_h, stride_w,
@@ -64,6 +73,7 @@ void vol2col(cudaStream_t stream, const Dtype* data_vol, const int channels,
       depth_col, height_col, width_col, data_col
   );
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 template <typename Dtype, typename Acctype>
@@ -129,6 +139,15 @@ void col2vol(cudaStream_t stream, const Dtype* data_col, const int channels,
   int num_kernels = channels * depth * height * width;
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL((vol2im_kernel<Dtype, Acctype>), dim3(GET_BLOCKS(num_kernels)), dim3(CUDA_NUM_THREADS), 0, stream,
+      num_kernels, data_col, depth, height, width, channels,
+      patch_t, patch_h, patch_w, pad_t, pad_h, pad_w, stride_t, stride_h, stride_w,
+      dilation_t, dilation_h, dilation_w,
+      depth_col, height_col, width_col, data_vol
+  );
+  THCudaCheck(hipGetLastError());
+#else
   vol2im_kernel<Dtype, Acctype> <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>> (
       num_kernels, data_col, depth, height, width, channels,
       patch_t, patch_h, patch_w, pad_t, pad_h, pad_w, stride_t, stride_h, stride_w,
@@ -136,6 +155,7 @@ void col2vol(cudaStream_t stream, const Dtype* data_col, const int channels,
       output_depth, output_height, output_width, data_vol
   );
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 #endif
