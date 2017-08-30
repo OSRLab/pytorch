@@ -383,7 +383,6 @@ __global__ void
     break;                                      \
   }
 
-<<<<<<< HEAD:aten/src/THCUNN/generic/FusedRNNKernel.cu
 #if defined(__HIP_PLATFORM_HCC__)
  #define LSTM_FORWARD(ITYPE, DIM)                               \
    hipLaunchKernelGGL(                                          \
@@ -392,14 +391,14 @@ __global__ void
     inputI, hiddenI,                                            \
     bias1I, bias2I, cxI, hyI, cyI,                              \
     hid_size, totalElements);                                   \
-
+                                                                \
   #define LSTM_BACKWARD(ITYPE, DIM)                             \
     hipLaunchKernelGGL(                                         \
     (THNN_(LSTMBackward), <real, ITYPE, DIM>),                  \
-    grid, block, 0, THCState_getCurrentStream(state),           \
-    storageI, gradingatesI, cxI, cyI,                           \
-     gradoutI, gradoutcI, gradincxI,                            \
-     hid_size, totalElements);                                  \
+    grid, block, 0, THCState_getCurrentStream(state),            \
+    storageI, gradingatesI, cxI, cyI,                            \
+     gradoutI, gradoutcI, gradincxI,                              \
+     hid_size, totalElements);
 
   #define GRU_FORWARD(ITYPE, DIM)                                 \
     hipLaunchKernelGGL(                                           \
