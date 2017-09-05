@@ -1,5 +1,9 @@
 #ifdef WITH_CUDA
+#if defined(__HIP_PLATFORM_HCC__)
+#include <hip/hip_runtime.h>
+#else
 #include <cuda_runtime.h>
+#endif
 #endif
 
 static PyObject * THPStorage_(size)(THPStorage *self)
@@ -30,6 +34,15 @@ static PyObject * THPStorage_(isPinned)(THPStorage *self)
 {
   HANDLE_TH_ERRORS
 #if defined(WITH_CUDA)
+#if defined(__HIP_PLATFORM_HCC__)
+  hipPointerAttribute_t attr;
+  hipError_t err = hipPointerGetAttributes(&attr, self->cdata->data);
+  if (err != hipSuccess) {
+    hipGetLastError();
+    Py_RETURN_FALSE;
+  }
+  return PyBool_FromLong(attr.memoryType == hipMemoryTypeHost);
+#else
   cudaPointerAttributes attr;
   cudaError_t err = cudaPointerGetAttributes(&attr, self->cdata->data);
   if (err != cudaSuccess) {
@@ -37,6 +50,7 @@ static PyObject * THPStorage_(isPinned)(THPStorage *self)
     Py_RETURN_FALSE;
   }
   return PyBool_FromLong(attr.memoryType == cudaMemoryTypeHost);
+#endif
 #else
   Py_RETURN_FALSE;
 #endif
