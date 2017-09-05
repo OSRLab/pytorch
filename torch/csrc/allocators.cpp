@@ -110,11 +110,29 @@ THAllocator THNumpyArrayAllocator = {
 #endif
 
 #ifdef WITH_CUDA
+#if defined(__HIP_PLATFORM_HCC__)
+hipError_t CudaStorageWeakRefAllocator::malloc(void** ptr, size_t size, hipStream_t stream) {
+  THError("CudaStorageWeakRefAllocator: malloc not supported");
+  return hipSuccess;
+}
+#else
 cudaError_t CudaStorageWeakRefAllocator::malloc(void** ptr, size_t size, cudaStream_t stream) {
   THError("CudaStorageWeakRefAllocator: malloc not supported");
   return cudaSuccess;
 }
+#endif
 
+#if defined(__HIP_PLATFORM_HCC__)
+hipError_t CudaStorageWeakRefAllocator::free(void* ptr) {
+  PyGILState_STATE gstate = PyGILState_Ensure();
+  PyObject_SetAttrString(object.get(), "cdata", Py_None);
+  object = nullptr;
+  PyGILState_Release(gstate);
+  hipError_t err = allocator->free(allocatorContext, ptr);
+  delete this;
+  return err;
+}
+#else
 cudaError_t CudaStorageWeakRefAllocator::free(void* ptr) {
   {
     AutoGIL gil;
@@ -125,14 +143,27 @@ cudaError_t CudaStorageWeakRefAllocator::free(void* ptr) {
   delete this;
   return err;
 }
+#endif
 
+#if defined(__HIP_PLATFORM_HCC__)
+static hipError_t cuda_malloc_wrapper(void *ctx, void** ptr, size_t size, hipStream_t stream) {
+  return ((CudaStorageWeakRefAllocator*)ctx)->malloc(ptr, size, stream);
+}
+#else
 static cudaError_t cuda_malloc_wrapper(void *ctx, void** ptr, size_t size, cudaStream_t stream) {
   return ((CudaStorageWeakRefAllocator*)ctx)->malloc(ptr, size, stream);
 }
+#endif
 
+#if defined(__HIP_PLATFORM_HCC__)
+static hipError_t cuda_free_wrapper(void *ctx, void *ptr) {
+  return ((CudaStorageWeakRefAllocator*)ctx)->free(ptr);
+}
+#else
 static cudaError_t cuda_free_wrapper(void *ctx, void *ptr) {
   return ((CudaStorageWeakRefAllocator*)ctx)->free(ptr);
 }
+#endif
 
 THCDeviceAllocator THCStorageWeakRefAllocator = {
   cuda_malloc_wrapper,
