@@ -4,8 +4,11 @@
 #include "Module.h"
 
 #include <structmember.h>
+#if defined(__HIP_PLATFORM_HCC__)
+#include <hip/hip_runtime_api.h>
+#else
 #include <cuda_runtime_api.h>
-
+#endif
 PyObject *THCPStreamClass = NULL;
 
 static PyObject * THCPStream_pynew(PyTypeObject *type, PyObject *args, PyObject *kwargs)
@@ -13,9 +16,13 @@ static PyObject * THCPStream_pynew(PyTypeObject *type, PyObject *args, PyObject 
   HANDLE_TH_ERRORS
 
   int current_device;
+#if defined(__HIP_PLATFORM_HCC__)
+  THCudaCheck(hipGetDevice(&current_device));
+  int flags = hipStreamNonBlocking;
+#else
   THCudaCheck(cudaGetDevice(&current_device));
-
   int flags = cudaStreamNonBlocking;
+#endif
   int priority = 0;
   unsigned long long cdata = 0;
 
