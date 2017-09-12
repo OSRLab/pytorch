@@ -790,6 +790,9 @@ struct MinValuePair {
 
 template <typename T>
 struct AddOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__
+#endif
   __device__ __forceinline__ T operator()(T const &lhs, T const &rhs) {
     return THCNumerics<T>::add(lhs, rhs);
   }
@@ -797,6 +800,9 @@ struct AddOp {
 
 template <typename T>
 struct MulOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__
+#endif
   __device__ __forceinline__ T operator()(T const &lhs, T const &rhs) {
     return THCNumerics<T>::mul(lhs, rhs);
   }
