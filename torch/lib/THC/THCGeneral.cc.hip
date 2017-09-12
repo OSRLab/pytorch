@@ -166,10 +166,10 @@ void THCudaShutdown(THCState* state)
     for (int i = 0; i < res->numBlasHandles; ++i) {
       THCublasCheck(hipblasDestroy(res->blasHandles[i]));
     }
-    /* Free user defined sparse handles */
-    for (int i = 0; i < res->numSparseHandles; ++i) {
-      THCusparseCheck(hipsparseDestroy(res->sparseHandles[i]));
-    }
+    // /* Free user defined sparse handles */
+    // for (int i = 0; i < res->numSparseHandles; ++i) {
+    //   THCusparseCheck(hipsparseDestroy(res->sparseHandles[i]));
+    // }
     /* Free per-stream scratch space; starts at 0 because there is space for
        the default stream as well*/
     if (res->devScratchSpacePerStream) {
@@ -399,24 +399,24 @@ void THCState_reserveDeviceBlasHandles(THCState* state, int device, int numBlasH
 
 void THCState_reserveDeviceSparseHandles(THCState* state, int device, int numSparseHandles)
 {
-  int prevDev = -1;
-  THCCudaResourcesPerDevice* res = THCState_getDeviceResourcePtr(state, device);
-  if (numSparseHandles <= res->numSparseHandles) {
-    return;
-  }
-
-  THCudaCheck(hipGetDevice(&prevDev));
-  THCudaCheck(hipSetDevice(device));
-
-  size_t size = numSparseHandles * sizeof(hipsparseHandle_t);
-  hipsparseHandle_t* handles = (hipsparseHandle_t*) realloc(res->sparseHandles, size);
-  for (int i = res->numSparseHandles; i < numSparseHandles; ++i) {
-    handles[i] = NULL;
-    THCusparseCheck(hipsparseCreate(&handles[i]));
-  }
-  res->sparseHandles = handles;
-  res->numSparseHandles = numSparseHandles;
-  THCudaCheck(hipSetDevice(prevDev));
+//  int prevDev = -1;
+//  THCCudaResourcesPerDevice* res = THCState_getDeviceResourcePtr(state, device);
+//  if (numSparseHandles <= res->numSparseHandles) {
+//    return;
+//  }
+//
+//  THCudaCheck(hipGetDevice(&prevDev));
+//  THCudaCheck(hipSetDevice(device));
+//
+//  size_t size = numSparseHandles * sizeof(hipsparseHandle_t);
+//  hipsparseHandle_t* handles = (hipsparseHandle_t*) realloc(res->sparseHandles, size);
+//  for (int i = res->numSparseHandles; i < numSparseHandles; ++i) {
+//    handles[i] = NULL;
+//    THCusparseCheck(hipsparseCreate(&handles[i]));
+//  }
+//  res->sparseHandles = handles;
+//  res->numSparseHandles = numSparseHandles;
+//  THCudaCheck(hipSetDevice(prevDev));
 }
 
 void THCState_reserveBlasHandles(THCState* state, int numBlasHandles)
@@ -842,6 +842,27 @@ hipError_t THCudaFree(THCState *state, void *ptr)
 {
   THCDeviceAllocator* allocator = state->hipDeviceAllocator;
   return allocator->free(allocator->state, ptr);
+}
+
+void* THCudaHostAlloc(THCState *state, size_t size)
+{
+  THCudaCheck(hipGetLastError());
+  THAllocator* allocator = state->hipHostAllocator;
+  return allocator->malloc(NULL, size);
+}
+
+void THCudaHostFree(THCState *state, void *ptr)
+{
+  THAllocator* allocator = state->hipHostAllocator;
+  return allocator->free(NULL, ptr);
+}
+
+void THCudaHostRecord(THCState *state, void *ptr)
+{
+  if (state->hipHostAllocator == &THCCachingHostAllocator) {
+    THCStream* stream = THCState_getStream(state);
+    THCCachingHostAllocator_recordEvent(ptr, stream);
+  }
 }
 
 hipError_t THCudaMemGetInfo(THCState *state,  size_t* freeBytes, size_t* totalBytes)
