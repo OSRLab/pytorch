@@ -664,7 +664,7 @@ struct THCNumerics<half> {
   __host__
   static
   inline
-  half dif(half a, half b)
+  half div(half a, half b)
   {
     return THC_float2half(THC_half2float(a) / THC_half2float(b));
   }
