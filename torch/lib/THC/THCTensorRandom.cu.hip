@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 #include "THCTensorRandom.h"
 #include "THCDeviceUtils.cuh"
 #include "THCGeneral.h"
@@ -24,7 +25,7 @@ void initializeGenerator(THCState *state, Generator* gen)
 }
 
 /* Creates a new generator state given the seed. */
-void createGeneratorState(THCState* state, Generator* gen, unsigned long long seed)
+void createGeneratorState(Generator* gen, unsigned long long seed)
 {
   if (hiprngMakeMTGP32Constants(mtgp32_params_fast_11213, gen->kernel_params) != HIPRNG_STATUS_SUCCESS)
   {
@@ -43,7 +44,8 @@ void THCRandom_getRNGState(THCState* state, THByteTensor *rng_state)
 
   // The RNG state comprises the MTPG32 states and the seed.
   static const size_t states_size = MAX_NUM_BLOCKS * sizeof(hiprngStateMtgp32);
-  static const size_t seed_size = sizeof(unsigned long);
+  //static const size_t seed_size = sizeof(unsigned long);
+  static const size_t seed_size = sizeof(gen->initial_seed);
   static const size_t total_size = states_size + seed_size;
   THByteTensor_resize1d(rng_state, total_size);
   THArgCheck(THByteTensor_nElement(rng_state) == total_size, 1, "RNG state is wrong size");
@@ -65,7 +67,8 @@ void THCRandom_setRNGState(THCState* state, THByteTensor *rng_state)
 {
   Generator* gen = THCRandom_getGenerator(state);
   static const size_t states_size = MAX_NUM_BLOCKS * sizeof(hiprngStateMtgp32);
-  static const size_t seed_size = sizeof(unsigned long);
+  //static const size_t seed_size = sizeof(unsigned long);
+  static const size_t seed_size = sizeof(gen->initial_seed);
   static const size_t total_size = states_size + seed_size;
   THArgCheck(THByteTensor_nElement(rng_state) == total_size, 1, "RNG state is wrong size");
   THArgCheck(THByteTensor_isContiguous(rng_state), 1, "RNG state must be contiguous");
