@@ -13,8 +13,13 @@ CUDAGenerator::CUDAGenerator(Context * context_)
   : context(context_)
 {
   int num_devices, current_device;
+#if defined(__HIP_PLATFORM_HCC__)
+  hipGetDeviceCount(&num_devices);
+  hipGetDevice(&current_device);
+#else
   cudaGetDeviceCount(&num_devices);
   cudaGetDevice(&current_device);
+#endif
   THCRandom_init(context->thc_state, num_devices, current_device);
 }
 
