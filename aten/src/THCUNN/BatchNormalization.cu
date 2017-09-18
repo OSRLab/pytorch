@@ -1,5 +1,3 @@
-#if defined(__HIP_PLATFORM_HCC__)
-#else
 #include "THCUNN.h"
 #include "common.h"
 #include "THCHalf.h"
@@ -7,7 +5,9 @@
 
 #include "THCDeviceTensor.cuh"
 #include "THCDeviceTensorUtils.cuh"
-#include "THCDeviceUtils.cuh"
+
+#if defined(__HIP_PLATFORM_HCC__)
+#else
 const int WARP_SIZE = 32;
 
 // The maximum number of threads in a block
@@ -283,7 +283,6 @@ __global__ void BatchNormalizationBackward_kernel(
     }
   }
 }
-
+#endif
 #include "generic/BatchNormalization.cu"
 #include "THCGenerateFloatTypes.h"
-#endif
