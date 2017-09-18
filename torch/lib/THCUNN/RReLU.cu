@@ -1,8 +1,8 @@
-#if defined(__NVCC__)
 #include "THCUNN.h"
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
 #include <THC/THCApply.cuh>
+#if defined(__NVCC__)
 #include "common.h"
 #include <curand.h>
 #include <curand_kernel.h>
@@ -120,7 +120,7 @@ struct RReLUupdateGradInputEvalIP_functor
     }
   }
 };
+#endif
 
 #include "generic/RReLU.cu"
 #include "THCGenerateFloatTypes.h"
-#endif
