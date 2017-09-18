@@ -36,6 +36,7 @@ void THNN_(BatchNormalization_updateOutput)(
   THCTensor *weight_, THCTensor *bias_, THCTensor *runningMean_,
   THCTensor *runningVar_, THCTensor *saveMean_, THCTensor *saveStd_,
   bool train, double momentum, double eps) {
+#if defined(__NVCC__)
 
   THCTensor_(resizeAs)(state, output_, input_);
   if (train) {
@@ -67,6 +68,7 @@ void THNN_(BatchNormalization_updateOutput)(
       saveMean, saveStd);
   }
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 void THNN_(BatchNormalization_backward)(
@@ -74,6 +76,7 @@ void THNN_(BatchNormalization_backward)(
   THCTensor *gradInput_, THCTensor *gradWeight_, THCTensor *gradBias_,
   THCTensor *weight_, THCTensor *runningMean_, THCTensor *runningVar_,
   THCTensor *saveMean_, THCTensor *saveStd_, bool train, double scale, double eps) {
+#if defined(__NVCC__)
 
   THCUNN_check_shape(state, input_, gradOutput_);
   if (gradInput_) {
@@ -99,6 +102,7 @@ void THNN_(BatchNormalization_backward)(
     input, gradOutput, gradInput, gradWeight, gradBias, weight, runningMean, runningVar,
     saveMean, saveStd, train, scale, eps);
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 #undef DeviceTensor3
