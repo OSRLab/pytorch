@@ -25,7 +25,9 @@ template<> int64_t convert(Half f) {
 #ifdef AT_CUDA_ENABLED
 template<> half convert(double d) {
 
-#if CUDA_VERSION < 9000
+#if defined(__HIP_PLATFORM_HCC__)
+  return half {static_cast<half>(d)};
+#elif CUDA_VERSION < 9000
   return half {convert<Half,double>(d).x};
 #else
   __half_raw raw;
