@@ -15,6 +15,7 @@ void THNN_(RReLU_updateOutput)(
            bool inplace,
            void *generator)
 {
+#if defined(__NVCC__)
   THCUNN_assertSameGPU(state, 3, input, output, noise);
   struct curandStateMtgp32* gen_states = THCRandom_generatorStates(state);
 
@@ -55,6 +56,7 @@ void THNN_(RReLU_updateOutput)(
       THC_pointwiseApply2(state, output, input, RReLUUpdateOutputEval_functor<real>(negSlope));
     }
   }
+#endif
 }
 
 void THNN_(RReLU_updateGradInput)(
@@ -68,6 +70,7 @@ void THNN_(RReLU_updateGradInput)(
            bool train,
            bool inplace)
 {
+#if defined(__NVCC__)
   THCUNN_check_nElement(state, input, gradOutput);
   THCUNN_assertSameGPU(state, 4, input, gradOutput, gradInput, noise);
 
@@ -104,6 +107,6 @@ void THNN_(RReLU_updateGradInput)(
   }
 
   THCTensor_(free)(state, gradOutput);
+#endif
 }
-
 #endif
