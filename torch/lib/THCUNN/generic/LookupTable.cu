@@ -14,6 +14,7 @@ void THNN_(LookupTable_accGradParameters)(
            int paddingValue,
            accreal scale_)
 {
+#if defined(__NVCC__)
   real scale = ScalarConvert<accreal, real>::to(scale_);
   THCUNN_assertSameGPU(state, 5, input, gradOutput, gradWeight, sortedIndices, origIndices);
   gradOutput = THCTensor_(newContiguous)(state, gradOutput);
@@ -143,6 +144,7 @@ void THNN_(LookupTable_accGradParameters)(
 
   THCTensor_(free)(state, gradOutput);
   THCudaCheck(cudaGetLastError());
+#endif
 }
 
 void THNN_(LookupTable_renorm)(
@@ -152,6 +154,7 @@ void THNN_(LookupTable_renorm)(
            accreal maxNorm_,
            accreal normType_)
 {
+#if defined(__NVCC__)
   real maxNorm = ScalarConvert<accreal, real>::to(maxNorm_);
   real normType = ScalarConvert<accreal, real>::to(normType_);
   THCUNN_assertSameGPU(state, 2, idx, weight);
@@ -193,6 +196,7 @@ void THNN_(LookupTable_renorm)(
       thrust::transform(row_ptr, row_ptr + stride, row_ptr, unary_mul);
     }
   }
+#endif
 }
 
 #endif

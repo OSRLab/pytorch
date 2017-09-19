@@ -1,4 +1,3 @@
-#if defined(__NVCC__)
 #include "THCUNN.h"
 #include "common.h"
 
@@ -15,6 +14,7 @@
 #include "THCHalfAutoNumerics.cuh"
 #include "THCTensorSort.cuh"
 
+#if defined(__NVCC__)
 const int WARP_SIZE = 32;
 
 __device__ __forceinline__ bool warpHasCollision(int val)
@@ -193,7 +193,7 @@ struct multiply_s
     return x * scale;
   }
 };
+#endif
 
 #include "generic/LookupTable.cu"
 #include "THCGenerateFloatTypes.h"
-#endif
