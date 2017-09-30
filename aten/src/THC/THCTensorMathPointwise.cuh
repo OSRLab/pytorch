@@ -324,62 +324,6 @@ struct TensorPowOp {
   const T val;
 };
 
-template <>
-struct TensorPowOp<double> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
-  TensorPowOp(double v) : val(v) {}
-
-  __device__ __forceinline__ void operator()(double* out, double* in) {
-    *out = pow(*in, val);
-  }
-
-  __device__ __forceinline__ void operator()(double* v) {
-    *v = pow(*v, val);
-  }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorPowOp() {}
-#endif
-
-  const double val;
-};
-
-#ifdef CUDA_HALF_TENSOR
-template <>
-struct TensorPowOp<half> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
-  TensorPowOp(half v) : val(v) {}
-
-  __device__ __forceinline__ void operator()(half* out, half* in) {
-    // No fp16 pow function yet
-    float fin = __half2float(*in);
-    float fval = __half2float(val);
-    float fout = powf(fin, fval);
-    *out = __float2half(fout);
-  }
-
-  __device__ __forceinline__ void operator()(half* v) {
-    // No fp16 pow function yet
-    float fv = __half2float(*v);
-    float fval = __half2float(val);
-    float fout = powf(fv, fval);
-    *v = __float2half(fout);
-  }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorPowOp() {}
-#endif
-
-  const half val;
-};
-#endif // CUDA_HALF_TENSOR
-
 template<typename T>
 struct TensorPowOp<T, -1> {
   TensorPowOp(T v) : val(v) {}
