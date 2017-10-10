@@ -66,6 +66,7 @@ static inline To HalfFix(From h) {
   return To { h.x };
 }
 
+#ifdef AT_CUDA_ENABLED
 #if defined(__HIP_PLATFORM_HCC__)
 template <>
   inline __half HalfFix<__half, Half>(Half h) {
@@ -76,10 +77,7 @@ template<>
   unsigned short s = reinterpret_cast<unsigned short&>(h);
   return Half { s };
 }
-#endif
-
-#ifdef AT_CUDA_ENABLED
-#if CUDA_VERSION >= 9000
+#elif CUDA_VERSION >= 9000
 template<>
   inline __half HalfFix<__half, Half>(Half h) {
   __half_raw raw;
