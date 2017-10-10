@@ -6,8 +6,6 @@
 #include "THCDeviceTensor.cuh"
 #include "THCDeviceTensorUtils.cuh"
 
-#if defined(__HIP_PLATFORM_HCC__)
-#else
 const int WARP_SIZE = 32;
 
 // The maximum number of threads in a block
@@ -69,7 +67,11 @@ struct GradOp {
     : mean(m), input(i), gradOutput(g) {}
   __device__ __forceinline__ Float2<Dtype, Acctype> operator()(int batch, int plane, int n) {
     Dtype g = gradOutput[batch][plane][n];
+#if defined(__HIP_PLATFORM_HCC__)
+    Dtype c = ScalarConvert<Acctype, Dtype>::to((input[batch][plane][n]).template as<Acctype>() - mean);
+#else
     Dtype c = ScalarConvert<Acctype, Dtype>::to(input[batch][plane][n] - mean);
+#endif
     return Float2<Dtype, Acctype>(g, g * c);
   }
   const Acctype mean;
@@ -198,8 +200,13 @@ __global__ void BatchNormalizationUpdateOutput_kernel(
     Acctype unbiasedVar = varN / (N - 1);
     saveMean[plane] = ScalarConvert<Acctype, Dtype>::to(mean);
     saveStd[plane] = ScalarConvert<Acctype, Dtype>::to(invStd);
+#if defined(__HIP_PLATFORM_HCC__)
+    runningMean[plane] = ScalarConvert<Acctype, Dtype>::to((1 - momentum) * (runningMean[plane]).template as<Acctype>() + momentum * mean);
+    runningVar[plane] = ScalarConvert<Acctype, Dtype>::to((1 - momentum) * (runningVar[plane]).template as<Acctype>() + momentum * unbiasedVar);
+#else
     runningMean[plane] = ScalarConvert<Acctype, Dtype>::to((1 - momentum) * runningMean[plane] + momentum * mean);
     runningVar[plane] = ScalarConvert<Acctype, Dtype>::to((1 - momentum) * runningVar[plane] + momentum * unbiasedVar);
+#endif
   }
 
   // Write normalized and update the output
@@ -238,7 +245,11 @@ __global__ void BatchNormalizationBackward_kernel(
     stdVal = ScalarConvert<Dtype, Acctype>::to(saveStd[plane]);
   } else {
     mean = ScalarConvert<Dtype, Acctype>::to(runningMean[plane]);
+#if defined(__HIP_PLATFORM_HCC__)
+    stdVal = 1 / sqrt((runningVar[plane]).template as<Acctype>() + eps);
+#else
     stdVal = 1 / sqrt(runningVar[plane] + eps);
+#endif
   }
 
   Acctype weightVal = weight.numElements() > 0 ? ScalarConvert<Dtype, Acctype>::to(weight[plane]) : Acctype(1);
@@ -273,16 +284,23 @@ __global__ void BatchNormalizationBackward_kernel(
 
   if (gradWeight.numElements() > 0) {
     if (threadIdx.x == 0) {
+#if defined(__HIP_PLATFORM_HCC__)
+      (gradWeight[plane]).template as<Dtype>() += ScalarConvert<Acctype, Dtype>::to(scale * dotP * stdVal);
+#else
       gradWeight[plane] += ScalarConvert<Acctype, Dtype>::to(scale * dotP * stdVal);
+#endif
     }
   }
 
   if (gradBias.numElements() > 0) {
     if (threadIdx.x == 0) {
+#if defined(__HIP_PLATFORM_HCC__)
+      (gradBias[plane]).template as<Dtype>() += ScalarConvert<Acctype, Dtype>::to(scale * gradOutputSum);
+#else
       gradBias[plane] += ScalarConvert<Acctype, Dtype>::to(scale * gradOutputSum);
+#endif
     }
   }
 }
-#endif
 #include "generic/BatchNormalization.cu"
 #include "THCGenerateFloatTypes.h"
