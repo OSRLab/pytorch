@@ -247,7 +247,6 @@ THCSTensor *THCSTensor_(newWithSize1d)(THCState *state, int64_t size0)
 THCSTensor *THCSTensor_(newWithSize2d)(THCState *state, int64_t size0, int64_t size1)
 {
 #if !defined(__HIP_PLATFORM_HCC__)
-  long size[2] = {size0, size1};
   int64_t size[2] = {size0, size1};
 
   THCSTensor *self = (THCSTensor *)THAlloc(sizeof(THCSTensor));
