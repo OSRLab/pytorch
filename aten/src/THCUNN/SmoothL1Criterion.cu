@@ -87,12 +87,12 @@ struct smoothl1_updateGradInput_functor
 
   __host__ __device__
   ~smoothl1_updateGradInput_functor() {}
+#endif
 
   __host__ __device__
   smoothl1_updateGradInput_functor(Dtype norm_, Dtype gradOutput_)
     : norm(norm_), gradOutput(gradOutput_)
   {}
-#endif
 
   __host__ __device__ Dtype operator()(const Dtype &x, const Dtype &y) const
   {
