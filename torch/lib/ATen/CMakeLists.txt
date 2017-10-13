@@ -216,8 +216,11 @@ DEPENDS ${all_python} ${all_templates} ${cwrap_files})
 SET(all_cpp ${base_cpp} ${generated_cpp})
 filter_list(generated_h generated_cpp "\\.h$")
 
-#INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/..)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../HIP)
+IF (WITH_ROCM)
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../HIP)
+ELSE()
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/..)
+ENDIF()
 # so the build can find the generated header files
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 ADD_LIBRARY(ATen SHARED ${all_cpp})
