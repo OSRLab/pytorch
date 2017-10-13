@@ -309,7 +309,6 @@ function build_rocm_THCS() {
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
 
-  # local lib_prefix=$INSTALL_DIR/lib/lib$1
   local lib_prefix=$INSTALL_DIR/lib/libTHC
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then
     rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
