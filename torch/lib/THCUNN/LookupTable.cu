@@ -5,7 +5,11 @@
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
 #include "THCTensorSort.cuh"
+#if defined(__HIP_PLATFORM_HCC__)
+#include "THC/THCTensorMathReduce.cuh"
+#else
 #include "../THC/THCTensorMathReduce.cuh"
+#endif
 
 #if defined(__NVCC__)
 const int WARP_SIZE = 32;
@@ -196,6 +200,7 @@ void calculate_norms_and_renorm(DType *weights,
                                 AccType maxNorm, 
                                 IndexType dim)
 {
+#if !defined(__HIP_PLATFORM_HCC__)
   // Some casting hacks since dynamic shared memory and templates don't work together:
   extern __shared__ unsigned char smem[];
   AccType *sdata = reinterpret_cast<AccType *>(smem);
@@ -225,7 +230,7 @@ void calculate_norms_and_renorm(DType *weights,
       weights[baseIndex + i] *= factor;
     }
   }
-
+#endif
 }
 
 #include "generic/LookupTable.cu"
