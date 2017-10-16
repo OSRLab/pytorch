@@ -144,7 +144,7 @@ void col2vol(cudaStream_t stream, const Dtype* data_col, const int channels,
       num_kernels, data_col, depth, height, width, channels,
       patch_t, patch_h, patch_w, pad_t, pad_h, pad_w, stride_t, stride_h, stride_w,
       dilation_t, dilation_h, dilation_w,
-      depth_col, height_col, width_col, data_vol
+      output_depth, output_height, output_width, data_vol
   );
   THCudaCheck(hipGetLastError());
 #else
