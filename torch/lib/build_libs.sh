@@ -10,8 +10,13 @@ set -ex
 
 # Options for building only a subset of the libraries
 WITH_CUDA=0
+WITH_ROCM=0
 if [[ "$1" == "--with-cuda" ]]; then
   WITH_CUDA=1
+  shift
+elif [[ "$1" == "--with-rocm" ]]; then
+  WITH_ROCM=1
+  WITH_CUDA=0
   shift
 fi
 
@@ -413,6 +418,34 @@ for arg in "$@"; do
         build $arg
     fi
 done
+if [[ $WITH_ROCM -eq 1 ]]; then
+    mkdir -p HIP
+    cd HIP
+    if [ ! -L "THC" ]; then
+        ln -s ../THC/hip THC
+    fi
+    if [ ! -L "THCUNN" ]; then
+        ln -s ../THCUNN/hip THCUNN
+    fi
+    if [ ! -L "THD" ]; then
+        ln -s ../THD THD
+    fi
+    if [ ! -L "THPP" ]; then
+        ln -s ../THPP THPP
+    fi
+    if [ ! -L "THS" ]; then
+        ln -s ../THS THS
+    fi
+    if [ ! -L "ATen" ]; then
+        ln -s ../ATen ATen
+    fi
+    cd ..
+fi
+if [[ $WITH_ROCM -eq 1 ]]; then
+    build_rocm_THC
+    build_rocm_THCUNN
+    build_rocm_THCS
+fi
 
 # If all the builds succeed we copy the libraries, headers,
 # binaries to torch/lib
