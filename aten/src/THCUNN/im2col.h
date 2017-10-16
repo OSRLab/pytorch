@@ -134,7 +134,7 @@ void col2im(cudaStream_t stream, const Dtype* data_col, const int channels,
       num_kernels, data_col, height, width, channels,
       patch_h, patch_w, pad_h, pad_w, stride_h, stride_w,
       dilation_h, dilation_w,
-      height_col, width_col, data_im
+      output_height, output_width, data_im
   );
   THCudaCheck(hipGetLastError());
 #else
