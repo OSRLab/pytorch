@@ -55,7 +55,7 @@ struct softmargin_updateGradInput_functor
   __host__ __device__
 #endif
   softmargin_updateGradInput_functor(Acctype norm_) :
-    norm(norm_) {}
+    norm(norm_), gradOutput(gradOutput_) {}
 
   __host__ __device__ Dtype operator()(const Dtype& x, const Dtype& y) const
     {
