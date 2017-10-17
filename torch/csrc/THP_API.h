@@ -6,7 +6,7 @@
     be defined only when compiling the core torch package.
 #endif
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 #include "cuda/THCP.h"
 #include "cuda/undef_macros.h"
 #endif
