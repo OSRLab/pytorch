@@ -22,6 +22,14 @@ DEBUG = check_env_flag('DEBUG')
 WITH_DISTRIBUTED = not check_env_flag('NO_DISTRIBUTED')
 WITH_DISTRIBUTED_MW = WITH_DISTRIBUTED and check_env_flag('WITH_DISTRIBUTED_MW')
 
+#WSTHORNTON
+WITH_CUDA=False
+WITH_NCCL=False
+WITH_CUDNN=False
+WITH_SYSTEM_NCCL=False
+WITH_DISTRIBUTED=False
+WITH_DISTRIBUTED_MW=False
+WITH_ROCM=True
 
 ################################################################################
 # Workaround setuptools -Wstrict-prototypes warnings
@@ -94,6 +102,8 @@ def build_libs(libs):
     if WITH_CUDA:
         my_env["CUDA_BIN_PATH"] = CUDA_HOME
         build_libs_cmd += ['--with-cuda']
+    if WITH_ROCM:
+        build_libs_cmd += ['--with-rocm']
 
     if subprocess.call(build_libs_cmd + libs, env=my_env) != 0:
         sys.exit(1)
@@ -442,7 +452,53 @@ if WITH_DISTRIBUTED:
     include_dirs += [tmp_install_path + "/include/THD"]
     main_link_args += [THD_LIB]
 
-if WITH_CUDA:
+if WITH_ROCM:
+    # rocm_include_path = os.path.join(ROCM_HOME, '/include')
+    # hcc_include_path = os.path.join(ROCM_HOME, '/hcc/include')
+    # hipblas_include_path = os.path.join(ROCM_HOME, '/hipblas/include')
+    # hipsparse_include_path = os.path.join(ROCM_HOME, '/hcsparse/include')
+    rocm_include_path = '/opt/rocm/include'
+    hcc_include_path = '/opt/rocm/hcc/include'
+    hipblas_include_path = '/opt/rocm/hipblas/include'
+    hipsparse_include_path = '/opt/rocm/hcsparse/include'
+    print(rocm_include_path)
+    print(hcc_include_path)
+    print(hipblas_include_path)
+    print(hipsparse_include_path)
+    # hip_lib_path = os.path.join(ROCM_HOME, '/hip/lib')
+    hip_lib_path = '/opt/rocm/hip/lib'
+    hcc_lib_path = '/opt/rocm/hcc/lib'
+    include_dirs.append(rocm_include_path)
+    include_dirs.append(hcc_include_path)
+    include_dirs.append(hipblas_include_path)
+    include_dirs.append(hipsparse_include_path)
+    include_dirs.append(tmp_install_path + "/include/THCUNN")
+    extra_link_args.append('-L' + hip_lib_path)
+    extra_link_args.append('-Wl,-rpath,' + hip_lib_path)
+    extra_link_args.append('')
+    extra_compile_args += ['-DWITH_ROCM']
+    extra_compile_args += ['-D__HIP_PLATFORM_HCC__']
+
+    os.environ["CC"] = 'hipcc'
+    os.environ["CXX"] = 'hipcc'
+    os.environ["LDSHARED"] = 'hcc'
+    extra_link_args.append('-shared')
+
+    # main_libraries += []
+    main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
+    main_sources += [
+        "torch/csrc/cuda/Module.cpp",
+        "torch/csrc/cuda/Storage.cpp",
+        "torch/csrc/cuda/Stream.cpp",
+        "torch/csrc/cuda/AutoGPU.cpp",
+        "torch/csrc/cuda/utils.cpp",
+        "torch/csrc/cuda/expand_utils.cpp",
+        "torch/csrc/cuda/serialization.cpp",
+        "torch/csrc/jit/fusion_compiler.cpp",
+    ]
+    main_sources += split_types("torch/csrc/cuda/Tensor.cpp")
+
+elif WITH_CUDA:
     cuda_lib_dirs = ['lib64', 'lib']
     cuda_include_path = os.path.join(CUDA_HOME, 'include')
     for lib_dir in cuda_lib_dirs:
