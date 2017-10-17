@@ -20,7 +20,7 @@
 #include "torch/csrc/utils/auto_gpu.h"
 #include "torch/csrc/Exceptions.h"
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 #include "cuda/AutoGPU.h"
 #endif
 
