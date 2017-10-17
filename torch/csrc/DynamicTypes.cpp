@@ -4,7 +4,7 @@
 #include <vector>
 #include <unordered_map>
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 #include <THC/THC.h>
 #include <THCS/THCS.h>
 #endif

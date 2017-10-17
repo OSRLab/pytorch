@@ -534,7 +534,7 @@ PyObject *THPModule_hasDistributed(PyObject *_unused)
 #endif
 }
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 extern PyObject * THCPModule_initExtension(PyObject *self);
 extern PyObject * THCPModule_setDevice_wrap(PyObject *self, PyObject *arg);
 extern PyObject * THCPModule_getDevice_wrap(PyObject *self);
@@ -568,7 +568,7 @@ static PyMethodDef TorchMethods[] = {
   {"_sparse_init",    (PyCFunction)THSPModule_initExtension,  METH_NOARGS,  NULL},
   {"_init_names",     (PyCFunction)THPModule_initNames,       METH_O,       NULL},
   {"_has_distributed",(PyCFunction)THPModule_hasDistributed,  METH_NOARGS,  NULL},
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
   {"_cuda_init",        (PyCFunction)THCPModule_initExtension,    METH_NOARGS,  NULL},
   {"_cuda_setDevice",   (PyCFunction)THCPModule_setDevice_wrap,   METH_O,       NULL},
   {"_cuda_getDevice",   (PyCFunction)THCPModule_getDevice_wrap,   METH_NOARGS,  NULL},
@@ -856,7 +856,7 @@ PyMODINIT_FUNC PyInit__C()
   ASSERT_TRUE(THSPCharTensor_init(module));
   ASSERT_TRUE(THSPByteTensor_init(module));
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
   // This will only initialise base classes and attach them to library namespace
   // They won't be ready for real usage until importing cuda module, that will
   // complete the process (but it defines Python classes before calling back into

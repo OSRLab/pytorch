@@ -109,7 +109,7 @@ THAllocator THNumpyArrayAllocator = {
 };
 #endif
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 #if defined(__HIP_PLATFORM_HCC__)
 hipError_t CudaStorageWeakRefAllocator::malloc(void** ptr, size_t size, hipStream_t stream) {
   THError("CudaStorageWeakRefAllocator: malloc not supported");
