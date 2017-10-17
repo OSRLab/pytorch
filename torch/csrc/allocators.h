@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <memory>
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 #include <THC/THC.h>
 #endif
 
@@ -49,7 +49,7 @@ public:
   void free(void* ptr);
 };
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 class CudaStorageWeakRefAllocator {
 public:
   CudaStorageWeakRefAllocator(PyObject *wrapped_object, THCDeviceAllocator *alloc, void *ctx) {
@@ -88,7 +88,7 @@ public:
 
 extern THAllocator THObjectPtrAllocator;
 extern THAllocator THStorageWeakRefAllocator;
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 extern THCDeviceAllocator THCStorageWeakRefAllocator;
 #endif
 #ifdef WITH_NUMPY
