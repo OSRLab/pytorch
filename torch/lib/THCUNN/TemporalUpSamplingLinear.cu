@@ -72,7 +72,11 @@ __global__ void caffe_gpu_interp2_kernel_backward(const int n,
       for (int n = 0; n < batchsize ; n++){
         for (int c = 0; c < channels; ++c) {
           const Dtype val = data2[n][c][w1];
+#if defined(__HIP_PLATFORM_HCC__)
+          (data1[n][c][w2]).template as<Dtype>() += val;
+#else
           data1[n][c][w2] += val;
+#endif
         }
       }
       return;
