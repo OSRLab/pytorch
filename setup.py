@@ -617,7 +617,7 @@ if WITH_ROCM:
         "torch/csrc/cuda/utils.cpp",
         "torch/csrc/cuda/expand_utils.cpp",
         "torch/csrc/cuda/serialization.cpp",
-        "torch/csrc/jit/fusion_compiler.cpp",
+    #    "torch/csrc/jit/fusion_compiler.cpp",
     ]
     main_sources += split_types("torch/csrc/cuda/Tensor.cpp")
 
