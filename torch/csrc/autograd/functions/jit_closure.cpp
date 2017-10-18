@@ -267,7 +267,7 @@ struct ConstantFactory : public Function {
   }
 };
 
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA) 
 struct FusionGroupFunction : public Function {
   FusionGroupFunction(const std::shared_ptr<CompiledFusionFunction> & function)
   : function(function) {}
@@ -516,7 +516,7 @@ struct StageClosure {
       // No-op. Selects are handled by their inputs.
       return nullptr;
     IR_ELSEIF(FusionGroup)
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA) 
       // TODO: make this more robust - handle device and contiguity changes!
       auto fusion_fn = sharedFusionCompiler().getOrCompile(*value->g(kSubgraph));
       return std::make_shared<FusionGroupFunction>(std::move(fusion_fn));
