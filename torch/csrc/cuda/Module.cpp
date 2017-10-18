@@ -80,7 +80,6 @@ PyObject * THCPModule_getDeviceCount_wrap(PyObject *self)
   END_HANDLE_TH_ERRORS
 }
 
-
 PyObject * THCPModule_getCurrentStream_wrap(PyObject *self)
 {
   HANDLE_TH_ERRORS
