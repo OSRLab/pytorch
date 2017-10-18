@@ -11,7 +11,7 @@
 #include "torch/csrc/autograd/python_engine.h"
 #include "torch/csrc/autograd/python_variable.h"
 #include "torch/csrc/autograd/python_function.h"
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA) 
 #include "torch/csrc/jit/fusion_compiler.h"
 #endif
 namespace torch { namespace autograd {
@@ -258,7 +258,7 @@ struct ConstantFactory : public Function {
   }
 };
 
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA) 
 struct FusionGroupFunction : public Function {
   FusionGroupFunction(const std::shared_ptr<CompiledFusionFunction> & function)
   : function(function) {}
@@ -511,7 +511,7 @@ struct StageClosure {
     IR_ELSEIF_TRIVIAL(Mul, Mul)
 #undef IR_ELSEIF_TRIVIAL
     IR_ELSEIF(FusionGroup)
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA) 
       // TODO: make this more robust - handle device and contiguity changes!
       auto fusion_fn = sharedFusionCompiler().getOrCompile(*value->g(kSubgraph));
       return std::make_shared<FusionGroupFunction>(std::move(fusion_fn));
