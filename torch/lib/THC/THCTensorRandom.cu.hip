@@ -25,7 +25,7 @@ void initializeGenerator(THCState *state, Generator* gen)
 }
 
 /* Creates a new generator state given the seed. */
-void createGeneratorState(Generator* gen, unsigned long long seed)
+void createGeneratorState(Generator* gen, uint64_t seed)
 {
   if (hiprngMakeMTGP32Constants(mtgp32_params_fast_11213, gen->kernel_params) != HIPRNG_STATUS_SUCCESS)
   {
