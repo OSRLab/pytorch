@@ -59,28 +59,28 @@ struct Bitfield<unsigned int> {
 
 #if defined(__HIP_PLATFORM_HCC__)
 template<>
-struct Bitfield<unsigned long long int>{
+struct Bitfield<uint64_t>{
   static __device__
   inline
-  unsigned long long int getBitfield(unsigned long long int val, int pos, int len)
+  uint64_t getBitfield(uint64_t val, int pos, int len)
   {
     pos &= 0x1f;
     len &= 0x1f;
 
-    unsigned long long int m = (1u << len) - 1u;
+    uint64_t m = (1u << len) - 1u;
     m <<= pos;
     return val & m;
   }
 
   static __device__
   inline
-  unsigned long long int setBitfield(
-    unsigned long long int val, unsigned long long int toInsert, int pos, int len)
+  uint64_t setBitfield(
+    uint64_t val, uint64_t toInsert, int pos, int len)
   {
     pos &= 0x1f;
     len &= 0x1f;
 
-    unsigned long long int m = (1u << len) - 1u;
+    uint64_t m = (1u << len) - 1u;
     toInsert &= m;
     toInsert <<= pos;
     m <<= pos;
