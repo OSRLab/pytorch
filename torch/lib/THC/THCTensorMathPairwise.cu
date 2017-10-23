@@ -235,6 +235,7 @@ struct TensorDivConstantOp {
   const T val;
 };
 
+#if !defined(__HIP_PLATFORM_HCC__)
 template <>
 struct TensorDivConstantOp<float> {
 #if defined(__HIP_PLATFORM_HCC__)
@@ -280,6 +281,7 @@ struct TensorDivConstantOp<double> {
 
   const double val;
 };
+#endif
 
 #ifdef CUDA_HALF_TENSOR
 template <>
