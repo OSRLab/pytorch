@@ -26,7 +26,7 @@ static int getNumThreads(int nElem) {
   int threadSizes[3] = { 64, 128, MAX_BLOCK_SIZE };
   for (int i = 0; i != 3; ++i) {
 #else
-  int threadSizes[5] = { 16, 32, 64, 128, MAX_BLOCK_SIZE };
+  int threadSizes[5] = { 32, 64, 128, 256, MAX_BLOCK_SIZE };
   for (int i = 0; i != 5; ++i) {
 #endif
     if (nElem <= threadSizes[i]) {
