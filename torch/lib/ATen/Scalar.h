@@ -51,26 +51,6 @@ public:
     return t.pImpl->localScalar();
   }
 
-// #define DEFINE_ACCESSOR(type,name,member) \
-//   type to##name () { \
-//     if (Tag::HAS_t == tag) { \
-//       return local().to##name(); \
-//     } else if (Tag::HAS_d == tag) { \
-//       auto casted = convert<type,double>(v.d); \
-//       if(convert<double,type>(casted) != v.d) { \
-//         throw std::domain_error(std::string("value cannot be losslessly represented in type " #name ": ") + std::to_string(v.d) ); \
-//       } \
-//       return casted; \
-//     } else { \
-//       assert(Tag::HAS_i == tag); \
-//       auto casted = convert<type,int64_t>(v.i); \
-//       if(convert<int64_t,type>(casted) != v.i) { \
-//         throw std::domain_error(std::string("value cannot be losslessly represented in type " #name ": ") + std::to_string(v.i)); \
-//       } \
-//       return casted; \
-//     } \
-//   }
-
 #define DEFINE_ACCESSOR(type,name,member) \
   type to##name () const { \
     if (Tag::HAS_t == tag) { \
@@ -82,6 +62,7 @@ public:
       } \
       return casted; \
     } else { \
+      assert(Tag::HAS_i == tag); \
       auto casted = convert<type,int64_t>(v.i); \
       if(convert<int64_t,type>(casted) != v.i) { \
         throw std::domain_error(std::string("value cannot be losslessly represented in type " #name ": ") + std::to_string(v.i)); \
