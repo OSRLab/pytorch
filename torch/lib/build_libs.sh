@@ -422,11 +422,6 @@ for arg in "$@"; do
         fi
     fi
 done
-# if [[ $WITH_ROCM -eq 1 ]]; then
-#     build_rocm_THC
-#     build_rocm_THCUNN
-#     build_rocm_THCS
-# fi
 
 # If all the builds succeed we copy the libraries, headers,
 # binaries to torch/lib
