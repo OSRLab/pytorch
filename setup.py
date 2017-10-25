@@ -25,14 +25,7 @@ DEBUG = check_env_flag('DEBUG')
 WITH_DISTRIBUTED = not check_env_flag('NO_DISTRIBUTED')
 WITH_DISTRIBUTED_MW = WITH_DISTRIBUTED and check_env_flag('WITH_DISTRIBUTED_MW')
 
-#WSTHORNTON
-WITH_CUDA=False
-WITH_NCCL=False
-WITH_CUDNN=False
-WITH_SYSTEM_NCCL=False
-WITH_DISTRIBUTED=False
-WITH_DISTRIBUTED_MW=False
-WITH_ROCM=True
+WITH_ROCM=False
 
 ################################################################################
 # Workaround setuptools -Wstrict-prototypes warnings
@@ -475,15 +468,12 @@ if WITH_ROCM:
     # hcc_include_path = os.path.join(ROCM_HOME, '/hcc/include')
     # hipblas_include_path = os.path.join(ROCM_HOME, '/hipblas/include')
     # hipsparse_include_path = os.path.join(ROCM_HOME, '/hcsparse/include')
+    # hip_lib_path = os.path.join(ROCM_HOME, '/hip/lib')
+    # hcc_lib_path = os.path.join(ROCM_HOME, '/hcc/lib')
     rocm_include_path = '/opt/rocm/include'
     hcc_include_path = '/opt/rocm/hcc/include'
     hipblas_include_path = '/opt/rocm/hipblas/include'
     hipsparse_include_path = '/opt/rocm/hcsparse/include'
-    print(rocm_include_path)
-    print(hcc_include_path)
-    print(hipblas_include_path)
-    print(hipsparse_include_path)
-    # hip_lib_path = os.path.join(ROCM_HOME, '/hip/lib')
     hip_lib_path = '/opt/rocm/hip/lib'
     hcc_lib_path = '/opt/rocm/hcc/lib'
     include_dirs.append(rocm_include_path)
@@ -502,7 +492,6 @@ if WITH_ROCM:
     os.environ["LDSHARED"] = 'hcc'
     extra_link_args.append('-shared')
 
-    # main_libraries += []
     main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
