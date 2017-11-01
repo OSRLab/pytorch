@@ -13,6 +13,13 @@
 
 #cmakedefine USE_MAGMA
 
+// Manual Serialization strategy to bypass the serialization attempted by compiler
+#if defined(__HIP_PLATFORM_HCC__)
+  #define reference_to_const(...) __VA_ARGS__ const&
+#else
+  #define reference_to_const(...) __VA_ARGS__
+#endif
+
 #ifdef __cplusplus
 # define THC_EXTERNC extern "C"
 #else
