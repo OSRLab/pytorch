@@ -15,6 +15,9 @@
 
 template <typename T>
 struct ThrustGTOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__
+#endif
   __device__ bool operator()(const T& lhs, const T& rhs) const {
     return THCNumerics<T>::gt(lhs, rhs);
   }
@@ -22,6 +25,9 @@ struct ThrustGTOp {
 
 template <typename T>
 struct ThrustLTOp {
+#if defined(__HIP_PLATFORM_HCC__)
+  __host__
+#endif
   __device__ bool operator()(const T& lhs, const T& rhs) const {
     return THCNumerics<T>::lt(lhs, rhs);
   }
@@ -33,7 +39,7 @@ struct ThrustLTOp {
 // `sliceSize - 1`.
 template <typename IndexType, int Dim>
 __global__ void
-fillSliceWithIndex(TensorInfo<int64_t, IndexType> out,
+fillSliceWithIndex(reference_to_const(TensorInfo<int64_t, IndexType>) out,
                    IndexType totalSlices,
                    IndexType sliceSize,
                    IndexType sliceStride) {
