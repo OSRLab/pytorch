@@ -5,8 +5,13 @@
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
 #include "THCTensorSort.cuh"
+#if defined(__HIP_PLATFORM_HCC__)
+#include "THC/THCTensorMathReduce.cuh"
+#else
 #include "../THC/THCTensorMathReduce.cuh"
+#endif
 
+#if defined(__NVCC__)
 const int WARP_SIZE = 32;
 
 __device__ __forceinline__ bool warpHasCollision(int val)
@@ -184,6 +189,7 @@ struct FastPow<DType, AccType, 2>
     return xA * xA;
   }
 };
+#endif
 
 /* Calculate norms of the rows of weight_ptr given by idx_ptr and capture them in norms */
 template <typename DType, typename AccType, typename IndexType, int Norm>
@@ -194,6 +200,7 @@ void calculate_norms_and_renorm(DType *weights,
                                 AccType maxNorm, 
                                 IndexType dim)
 {
+#if !defined(__HIP_PLATFORM_HCC__)
   // Some casting hacks since dynamic shared memory and templates don't work together:
   extern __shared__ unsigned char smem[];
   AccType *sdata = reinterpret_cast<AccType *>(smem);
@@ -223,7 +230,7 @@ void calculate_norms_and_renorm(DType *weights,
       weights[baseIndex + i] *= factor;
     }
   }
-
+#endif
 }
 
 #include "generic/LookupTable.cu"

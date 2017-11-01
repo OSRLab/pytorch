@@ -120,11 +120,19 @@ __global__ void cuda_VolumetricAveragePooling_updateOutput_fixedKW(
   }
 }
 
+#if defined(__HIP_PLATFORM_HCC__)
+#define LAUNCH_UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW: \
+  hipLaunchKernelGGL((cuda_VolumetricAveragePooling_updateOutput_fixedKW<KW, real, accreal>), \
+    dim3(grid), dim3(block), 0, 0, \
+    cudaInput, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW, count_include_pad, offsetZ); \
+  break
+#else
 #define LAUNCH_UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW: \
   cuda_VolumetricAveragePooling_updateOutput_fixedKW<KW, real, accreal> \
     <<<grid, block, 0, THCState_getCurrentStream(state)>>>( \
       cudaInput, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW, count_include_pad, offsetZ); \
   break
+#endif
 
 template <typename Dtype, typename Acctype>
 __global__ void cuda_VolumetricAveragePooling_updateGradInput_Stride1(

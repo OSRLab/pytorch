@@ -87,6 +87,21 @@ __global__ void SpatialGridSamplerBilinear_updateOutput_kernel(
     Dtype out_val;
     for (c = 0; c < C; ++c) {
       out_val = ScalarConvert<int,Dtype>::to(0);
+#if defined(__HIP_PLATFORM_HCC__)
+      if (WITHIN_BOUNDS(ix_nw, iy_nw, IH, IW)) {
+        out_val += (input[n][c][iy_nw][ix_nw]).template as<Dtype>() * nw;
+      }
+      if (WITHIN_BOUNDS(ix_ne, iy_ne, IH, IW)) {
+        out_val += (input[n][c][iy_ne][ix_ne]).template as<Dtype>() * ne;
+      }
+      if (WITHIN_BOUNDS(ix_sw, iy_sw, IH, IW)) {
+        out_val += (input[n][c][iy_sw][ix_sw]).template as<Dtype>() * sw;
+      }
+      if (WITHIN_BOUNDS(ix_se, iy_se, IH, IW)) {
+        out_val += (input[n][c][iy_se][ix_se]).template as<Dtype>() * se;
+      }
+      output[n][c][h][w] = out_val;
+#else
       if (WITHIN_BOUNDS(ix_nw, iy_nw, IH, IW)) {
         out_val += input[n][c][iy_nw][ix_nw] * nw;
       }
@@ -100,6 +115,7 @@ __global__ void SpatialGridSamplerBilinear_updateOutput_kernel(
         out_val += input[n][c][iy_se][ix_se] * se;
       }
       output[n][c][h][w] = out_val;
+#endif
     }
   }
 }
