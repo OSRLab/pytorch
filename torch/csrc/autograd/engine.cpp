@@ -16,8 +16,12 @@
 #include <sstream>
 #include <TH/TH.h>
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(__HIP_PLATFORM_HCC__)
+#include <hip/hip_runtime.h>
+#else
 #include <cuda.h>
+#endif
 #include <THC/THC.h>
 #endif
 
@@ -426,10 +430,15 @@ auto Engine::ready_queue(int device) -> ReadyQueue& {
 
 auto Engine::start_threads() -> void {
   int num_devices = 0;
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
   // check for case of compiled with CUDA but no available devices
+#if defined(__HIP_PLATFORM_HCC__)
+  if (hipGetDeviceCount(&num_devices) != hipSuccess) {
+    hipGetLastError();
+#else
   if (cudaGetDeviceCount(&num_devices) != cudaSuccess) {
     cudaGetLastError();
+#endif
     num_devices = 0;
   }
 #endif
