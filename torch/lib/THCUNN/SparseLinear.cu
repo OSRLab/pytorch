@@ -2,6 +2,7 @@
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
 
+#if defined(__NVCC__)
 #include <cusparse.h>
 
 static cusparseHandle_t cusparse_handle = 0;
@@ -14,6 +15,7 @@ static void init_cusparse() {
     }
   }
 }
+#endif
 
 #ifdef CUDA_HALF_TENSOR
 void THNN_CudaHalfSparseLinear_updateOutput(
