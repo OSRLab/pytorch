@@ -8,8 +8,12 @@
 #include <ATen/ATen.h>
 
 #ifdef WITH_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
+  #if defined(__HIP_PLATFORM_HCC__)
+    #include <hip/hip_runtime.h>
+  #else
+    #include <cuda.h>
+    #include <cuda_runtime.h>
+  #endif
 #endif
 
 struct AutoGPU {
@@ -31,7 +35,11 @@ struct AutoGPU {
   ~AutoGPU() {
 #ifdef WITH_CUDA
     if (original_device != -1) {
+#if defined(__HIP_PLATFORM_HCC__)
+      hipSetDevice(original_device);
+#else
       cudaSetDevice(original_device);
+#endif
     }
 #endif
   }
@@ -42,12 +50,24 @@ struct AutoGPU {
       return;
     }
     if (original_device == -1) {
+#if defined(__HIP_PLATFORM_HCC__)
+      cudaCheck(hipGetDevice(&original_device));
+#else
       cudaCheck(cudaGetDevice(&original_device));
+#endif
       if (device != original_device) {
+#if defined(__HIP_PLATFORM_HCC__)
+        cudaCheck(hipSetDevice(device));
+#else
         cudaCheck(cudaSetDevice(device));
+#endif
       }
     } else {
+#if defined(__HIP_PLATFORM_HCC__)
+      cudaCheck(hipSetDevice(device));
+#else
       cudaCheck(cudaSetDevice(device));
+#endif
     }
 #endif
   }
@@ -56,6 +76,17 @@ struct AutoGPU {
 
 private:
 #ifdef WITH_CUDA
+#if defined(__HIP_PLATFORM_HCC__)
+  static void cudaCheck(hipError_t err) {
+    if (err != hipSuccess) {
+      std::string msg = "CUDA error (";
+      msg += std::to_string(err);
+      msg += "): ";
+      msg += hipGetErrorString(err);
+      throw std::runtime_error(msg);
+    }
+  }
+#else
   static void cudaCheck(cudaError_t err) {
     if (err != cudaSuccess) {
       std::string msg = "CUDA error (";
@@ -65,5 +96,6 @@ private:
       throw std::runtime_error(msg);
     }
   }
+#endif
 #endif
 };
