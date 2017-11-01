@@ -4,9 +4,15 @@
 #include <string>
 #include <stdint.h>
 #ifdef AT_CUDA_ENABLED
+#if defined(__HIP_PLATFORM_HCC__)
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#include <hip/hip_fp16.h>
+#else
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
+#endif
 #endif
 
 namespace at {
@@ -43,7 +49,12 @@ template<typename To, typename From> To checked_convert(From f, const char* name
 typedef struct  AT_ALIGN(2) {
   unsigned short x;
 #ifdef AT_CUDA_ENABLED
-#if CUDA_VERSION < 9000
+#if defined(__HIP_PLATFORM_HCC__)
+  operator half() {
+    half h = reinterpret_cast<half&>(x);
+    return h;
+  }
+#elif CUDA_VERSION < 9000
   operator half() { return half{ x }; }
 #else
   operator half() {
@@ -77,7 +88,17 @@ static inline To HalfFix(From h) {
 }
 
 #ifdef AT_CUDA_ENABLED
-#if CUDA_VERSION >= 9000
+#if defined(__HIP_PLATFORM_HCC__)
+template <>
+  inline __half HalfFix<__half, Half>(Half h) {
+  return reinterpret_cast<__half&>(h);   
+}
+template<>
+  inline Half HalfFix<Half, __half>(__half h) {
+  unsigned short s = reinterpret_cast<unsigned short&>(h);
+  return Half { s };
+}
+#elif CUDA_VERSION >= 9000
 template<>
   inline __half HalfFix<__half, Half>(Half h) {
   __half_raw raw;

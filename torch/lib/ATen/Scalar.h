@@ -38,7 +38,9 @@ public:
 #ifdef AT_CUDA_ENABLED
   Scalar(half vv)
   : tag(Tag::HAS_d) {
-#if CUDA_VERSION < 9000
+#if defined(__HIP_PLATFORM_HCC__)
+    v.d  = vv;
+#elif CUDA_VERSION < 9000
     v.d  = convert<double, Half>(Half{vv.x});
 #else
     __half_raw vv_raw(vv);
