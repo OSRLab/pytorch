@@ -324,7 +324,7 @@ __global__ void THCTensor_kernel_varOuterDim(Real *tgt, Real *src_, unsigned num
             THCNumerics<Accreal>::mul(delta, delta2));
         src += num_irows;
       }
-      
+
       if (flag) {
         m2 = THCNumerics<Accreal>::div(m2, ScalarConvert<int, Accreal>::to(row_size));
       } else {
@@ -398,8 +398,8 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
    * Each block computes the var/std of blockDim.y (32) rows at once.
    * One can visualize the computation as a 16 (x) by 32 (y) grid.
    * - Each of the 32 rows of the block is responsible for the computation
-   *   of one input row. 
-   * - Each row has 16 columns; the variance computation of one input row is 
+   *   of one input row.
+   * - Each row has 16 columns; the variance computation of one input row is
    *   split between 16 threads.
    * - Each of those 16 threads handles the accumulation of 1/16 of the input
    *   row's data.
@@ -437,14 +437,14 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
 
     /*
      * We are reducing across each row of 16 threads to find the true sum of the
-     * entire input row. The warp shfl xor loop ultimately gives each thread the 
+     * entire input row. The warp shfl xor loop ultimately gives each thread the
      * true sum.
      */
     for (unsigned lane_mask = 8; lane_mask > 0; lane_mask >>= 1) {
-      local_sum = THCNumerics<Accreal>::add(local_sum, 
+      local_sum = THCNumerics<Accreal>::add(local_sum,
           WARP_SHFL_XOR((row < num_rows) ? local_sum : acc_zero, lane_mask, 16));
     }
-    Accreal true_mean = THCNumerics<Accreal>::div(local_sum, 
+    Accreal true_mean = THCNumerics<Accreal>::div(local_sum,
         ScalarConvert<int, Accreal>::to(row_size));
 
     /*
@@ -467,7 +467,7 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
      * the total sum, which is equal to the M2 for the entire input row.
      */
     for (unsigned s = 8; s >= 1; s >>= 1) {
-      adjusted_M2 = THCNumerics<Accreal>::add(adjusted_M2, 
+      adjusted_M2 = THCNumerics<Accreal>::add(adjusted_M2,
           WARP_SHFL_DOWN((row < num_rows) ? adjusted_M2 : acc_zero, s, 16));
     }
 
