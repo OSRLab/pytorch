@@ -112,6 +112,16 @@ __device__ inline half half_uniform_scale_and_shift(float x, double a, double b)
 }
 #endif
 
+// Goes from (0, 1] to [0, 1). Note 1-x is not sufficient since for some floats
+// eps near 0, 1-eps will round to 1.
+template <typename T>
+__device__ inline T reverse_bounds(T value) {
+  if (value == ScalarConvert<int, T>::to(1)) {
+    return ScalarConvert<int, T>::to(0);
+  }
+  return value;
+}
+
 #define GENERATE_KERNEL1(NAME, T, ARG1, CURAND_T, CURAND_FUNC, TRANSFORM)      \
 __global__ void NAME(curandStateMtgp32 *state, int size, T *result, ARG1)      \
 {                                                                              \
