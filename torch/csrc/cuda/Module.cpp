@@ -141,11 +141,6 @@ PyObject * THCPModule_getCompiledVersion(PyObject *self)
   return PyLong_FromLong((long) CUDA_VERSION);
 }
 
-PyObject * THCPModule_getCompiledVersion(PyObject *self)
-{
-  return PyLong_FromLong((long) CUDA_VERSION);
-}
-
 PyObject * THCPModule_getRNGState(PyObject *_unused)
 {
   using namespace at;
