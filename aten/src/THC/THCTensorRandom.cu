@@ -116,11 +116,21 @@ __device__ inline half half_uniform_scale_and_shift(float x, double a, double b)
 // eps near 0, 1-eps will round to 1.
 template <typename T>
 __device__ inline T reverse_bounds(T value) {
-  if (value == ScalarConvert<int, T>::to(1)) {
+  if (THCNumerics<T>::eq(value, ScalarConvert<int, T>::to(1))) {
     return ScalarConvert<int, T>::to(0);
   }
   return value;
 }
+
+
+#ifdef CUDA_HALF_TENSOR
+__device__ inline half half_uniform_scale_and_shift(float x, double a, double b) {
+  half width = ScalarConvert<double, half>::to(b - a);
+  half start = ScalarConvert<double, half>::to(a);
+  half scaled = THCNumerics<half>::mul(reverse_bounds(ScalarConvert<float, half>::to(x)), width);
+  return THCNumerics<half>::add(scaled, start);
+}
+#endif
 
 #define GENERATE_KERNEL1(NAME, T, ARG1, CURAND_T, CURAND_FUNC, TRANSFORM)      \
 __global__ void NAME(curandStateMtgp32 *state, int size, T *result, ARG1)      \
