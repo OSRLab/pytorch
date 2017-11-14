@@ -1,17 +1,13 @@
 {
      global:
          _TH*;
-<<<<<<< HEAD
          __TH*;
-=======
->>>>>>> add linker version script
          TH*;
          *THP*;
          *THCP*;
          PyInit*;
          init*;
          state;
-<<<<<<< HEAD
 	 _ZGVZN2at*;
          _ZN2at*;
 	 _ZNK2at*Type*;
@@ -30,8 +26,6 @@
 	 _Z*torch*;
 	 _Z*Tensor*;
 	 _Z*tensor*;
-=======
->>>>>>> add linker version script
      local:
          *;
  };
