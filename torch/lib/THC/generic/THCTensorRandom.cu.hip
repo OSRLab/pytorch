@@ -15,7 +15,7 @@ THC_API void THCTensor_(uniform)(THCState* state, THCTensor *self_, double a, do
   real *data = THCTensor_(data)(state, self);
 
   generate_uniform<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, a, b);
+      gen->gen_states, static_cast<int>(size), data, a, b);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
@@ -29,7 +29,7 @@ THC_API void THCTensor_(normal)(THCState* state, THCTensor *self_, double mean, 
   real *data = THCTensor_(data)(state, self);
 
   generate_normal<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, mean, stdv);
+      gen->gen_states, static_cast<int>(size), data, mean, stdv);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
@@ -67,7 +67,7 @@ THC_API void THCTensor_(logNormal)(THCState* state, THCTensor *self_, double mea
   real *data = THCTensor_(data)(state, self);
 
   generateLogNormal<real><<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, mean, stdv);
+      gen->gen_states, static_cast<int>(size), data, mean, stdv);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
@@ -82,7 +82,7 @@ THC_API void THCTensor_(exponential)(THCState* state, THCTensor *self_, double l
   real *data = THCTensor_(data)(state, self);
 
   generate_exponential<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, lambda);
+      gen->gen_states, static_cast<int>(size), data, lambda);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
@@ -97,7 +97,7 @@ THC_API void THCTensor_(cauchy)(THCState* state, THCTensor *self_, double median
   real *data = THCTensor_(data)(state, self);
 
   generate_cauchy<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, median, sigma);
+      gen->gen_states, static_cast<int>(size), data, median, sigma);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
@@ -333,7 +333,7 @@ THC_API void THCTensor_(multinomialAliasSetup)(THCState *state, THCTensor *_prob
 						    inputsize,
 						    THCudaLongTensor_data(state, smaller_short),
 						    THCudaLongTensor_data(state, larger_short),
-						    inputsize - h_large_c, h_large_c
+						    static_cast<int>(inputsize - h_large_c), h_large_c
 						    );
   real q_max = THCTensor_(maxall)(state, _q);
   condDiv<<<
@@ -365,7 +365,7 @@ THC_API void THCTensor_(multinomialAliasDraw)(THCState *state, THCudaLongTensor 
 
   multinomialAliasDrawKernel
     <<<THCCeilDiv((int)output_nelem+BLOCK_SIZE-1, BLOCK_SIZE), BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-				  size,
+				  static_cast<int>(size),
 				  THCudaLongTensor_data(state, self),
 				  THCudaLongTensor_data(state, _J),
 				  THCTensor_(data)(state, _q),
@@ -406,7 +406,7 @@ THC_API void THCTensor_(bernoulli)(THCState* state, THCTensor *self_, double p)
   real *data = THCTensor_(data)(state, self);
 
   generate_bernoulli<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, p);
+      gen->gen_states, static_cast<int>(size), data, p);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
@@ -429,7 +429,7 @@ THC_API void THCTensor_(bernoulli)(THCState* state, THCTensor *self_, double p)
                                                                                  \
     hipLaunchKernelGGL(                                                          \
       (generate_bernoulli_tensor), NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state), \
-        gen->gen_states, size, result_data, probs_data);                         \
+        gen->gen_states, static_cast<int>(size), result_data, probs_data);       \
                                                                                  \
     PROB_TYPE##_free(state, probs);                                              \
     THCTensor_(freeCopyTo)(state, self, self_);                                  \
@@ -478,7 +478,7 @@ THC_API void THCTensor_(geometric)(THCState* state, THCTensor *self_, double p)
   real *data = THCTensor_(data)(state, self);
 
   generate_geometric<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
-      gen->gen_states, size, data, p);
+      gen->gen_states, static_cast<int>(size), data, p);
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };
