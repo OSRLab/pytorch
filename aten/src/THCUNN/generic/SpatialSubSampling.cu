@@ -51,10 +51,10 @@ void THNN_(SpatialSubSampling_updateOutput)(
   THNN_(SpatialSubSampling_shapeCheck)(state, input, NULL, weight, kW, kH);
 
   if (input->nDimension == 3) {
-    int64_t nInputCols = input->size[2];
-    int64_t nInputRows = input->size[1];
-    int64_t nOutputCols = (nInputCols - kW) / dW + 1;
-    int64_t nOutputRows = (nInputRows - kH) / dH + 1;
+    int32_t nInputCols = input->size[2];
+    int32_t nInputRows = input->size[1];
+    int32_t nOutputCols = (nInputCols - kW) / dW + 1;
+    int32_t nOutputRows = (nInputRows - kH) / dH + 1;
 
     input = THCTensor_(newContiguous)(state, input);
     input_data = THCTensor_(data)(state, input);
@@ -119,8 +119,8 @@ void THNN_(SpatialSubSampling_updateGradInput)(
   int nInputPlane = THCTensor_(size)(state, weight, 0);
 
   if (input->nDimension == 3) {
-    int64_t nInputCols = input->size[2];
-    int64_t nInputRows = input->size[1];
+    int32_t nInputCols = input->size[2];
+    int32_t nInputRows = input->size[1];
 
     real *weight_data = THCTensor_(data)(state, weight);
     gradOutput = THCTensor_(newContiguous)(state, gradOutput);
@@ -149,9 +149,9 @@ void THNN_(SpatialSubSampling_updateGradInput)(
     }
     THCudaCheck(cudaGetLastError());
   } else {
-    int64_t nInputCols = input->size[3];
-    int64_t nInputRows = input->size[2];
-    int64_t nbatch = input->size[0];
+    int32_t nInputCols = input->size[3];
+    int32_t nInputRows = input->size[2];
+    int32_t nbatch = input->size[0];
 
     real *weight_data = THCTensor_(data)(state, weight);
     gradOutput = THCTensor_(newContiguous)(state, gradOutput);
@@ -199,8 +199,8 @@ void THNN_(SpatialSubSampling_accGradParameters)(
   int nInputPlane = THCTensor_(size)(state, gradWeight, 0);
 
   if (input->nDimension == 3) {
-    int64_t nInputCols = input->size[2];
-    int64_t nInputRows = input->size[1];
+    int32_t nInputCols = input->size[2];
+    int32_t nInputRows = input->size[1];
 
     real *gradWeight_data = THCTensor_(data)(state, gradWeight);
     real *gradBias_data = THCTensor_(data)(state, gradBias);
@@ -221,9 +221,9 @@ void THNN_(SpatialSubSampling_accGradParameters)(
       nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW, scale);
     THCudaCheck(cudaGetLastError());
   } else {
-    int64_t nInputCols = input->size[3];
-    int64_t nInputRows = input->size[2];
-    int64_t nbatch = input->size[0];
+    int32_t nInputCols = input->size[3];
+    int32_t nInputRows = input->size[2];
+    int32_t nbatch = input->size[0];
 
     real *gradWeight_data = THCTensor_(data)(state, gradWeight);
     real *gradBias_data = THCTensor_(data)(state, gradBias);
