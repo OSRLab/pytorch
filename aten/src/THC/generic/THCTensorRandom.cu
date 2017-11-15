@@ -338,7 +338,7 @@ THC_API void THCTensor_(multinomialAliasSetup)(THCState *state, THCTensor *_prob
                 inputsize,
                 THCudaLongTensor_data(state, smaller_short),
                 THCudaLongTensor_data(state, larger_short),
-                inputsize - h_large_c, h_large_c
+                static_cast<int>(inputsize - h_large_c), h_large_c
                 );
   real q_max = THCTensor_(maxall)(state, _q);
   condDiv<<<
