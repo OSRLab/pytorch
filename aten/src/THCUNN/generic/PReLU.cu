@@ -34,8 +34,8 @@ void THNN_(PReLU_updateOutput)(
     int nElemsPerSample = nOutputPlane * mapSize;
     preluForward<<<GET_BLOCKS(n), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state)>>>(
       THCTensor_(data)(state, output),
-      THCTensor_(data)(state, input),
-      w,
+      static_cast<const real*>(THCTensor_(data)(state, input)),
+      static_cast<const real*>(w),
       n, nElemsPerSample, mapSize
     );
     THCudaCheck(cudaGetLastError());
@@ -79,9 +79,9 @@ void THNN_(PReLU_updateGradInput)(
     int nElemsPerSample = nOutputPlane * mapSize;
     preluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state)>>>(
       THCTensor_(data)(state, gradInput),
-      THCTensor_(data)(state, input),
-      w,
-      THCTensor_(data)(state, gradOutput),
+      static_cast<const real*>(THCTensor_(data)(state, input)),
+      static_cast<const real*>(w),
+      static_cast<const real*>(THCTensor_(data)(state, gradOutput)),
       n, nElemsPerSample, mapSize
     );
     THCudaCheck(cudaGetLastError());
