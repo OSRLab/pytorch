@@ -176,6 +176,12 @@ class build_deps(Command):
         check_file(os.path.join(lib_path, "pybind11", "CMakeLists.txt"))
 
         libs = []
+
+        libs = ['TH', 'THS', 'THNN']
+        if WITH_CUDA:
+            libs += ['THC', 'THCS', 'THCUNN']
+        if WITH_ROCM:
+            libs += ['THC', 'THCS', 'THCUNN']
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
@@ -189,6 +195,11 @@ class build_deps(Command):
             libs += ['THD']
         build_libs(libs)
 
+        if WITH_ROCM:
+            os.environ["CC"] = 'hipcc'
+            os.environ["CXX"] = 'hipcc'
+            os.environ["LDSHARED"] = 'hcc'
+            extra_link_args.append('-shared')
 
 build_dep_cmds = {}
 
@@ -608,11 +619,6 @@ if WITH_ROCM:
     extra_link_args.append('')
     extra_compile_args += ['-DWITH_ROCM']
     extra_compile_args += ['-D__HIP_PLATFORM_HCC__']
-
-    os.environ["CC"] = 'hipcc'
-    os.environ["CXX"] = 'hipcc'
-    os.environ["LDSHARED"] = 'hcc'
-    extra_link_args.append('-shared')
 
     # main_libraries += []
     main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
