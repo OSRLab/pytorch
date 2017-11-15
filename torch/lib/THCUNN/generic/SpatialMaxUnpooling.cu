@@ -38,8 +38,8 @@ void THNN_(SpatialMaxUnpooling_updateOutput)(
   int count = THCTensor_(nElement)(state, input);
 
   MaxUnpoolForward <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
-      (count, THCTensor_(data)(state, input), THCIndexTensor_(data)(state, indices),
-      batchSize, nInputPlane, nInputRows, nInputCols, oheight, owidth, THCTensor_(data)(state, output));
+      (count, static_cast<const real*>(THCTensor_(data)(state, input)), static_cast<const long*>(THCIndexTensor_(data)(state, indices)),
+      static_cast<int>(batchSize), static_cast<int>(nInputPlane), static_cast<int>(nInputRows), static_cast<int>(nInputCols), static_cast<int>(oheight), static_cast<int>(owidth), THCTensor_(data)(state, output));
   THCudaCheck(cudaGetLastError());
 
   if(input->nDimension == 3)
@@ -91,8 +91,8 @@ void THNN_(SpatialMaxUnpooling_updateGradInput)(
   int count = THCTensor_(nElement)(state, input);
 
   MaxUnpoolBackward <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
-      (count, THCTensor_(data)(state, gradOutput), THCIndexTensor_(data)(state, indices),
-      batchSize, nInputPlane, nInputRows, nInputCols, oheight, owidth, THCTensor_(data)(state, gradInput));
+      (count, static_cast<const real*>(THCTensor_(data)(state, gradOutput)), static_cast<const long*>(THCIndexTensor_(data)(state, indices)),
+      static_cast<int>(batchSize), static_cast<int>(nInputPlane), static_cast<int>(nInputRows), static_cast<int>(nInputCols), static_cast<int>(oheight), static_cast<int>(owidth), THCTensor_(data)(state, gradInput));
   THCudaCheck(cudaGetLastError());
 
   // clean
