@@ -18,6 +18,15 @@ try:
 except ImportError:
     HAS_TORCHVISION = False
 
+RUN_CUDA = torch.cuda.is_available()
+if torch.cuda.is_available():
+    CUDA_VERSION = torch._C._cuda_getCompiledVersion()
+    for d in range(torch.cuda.device_count()):
+        major = torch.cuda.get_device_capability(d)[0]
+        if (CUDA_VERSION < 8000 and major >= 6) or (CUDA_VERSION < 9000 and major >= 7):
+            RUN_CUDA = False
+
+
 skipIfNoTorchVision = unittest.skipIf(not HAS_TORCHVISION, "no torchvision")
 
 RUN_CUDA = torch.cuda.is_available()
