@@ -185,8 +185,8 @@ function build_rocm_THC() {
   cp THC/THCGeneral.cc.hip THC/hip/THCGeneral.cc
   cp THC/THCAllocator.cc.hip THC/hip/THCAllocator.cc
   cp THC/generic/THCStorage.c.hip THC/hip/generic/THCStorage.c
-  /root/wst_HIP/bin/hipconvertinplace-perl.sh THC/hip/
-  /root/wst_HIP/bin/hipify-perl THC/hip/THCGeneral.h.in
+  /opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/hip/
+  /opt/rocm/hip/bin/hipify-perl THC/hip/THCGeneral.h.in
   find THC/hip -name "*.prehip" -type f -delete
 
   mkdir -p build/THC
@@ -239,7 +239,7 @@ function build_rocm_THCUNN() {
   cp THCUNN/generic/*.h THCUNN/hip/generic/
   cp THCUNN/generic/*.cu THCUNN/hip/generic/
   cp THCUNN/CMakeLists.txt.hip THCUNN/hip/CMakeLists.txt
-  /root/wst_HIP/bin/hipconvertinplace-perl.sh THCUNN/hip/
+  /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCUNN/hip/
   find THCUNN/hip -name "*.prehip" -type f -delete
 
   # We create a build directory for the library, which will
@@ -294,7 +294,7 @@ function build_rocm_THCS() {
   cp THCS/generic/*.c THCS/hip/generic/
   cp THCS/generic/*.cu THCS/hip/generic/
   cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
-  /root/wst_HIP/bin/hipconvertinplace-perl.sh THCS/hip/
+  /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/hip/
   find THCS/hip -name "*.prehip" -type f -delete
 
   # We create a build directory for the library, which will
