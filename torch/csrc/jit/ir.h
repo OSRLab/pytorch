@@ -153,6 +153,15 @@ public:
   }
 };
 
+// SourceLocation represents source code-level debug information for a node.
+// It contains a Python stack trace that represents the provenance of a given
+// node in the trace.
+struct SourceLocation {
+  SourceLocation(std::string python_traceback)
+  : python_traceback(std::move(python_traceback)) {}
+  std::string python_traceback;
+};
+
 // the list types are intentionally simple, but we type-def
 // them here so if we need to change them, refactoring will be easier
 using node_list = std::vector<Node*>;
@@ -296,6 +305,13 @@ public:
   }
   Node* setSourceLocation(std::shared_ptr<SourceLocation> sl) {
     source_location_ = std::move(sl);
+    return this;
+  }
+  std::shared_ptr<SourceLocation> getSourceLocation() const {
+    return source_location_;
+  }
+  Node* setSourceLocation(std::shared_ptr<SourceLocation> sl) {
+    source_location_ = sl;
     return this;
   }
   std::shared_ptr<SourceLocation> getSourceLocation() const {
