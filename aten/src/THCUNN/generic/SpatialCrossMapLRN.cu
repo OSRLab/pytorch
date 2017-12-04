@@ -40,7 +40,7 @@ void LRNforward(THCState* state, THCTensor* input, THCTensor* output,
   n_threads *= nInputPlane;
   THCudaCheck(cudaGetLastError());
   LRNComputeOutput<<<GET_BLOCKS(n_threads), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state)>>>(
-    n_threads, THCTensor_(data)(state, input), THCTensor_(data)(state, scale), -beta, THCTensor_(data)(state, output));
+    n_threads, static_cast<const real*>(THCTensor_(data)(state, input)), static_cast<const real*>(THCTensor_(data)(state, scale)), -beta, THCTensor_(data)(state, output));
   THCudaCheck(cudaGetLastError());
 
   THCTensor_(free)(state, input);
