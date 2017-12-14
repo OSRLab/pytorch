@@ -433,79 +433,6 @@ __global__ void indexSelectLargeIndex(reference_to_const(TensorInfo<T, IndexType
 
 template <typename IndexType, unsigned int Dims>
 struct LinearIndexCalcData {
-#if defined(__HIP_PLATFORM_HCC__)
-#define MAX_Dim 6
-  // sizes for the Tensor dims (from the Tensor, for bounds checking)
-  IndexType baseSizes[MAX_Dim];
-  // sizes for Tensor dims (either from the Tensor, or the size of the adv indexer at that dim)
-  IndexType sizes[MAX_Dim];
-  // strides for the Tensor we are indexing into
-  IndexType strides[MAX_Dim];
-  // these are pointers to the buffers containing the index selected at each dimension
-  // for all of the indices we want to generate. If a dimension is not under advanced indexing
-  // then the pointer is NULL
-  int64_t *advIndexTensors[MAX_Dim];
-
-  __attribute__((annotate("serialize")))
-  void __cxxamp_serialize(Kalmar::Serialize &s) const {
-    assert(MAX_Dim == 6); // This is hardcoded into the deserialize function signature and the mapping below
-    for (int i=0; i<MAX_Dim; i++) {
-      s.Append(sizeof(baseSizes[0]), &baseSizes[i]);
-    }
-    for (int i=0; i<MAX_Dim; i++) {
-      s.Append(sizeof(sizes[0]), &sizes[i]);
-    }
-    for (int i=0; i<MAX_Dim; i++) {
-      s.Append(sizeof(strides[0]), &strides[i]);
-    }
-    for (int i=0; i<MAX_Dim; i++) {
-      s.Append(sizeof(advIndexTensors[0]), &advIndexTensors[i]);
-    }
-  }
-
-  LinearIndexCalcData() {
-    for (int i=0; i<MAX_Dim; i++) {
-      baseSizes[i] = 0;
-      sizes[i] = 0;
-      strides[i] = 0;
-      advIndexTensors[i] = 0;
-    }
-  }
-
-  __attribute__((annotate("user_deserialize")))
-  LinearIndexCalcData(
-                 IndexType baseSizes0, IndexType baseSizes1, IndexType baseSizes2, IndexType baseSizes3, IndexType baseSizes4, IndexType baseSizes5,
-                 IndexType sizes0, IndexType sizes1, IndexType sizes2, IndexType sizes3, IndexType sizes4, IndexType sizes5,
-                 IndexType strides0, IndexType strides1, IndexType strides2, IndexType strides3, IndexType strides4, IndexType strides5,
-                 int64_t*  advIndexTensors0, int64_t*  advIndexTensors1, int64_t*  advIndexTensors2, 
-                 int64_t*  advIndexTensors3, int64_t*  advIndexTensors4, int64_t*  advIndexTensors5
-                 ) [[cpu]][[hc]] {
-    baseSizes[0] = baseSizes0;
-    baseSizes[1] = baseSizes1;
-    baseSizes[2] = baseSizes2;
-    baseSizes[3] = baseSizes3;
-    baseSizes[4] = baseSizes4;
-    baseSizes[5] = baseSizes5;
-    sizes[0] = sizes0;
-    sizes[1] = sizes1;
-    sizes[2] = sizes2;
-    sizes[3] = sizes3;
-    sizes[4] = sizes4;
-    sizes[5] = sizes5;
-    strides[0] = strides0;
-    strides[1] = strides1;
-    strides[2] = strides2;
-    strides[3] = strides3;
-    strides[4] = strides4;
-    strides[5] = strides5;
-    advIndexTensors[0] = advIndexTensors0;
-    advIndexTensors[1] = advIndexTensors1;
-    advIndexTensors[2] = advIndexTensors2;
-    advIndexTensors[3] = advIndexTensors3;
-    advIndexTensors[4] = advIndexTensors4;
-    advIndexTensors[5] = advIndexTensors5;
-  }
-#else
   // sizes for the Tensor dims (from the Tensor, for bounds checking)
   IndexType baseSizes[Dims];
   // sizes for Tensor dims (either from the Tensor, or the size of the adv indexer at that dim)
@@ -516,7 +443,6 @@ struct LinearIndexCalcData {
   // for all of the indices we want to generate. If a dimension is not under advanced indexing
   // then the pointer is NULL
   int64_t *advIndexTensors[Dims];
-#endif
 };
 
 template <typename IndexType, unsigned int Dims>
