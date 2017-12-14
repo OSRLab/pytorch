@@ -49,13 +49,13 @@ C_FLAGS="${C_FLAGS} -DOMPI_SKIP_MPICXX=1"
 LDFLAGS="-L\"$INSTALL_DIR/lib\" "
 LD_POSTFIX=".so.1"
 LD_POSTFIX_UNVERSIONED=".so"
-if [[ $(uname) == 'Darwin' ]]; then
-    LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
-    LD_POSTFIX=".1.dylib"
-    LD_POSTFIX_UNVERSIONED=".dylib"
-else
-    LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
-fi
+# if [[ $(uname) == 'Darwin' ]]; then
+#     LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
+#     LD_POSTFIX=".1.dylib"
+#     LD_POSTFIX_UNVERSIONED=".dylib"
+# else
+#     LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
+# fi
 CPP_FLAGS=" -std=c++11 "
 GLOO_FLAGS=""
 THD_FLAGS=""
