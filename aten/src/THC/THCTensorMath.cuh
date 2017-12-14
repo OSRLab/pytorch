@@ -79,52 +79,8 @@ struct CatArrInputTensor {
 
 template<typename IndexType, unsigned int MaxDims>
 struct OutputTensorSizeStride {
-#if defined(__HIP_PLATFORM_HCC__)
-#define MAX_Dim 6
-  IndexType outputSize[MAX_Dim];
-  IndexType outputStride[MAX_Dim];
-
-  __attribute__((annotate("serialize")))
-  void __cxxamp_serialize(Kalmar::Serialize &s) const {
-    assert(MAX_Dim == 6); // This is hardcoded into the deserialize function signature and the mapping below
-    for (int i=0; i<MAX_Dim; i++) {
-      s.Append(sizeof(outputSize[0]), &outputSize[i]);
-    }
-    for (int i=0; i<MAX_Dim; i++) {
-      s.Append(sizeof(outputStride[0]), &outputStride[i]);
-    }
-  }
-
-  OutputTensorSizeStride() {
-    for (int i=0; i<MAX_Dim; i++) {
-      outputSize[i] = 0;
-      outputStride[i] = 0;
-    }
-  }
-
-  __attribute__((annotate("user_deserialize")))
-  OutputTensorSizeStride(
-                 IndexType size0, IndexType size1, IndexType size2, IndexType size3, IndexType size4, IndexType size5,
-                 IndexType stride0, IndexType stride1, IndexType stride2, IndexType stride3, IndexType stride4, IndexType stride5
-                 ) [[cpu]][[hc]] {
-
-    outputSize[0]   = size0;
-    outputSize[1]   = size1;
-    outputSize[2]   = size2;
-    outputSize[3]   = size3;
-    outputSize[4]   = size4;
-    outputSize[5]   = size5;
-    outputStride[0] = stride0;
-    outputStride[1] = stride1;
-    outputStride[2] = stride2;
-    outputStride[3] = stride3;
-    outputStride[4] = stride4;
-    outputStride[5] = stride5;
-  }
-#else
   IndexType outputSize[MaxDims];
   IndexType outputStride[MaxDims];
-#endif
 };
 
 /**
