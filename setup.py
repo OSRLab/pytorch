@@ -140,8 +140,6 @@ class build_deps(Command):
         if WITH_ROCM:
             os.environ["CC"] = 'hipcc'
             os.environ["CXX"] = 'hipcc'
-            os.environ["LDSHARED"] = 'hcc'
-            extra_link_args.append('-shared')
 
 build_dep_cmds = {}
 
@@ -482,9 +480,12 @@ if WITH_ROCM:
     include_dirs.append(tmp_install_path + "/include/THCUNN")
     extra_link_args.append('-L' + hip_lib_path)
     extra_link_args.append('-Wl,-rpath,' + hip_lib_path)
-    extra_link_args.append('')
+    #extra_link_args.append('-Wl,--whole-archive -lmcwamp -Wl,--no-whole-archive')
+    extra_link_args.append('-shared')
     extra_compile_args += ['-DWITH_ROCM']
     extra_compile_args += ['-D__HIP_PLATFORM_HCC__']
+    
+    os.environ["LDSHARED"] = 'gcc'
 
     # main_libraries += []
     main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
@@ -596,6 +597,7 @@ extensions.append(C)
 DL = Extension("torch._dl",
                sources=["torch/csrc/dl.c"],
                language='c',
+               extra_link_args=["-shared"],
                )
 extensions.append(DL)
 
@@ -612,7 +614,7 @@ THNN = Extension("torch._thnn._THNN",
                  )
 extensions.append(THNN)
 
-if WITH_CUDA:
+if WITH_CUDA or WITH_ROCM:
     THCUNN = Extension("torch._thnn._THCUNN",
                        sources=['torch/csrc/nn/THCUNN.cpp'],
                        language='c++',
