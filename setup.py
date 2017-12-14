@@ -300,8 +300,6 @@ class build_deps(Command):
         if WITH_ROCM:
             os.environ["CC"] = 'hipcc'
             os.environ["CXX"] = 'hipcc'
-            os.environ["LDSHARED"] = 'hcc'
-            extra_link_args.append('-shared')
 
 build_dep_cmds = {}
 
@@ -809,7 +807,7 @@ if not IS_WINDOWS:
     extensions.append(DL)
 
 
-if WITH_CUDA:
+if WITH_CUDA or WITH_ROCM:
     thnvrtc_link_flags = extra_link_args + [make_relative_rpath('lib')]
     if platform.system() == 'Linux':
         thnvrtc_link_flags = thnvrtc_link_flags + ['-Wl,--no-as-needed']
