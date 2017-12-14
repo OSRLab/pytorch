@@ -55,10 +55,6 @@ SET(CMAKE_C_FLAGS "-std=c99 -Werror=implicit-function-declaration ${CMAKE_C_FLAG
 SET(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} ${HIP_CXX_FLAGS}")
 SET(CMAKE_CXX_FLAGS  "-std=c++11 ${CMAKE_CXX_FLAGS} ${HIP_CXX_FLAGS}")
 
-IF (${PLATFORM} MATCHES "hcc")
-  SET(CMAKE_MODULE_LINKER_FLAGS "-Wl,-Bsymbolic")
-ENDIF()
-
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 FIND_PACKAGE(HIP 1.0 REQUIRED)
@@ -180,7 +176,6 @@ foreach(THC_TYPE Byte Char Short Int Long Half Float Double)
 endforeach()
 
 list(APPEND src-cuda THCHalf.cu)
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 SET(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DGENERIC_GRID_LAUNCH=1 -Wall")
 
 
