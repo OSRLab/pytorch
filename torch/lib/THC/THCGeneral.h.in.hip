@@ -51,7 +51,8 @@
 //     return Magic_wrapper<T>{x};
 //   }
   #define make_magic_wrapper(x) x
-  #define reference_to_const(...) __VA_ARGS__ const&
+  // #define reference_to_const(...) __VA_ARGS__ const&
+  #define reference_to_const(...) __VA_ARGS__
 #else
   #define make_magic_wrapper(x) x
   #define reference_to_const(...) __VA_ARGS__
@@ -85,12 +86,6 @@
       _THError(__FILE__, __LINE__, "assert(%s) failed", #exp);          \
     }                                                                   \
   } while(0)
-#endif
-
-#ifdef __HCC__
-#define reference_to_const(...) __VA_ARGS__ const&
-#else
-#define reference_to_const(...) __VA_ARGS__
 #endif
 
 struct THCRNGState;  /* Random number generator state. */
