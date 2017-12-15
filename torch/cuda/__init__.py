@@ -99,9 +99,10 @@ def _lazy_init():
     _check_driver()
     torch._C._cuda_init()
     torch._C._cuda_sparse_init()
-    _cudart = _load_cudart()
-    _cudart.cudaGetErrorName.restype = ctypes.c_char_p
-    _cudart.cudaGetErrorString.restype = ctypes.c_char_p
+    # commented for HIP
+    # _cudart = _load_cudart()
+    # _cudart.cudaGetErrorName.restype = ctypes.c_char_p
+    # _cudart.cudaGetErrorString.restype = ctypes.c_char_p
     _original_pid = os.getpid()
     _initialized = True
     for queued_call, orig_traceback in _queued_calls:
