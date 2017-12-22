@@ -41,7 +41,10 @@ class Dropout(InplaceFunction):
             if ctx.p == 1:
                 ctx.noise.fill_(0)
             else:
-                ctx.noise.bernoulli_(1 - ctx.p).div_(1 - ctx.p)
+                # XXX HC runtime complains about undefined symbol
+                # need to figure out WHY
+                #ctx.noise.bernoulli_(1 - ctx.p).div_(1 - ctx.p)
+                ctx.noise.fill_(0)
             ctx.noise = ctx.noise.expand_as(input)
             output.mul_(ctx.noise)
 
