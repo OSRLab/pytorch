@@ -272,7 +272,11 @@ static void THCTensor_(sort_indices)(THCState *state, THCudaLongTensor *index, T
   auto numel = THCTensor_(numel)(state, src);
 
   thrust::sort_by_key(
+#if CUDA_VERSION >= 7000
     thrust::cuda::par(thrustAlloc).on(THCState_getCurrentStream(state)),
+#else
+    thrust::device,
+#endif
     index_iter, index_iter + numel,
     src_iter, ThrustLTOp<int64_t>());
 }
