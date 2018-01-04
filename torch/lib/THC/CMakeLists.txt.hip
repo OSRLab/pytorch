@@ -215,6 +215,7 @@ INSTALL(FILES
           THCReduce.cuh
           THCReduceAll.cuh
           THCReduceApplyUtils.cuh
+          THCTensorMathReduce.cuh
           THCAsmUtils.cuh
           THCAtomics.cuh
           THCScanUtils.cuh
