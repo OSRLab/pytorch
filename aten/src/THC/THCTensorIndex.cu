@@ -14,6 +14,7 @@
 #include "THCTensorSort.cuh"
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
+#include <thrust/execution_policy.h>
 #include <algorithm> // for std::min
 
 // We prefer this kernel to avoid reloading index points if the number
@@ -506,7 +507,9 @@ __device__ __forceinline__ IndexType indexToOffset(
     IndexType size)
 {
   IndexType linearIndex = static_cast<IndexType>(index);
+#if defined(__NVCC__)
   assert(linearIndex < size && linearIndex >= -size);
+#endif
   if (linearIndex < 0) {
     linearIndex += size;
   }
@@ -518,7 +521,9 @@ struct WrapIndexOp {
 
   __device__ __forceinline__ void operator()(int64_t* out, int64_t* in) {
     auto idx = *in;
+#if defined(__NVCC__)
     assert(idx < size && idx >= -size);
+#endif
     *out = idx < 0 ? idx + size : idx;
   }
 
