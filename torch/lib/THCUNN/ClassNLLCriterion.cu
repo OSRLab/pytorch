@@ -58,7 +58,11 @@ __global__ void ClassNLLCriterion_updateOutput_no_reduce_kernel(
     }
     Dtype weight =
        weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1);
+#if defined(__HIP_PLATFORM_HCC__)
+    output[index] = -weight * input[index][cur_target].template as<Dtype>();
+#else
     output[index] = -weight * input[index][cur_target];
+#endif
   }
 }
 
@@ -78,7 +82,11 @@ __global__ void ClassNLLCriterion_updateGradInput_no_reduce_kernel(
     }
     Dtype weight =
        weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1);
+#if defined(__HIP_PLATFORM_HCC__)
+    gradInput[index][cur_target] = -weight * gradOutput[index].template as<Dtype>();
+#else
     gradInput[index][cur_target] = -weight * gradOutput[index];
+#endif
   }
 }
 
