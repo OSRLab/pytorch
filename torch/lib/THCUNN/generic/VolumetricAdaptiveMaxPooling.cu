@@ -75,8 +75,10 @@ void THNN_(VolumetricAdaptiveMaxPooling_updateOutput)(
     dim3 blocks(totalZ > 65535 ? 65535 : totalZ, blocksH);
     cunn_VolumetricAdaptiveMaxPooling_updateOutput_kernel
       <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>(
-        input_data, output_data, indices_data, isizeT, isizeH, isizeW,
-        osizeT, osizeH, osizeW, istrideD, istrideT, istrideH, istrideW, offsetZ
+        input_data, output_data, indices_data, 
+        static_cast<int>(isizeT), static_cast<int>(isizeH), static_cast<int>(isizeW),
+        static_cast<int>(osizeT), static_cast<int>(osizeH), static_cast<int>(osizeW), 
+        istrideD, istrideT, istrideH, istrideW, offsetZ
       );
 
     totalZ -= 65535;
@@ -157,13 +159,17 @@ void THNN_(VolumetricAdaptiveMaxPooling_updateGradInput)(
       cunn_atomic_VolumetricAdaptiveMaxPooling_updateGradInput_kernel
         <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>(
           gradInput_data, gradOutput_data, indices_data,
-          isizeT, isizeH, isizeW, osizeT, osizeH, osizeW, offsetZ
+          static_cast<int>(isizeT), static_cast<int>(isizeH), static_cast<int>(isizeW), 
+          static_cast<int>(osizeT), static_cast<int>(osizeH), static_cast<int>(osizeW), 
+          offsetZ
         );
     } else {
       cunn_VolumetricAdaptiveMaxPooling_updateGradInput_kernel
         <<<blocks, threads, 0, THCState_getCurrentStream(state)>>>(
           gradInput_data, gradOutput_data, indices_data,
-          isizeT, isizeH, isizeW, osizeT, osizeH, osizeW, offsetZ
+          static_cast<int>(isizeT), static_cast<int>(isizeH), static_cast<int>(isizeW), 
+          static_cast<int>(osizeT), static_cast<int>(osizeH), static_cast<int>(osizeW), 
+          offsetZ
         );
     }
 
