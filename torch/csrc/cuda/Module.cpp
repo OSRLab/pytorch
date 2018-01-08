@@ -102,16 +102,19 @@ PyObject * THCPModule_isDriverSufficient(PyObject *self)
 {
   int count;
 #if defined(__HIP_PLATFORM_HCC__)
-  // hipError_t err = hipGetDeviceCount(&count);
-  // if (err == hipErrorInsufficientDriver) {
-  //   return PyBool_FromLong(0);
-  // }
+  std::cout << "Calling hipGetDeviceCount" << std::endl;
+  hipError_t err = hipGetDeviceCount(&count);
+  if (err == hipErrorInsufficientDriver) {
+    std::cout << "Got error from hipGetDeviceCount" << std::endl;
+    return PyBool_FromLong(0);
+  }
 #else
   cudaError_t err = cudaGetDeviceCount(&count);
   if (err == cudaErrorInsufficientDriver) {
     return PyBool_FromLong(0);
   }
 #endif
+  std::cout << "Should be all good from here" << std::endl;
   return PyBool_FromLong(1);
 }
 
@@ -144,7 +147,11 @@ PyObject * THCPModule_getCompiledVersion(PyObject *self)
 
 PyObject * THCPModule_getCompiledVersion(PyObject *self)
 {
+#if defined(__HIP_PLATFORM_HCC__)
+  return PyLong_FromLong((long) 0);
+#else
   return PyLong_FromLong((long) CUDA_VERSION);
+#endif
 }
 
 PyObject * THCPModule_getRNGState(PyObject *_unused)
