@@ -12,7 +12,7 @@
 #include "torch/csrc/autograd/python_variable.h"
 #include "torch/csrc/autograd/python_function.h"
 #include "torch/csrc/jit/generated/aten_dispatch.h"
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA) 
 #include "torch/csrc/jit/fusion_compiler.h"
 #endif
 namespace torch { namespace autograd {
