@@ -376,7 +376,7 @@ bool THCPByteStorage_init(PyObject *module);
 
 bool THCPStream_init(PyObject *module);
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 PyMethodDef* THCPModule_methods();
 namespace torch { namespace cuda {
 
@@ -435,7 +435,8 @@ static PyObject* initModule() {
   THPUtils_addPyMethodDefs(methods, TorchMethods);
   THPUtils_addPyMethodDefs(methods, DataLoaderMethods);
   THPUtils_addPyMethodDefs(methods, torch::autograd::python_functions());
-#ifdef WITH_CUDA
+
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
   THPUtils_addPyMethodDefs(methods, THCPModule_methods());
 #endif
 #ifdef WITH_CUDNN
