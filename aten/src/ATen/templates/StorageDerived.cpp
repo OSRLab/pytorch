@@ -19,11 +19,19 @@ ${Storage}::${Storage}(Context* context, std::size_t storage_size)
   : storage(${THStorage}_newWithSize(${state,} storage_size)), context(context) {}
 
 #if ${isCUDA}
+#if defined(__HIP_PLATFORM_HCC__)
+static hipError_t call_deleter(void * ctx, void * data) {
+#else
 static cudaError_t call_deleter(void * ctx, void * data) {
+#endif
   auto fnptr = (std::function<void(void*)>*) ctx;
   (*fnptr)(data);
   delete fnptr;
+#if defined(__HIP_PLATFORM_HCC__)
+  return hipSuccess;
+#else
   return cudaSuccess;
+#endif
 }
 static THCDeviceAllocator storage_deleter = {
   nullptr,
