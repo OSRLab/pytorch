@@ -142,32 +142,6 @@ function build() {
   fi
 }
 function build_rocm_THC() {
-  mkdir -p THC/hip
-  mkdir -p THC/hip/generic
-  cp THC/*.h THC/hip/
-  cp THC/*.c THC/hip/
-  cp THC/*.cpp THC/hip/
-  cp THC/*.cu THC/hip/
-  cp THC/*.cuh THC/hip/
-  cp THC/generic/*.h THC/hip/generic/
-  cp THC/generic/*.c THC/hip/generic/
-  cp THC/generic/*.cu THC/hip/generic/
-  cp THC/CMakeLists.txt.hip THC/hip/CMakeLists.txt
-  cp THC/THCGeneral.h.in.hip THC/hip/THCGeneral.h.in
-  cp THC/THCBlas.cu.hip THC/hip/THCBlas.cu
-  cp THC/THCApply.cuh.hip THC/hip/THCApply.cuh
-  cp THC/THCTensorRandom.cu.hip THC/hip/THCTensorRandom.cu
-  cp THC/THCTensorRandom.cuh.hip THC/hip/THCTensorRandom.cuh
-  cp THC/THCTensorRandom.h.hip THC/hip/THCTensorRandom.h
-  cp THC/THCNumerics.cuh.hip THC/hip/THCNumerics.cuh
-  cp THC/generic/THCTensorRandom.cu.hip THC/hip/generic/THCTensorRandom.cu
-  cp THC/THCGeneral.cc.hip THC/hip/THCGeneral.cc
-  cp THC/THCAllocator.cc.hip THC/hip/THCAllocator.cc
-  cp THC/generic/THCStorage.c.hip THC/hip/generic/THCStorage.c
-  /opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/hip/
-  /opt/rocm/hip/bin/hipify-perl THC/hip/THCGeneral.h.in
-  find THC/hip -name "*.prehip" -type f -delete
-
   mkdir -p build/THC
   cd build/THC
   BUILD_C_FLAGS=''
@@ -210,17 +184,6 @@ function build_rocm_THC() {
   fi
 }
 function build_rocm_THCUNN() {
-  mkdir -p THCUNN/hip
-  mkdir -p THCUNN/hip/generic
-  cp THCUNN/*.h THCUNN/hip/
-  cp THCUNN/*.cu THCUNN/hip/
-  cp THCUNN/*.cuh THCUNN/hip/
-  cp THCUNN/generic/*.h THCUNN/hip/generic/
-  cp THCUNN/generic/*.cu THCUNN/hip/generic/
-  cp THCUNN/CMakeLists.txt.hip THCUNN/hip/CMakeLists.txt
-  /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCUNN/hip/
-  find THCUNN/hip -name "*.prehip" -type f -delete
-
   # We create a build directory for the library, which will
   # contain the cmake output
   mkdir -p build/THCUNN
@@ -264,18 +227,6 @@ function build_rocm_THCUNN() {
   fi
 }
 function build_rocm_THCS() {
-  mkdir -p THCS/hip
-  mkdir -p THCS/hip/generic
-  cp THCS/*.h THCS/hip/
-  cp THCS/*.c THCS/hip/
-  cp THCS/*.cu THCS/hip/
-  cp THCS/generic/*.h THCS/hip/generic/
-  cp THCS/generic/*.c THCS/hip/generic/
-  cp THCS/generic/*.cu THCS/hip/generic/
-  cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
-  /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/hip/
-  find THCS/hip -name "*.prehip" -type f -delete
-
   # We create a build directory for the library, which will
   # contain the cmake output
   mkdir -p build/THCS
@@ -345,11 +296,12 @@ function build_rocm_ATen() {
               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
-              -DCUDA_NVCC_FLAGS="$C_FLAGS" \
+              -DCMAKE_INSTALL_LIBDIR="$INSTALL_DIR/lib" \
+              -DCUDA_NVCC_FLAGS="$CUDA_NVCC_FLAGS" \
+              -Dcwrap_files="$CWRAP_FILES" \
               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
-              -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
@@ -361,6 +313,9 @@ function build_rocm_ATen() {
               -DTHNN_SO_VERSION=1 \
               -DTHCUNN_SO_VERSION=1 \
               -DTHD_SO_VERSION=1 \
+              -DNCCL_EXTERNAL=1 \
+              -Dnanopb_BUILD_GENERATOR=0 \
+              -DCMAKE_DEBUG_POSTFIX="" \
               -DWITH_ROCM=1 \
               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
   make install -j$(getconf _NPROCESSORS_ONLN)
@@ -492,12 +447,6 @@ for arg in "$@"; do
         fi
     fi
 done
-# if [[ $WITH_ROCM -eq 1 ]]; then
-#     build_rocm_THC
-#     build_rocm_THCUNN
-#     build_rocm_THCS
-# fi
-
 # If all the builds succeed we copy the libraries, headers,
 # binaries to torch/lib
 rm -rf "$INSTALL_DIR/lib/cmake"
