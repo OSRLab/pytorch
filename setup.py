@@ -806,7 +806,7 @@ if not IS_WINDOWS:
     extensions.append(DL)
 
 
-if WITH_CUDA 
+if WITH_CUDA:
     thnvrtc_link_flags = extra_link_args + [make_relative_rpath('lib')]
     if platform.system() == 'Linux':
         thnvrtc_link_flags = thnvrtc_link_flags + ['-Wl,--no-as-needed']
