@@ -8,7 +8,7 @@
 
 /* Generator */
 typedef struct _Generator {
-  struct hcrngStateMtgp32* gen_states;
+  struct rocrand_device::mtgp32_engine* gen_states;
   struct mtgp32_kernel_params *kernel_params;
   int initf;
   uint64_t initial_seed;
@@ -32,6 +32,6 @@ THC_API uint64_t THCRandom_initialSeed(struct THCState *state);
 THC_API void THCRandom_getRNGState(struct THCState *state, THByteTensor *rng_state);
 THC_API void THCRandom_setRNGState(struct THCState *state, THByteTensor *rng_state);
 
-THC_API struct hcrngStateMtgp32* THCRandom_generatorStates(struct THCState* state);
+THC_API struct rocrand_device::mtgp32_engine* THCRandom_generatorStates(struct THCState* state);
 
 #endif

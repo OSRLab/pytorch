@@ -2,7 +2,7 @@
 
 #include <random>
 #if defined(__HIP_PLATFORM_HCC__)
-#include <hiprng.h>
+#include <hiprand.h>
 #else
 #include <curand.h>
 #endif
@@ -86,7 +86,7 @@ Generator* THCRandom_getGenerator(THCState* state)
 }
 
 #if defined(__HIP_PLATFORM_HCC__)
-hiprngStateMtgp32* THCRandom_generatorStates(struct THCState* state)
+hiprandStateMtgp32* THCRandom_generatorStates(struct THCState* state)
 #else
 struct curandStateMtgp32* THCRandom_generatorStates(struct THCState* state)
 #endif
