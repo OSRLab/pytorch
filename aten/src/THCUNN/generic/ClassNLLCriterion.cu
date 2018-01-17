@@ -57,8 +57,8 @@ void THNN_(ClassNLLCriterion_updateOutput)(
         toDeviceTensor<THCIndex_t, 1>(state, target),
         toDeviceTensor<real, 1>(state, output),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        n_classes,
-        ignore_index);
+        static_cast<int>(n_classes),
+        static_cast<int>(ignore_index));
 
     THCudaCheck(cudaGetLastError());
 
@@ -93,7 +93,7 @@ void THNN_(ClassNLLCriterion_updateOutput)(
         input_data,
         target_data,
         weights_data,
-        sizeAverage,
+        static_cast<int>(sizeAverage),
         n_classes,
         ignore_index
     );
@@ -106,9 +106,9 @@ void THNN_(ClassNLLCriterion_updateOutput)(
         input_data,
         target_data,
         weights_data,
-        sizeAverage,
-        THCTensor_(size)(state, input, 0),
-        THCTensor_(size)(state, input, 1),
+        static_cast<int>(sizeAverage),
+        static_cast<int>(THCTensor_(size)(state, input, 0)),
+        static_cast<int>(THCTensor_(size)(state, input, 1)),
         n_classes,
         ignore_index
     );
@@ -180,8 +180,8 @@ void THNN_(ClassNLLCriterion_updateGradInput)(
         toDeviceTensor<real, 1>(state, gradOutput),
         toDeviceTensor<real, 2>(state, gradInput),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        n_classes,
-        ignore_index);
+        static_cast<int>(n_classes),
+        static_cast<int>(ignore_index));
 
     THCudaCheck(cudaGetLastError());
 
@@ -215,7 +215,7 @@ void THNN_(ClassNLLCriterion_updateGradInput)(
         weights_data,
         target_data,
         total_weight_data,
-        sizeAverage,
+        static_cast<int>(sizeAverage),
         n_classes,
         ignore_index
     );
@@ -227,9 +227,9 @@ void THNN_(ClassNLLCriterion_updateGradInput)(
         target_data,
         weights_data,
         total_weight_data,
-        sizeAverage,
-        THCTensor_(size)(state, input, 0),
-        THCTensor_(size)(state, input, 1),
+        static_cast<int>(sizeAverage),
+        static_cast<int>(THCTensor_(size)(state, input, 0)),
+        static_cast<int>(THCTensor_(size)(state, input, 1)),
         n_classes,
         ignore_index
     );
