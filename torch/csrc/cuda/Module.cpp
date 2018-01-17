@@ -102,10 +102,8 @@ PyObject * THCPModule_isDriverSufficient(PyObject *self)
 {
   int count;
 #if defined(__HIP_PLATFORM_HCC__)
-  std::cout << "Calling hipGetDeviceCount" << std::endl;
   hipError_t err = hipGetDeviceCount(&count);
   if (err == hipErrorInsufficientDriver) {
-    std::cout << "Got error from hipGetDeviceCount" << std::endl;
     return PyBool_FromLong(0);
   }
 #else
@@ -114,7 +112,6 @@ PyObject * THCPModule_isDriverSufficient(PyObject *self)
     return PyBool_FromLong(0);
   }
 #endif
-  std::cout << "Should be all good from here" << std::endl;
   return PyBool_FromLong(1);
 }
 
