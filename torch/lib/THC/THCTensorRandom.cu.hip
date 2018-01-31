@@ -1,4 +1,5 @@
 #include "hip/hip_runtime.h"
+#include "hip/hip_runtime.h"
 #include "THCTensorRandom.h"
 #include "THCDeviceUtils.cuh"
 #include "THCGeneral.h"
@@ -9,6 +10,7 @@
 
 #include <hiprand.h>
 #include <hiprand_kernel.h>
+#include <rocrand_mtgp32_11213.h>
 
 #include <thrust/functional.h>
 
@@ -21,21 +23,17 @@ Generator* THCRandom_getGenerator(THCState* state);
 void initializeGenerator(THCState *state, Generator* gen)
 {
   THCudaCheck(THCudaMalloc(state, (void**)&gen->gen_states, MAX_NUM_BLOCKS * sizeof(hiprandStateMtgp32_t)));
-  THCudaCheck(THCudaMalloc(state, (void**)&gen->kernel_params, sizeof(mtgp32_kernel_params)));
+  THCudaCheck(THCudaMalloc(state, (void**)&gen->kernel_params, sizeof(mtgp32_kernel_params_t)));
 }
 
 /* Creates a new generator state given the seed. */
 void createGeneratorState(Generator* gen, uint64_t seed)
 {
-  if (hiprandMakeMTGP32Constants(mtgp32_params_fast_11213, gen->kernel_params) != HIPRNG_STATUS_SUCCESS)
-  {
-    THError("Creating MTGP constants failed.");
-  }
-  if (hiprandMakeMTGP32KernelState(gen->gen_states, mtgp32_params_fast_11213,
-                                  gen->kernel_params, MAX_NUM_BLOCKS, seed) != HIPRNG_STATUS_SUCCESS)
-  {
-    THError("Creating MTGP kernel state failed.");
-  }
+ if (hiprandMakeMTGP32KernelState(gen->gen_states, mtgp32dc_params_fast_11213,
+                                 nullptr, MAX_NUM_BLOCKS, seed) != HIPRAND_STATUS_SUCCESS)
+ {
+   THError("Creating MTGP kernel state failed.");
+ }
 }
 
 void THCRandom_getRNGState(THCState* state, THByteTensor *rng_state)
@@ -57,12 +55,6 @@ void THCRandom_getRNGState(THCState* state, THByteTensor *rng_state)
 
 }
 
-__global__ void set_rngstate_kernel(hiprandStateMtgp32_t *state, mtgp32_kernel_params *kernel)
-{
-  state[hipThreadIdx_x].k = kernel;
-}
-
-
 void THCRandom_setRNGState(THCState* state, THByteTensor *rng_state)
 {
   Generator* gen = THCRandom_getGenerator(state);
@@ -75,14 +67,14 @@ void THCRandom_setRNGState(THCState* state, THByteTensor *rng_state)
 
   THCudaCheck(hipMemcpy(gen->gen_states, THByteTensor_data(rng_state),
                          states_size, hipMemcpyHostToDevice));
-  hipLaunchKernelGGL(
-    set_rngstate_kernel,
-    dim3(1),
-    dim3(MAX_NUM_BLOCKS),
-    0,
-    THCState_getCurrentStream(state),
-    gen->gen_states,
-    gen->kernel_params);
+  // hipLaunchKernelGGL(
+  //   set_rngstate_kernel,
+  //   dim3(1),
+  //   dim3(MAX_NUM_BLOCKS),
+  //   0,
+  //   THCState_getCurrentStream(state),
+  //   gen->gen_states,
+  //   gen->kernel_params);
   
    memcpy(&gen->initial_seed, THByteTensor_data(rng_state) + states_size, seed_size);
 

@@ -86,7 +86,7 @@ Generator* THCRandom_getGenerator(THCState* state)
 }
 
 #if defined(__HIP_PLATFORM_HCC__)
-hiprandStateMtgp32* THCRandom_generatorStates(struct THCState* state)
+hiprandStateMtgp32_t* THCRandom_generatorStates(struct THCState* state)
 #else
 struct curandStateMtgp32* THCRandom_generatorStates(struct THCState* state)
 #endif
