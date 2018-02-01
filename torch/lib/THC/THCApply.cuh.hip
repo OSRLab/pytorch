@@ -178,7 +178,7 @@ bool THC_pointwiseApply1(THCState* state,
                             typename TensorUtils<TensorTypeA>::DataType,  \
                             TYPE, A>),                                    \
          grid, block, 0, THCState_getCurrentStream(state),                \
-         make_magic_wrapper(aInfo), (TYPE) totalElements, op);
+         aInfo, (TYPE) totalElements, op);
 #else
   #define HANDLE_CASE(TYPE, A)                                            \
     kernelPointwiseApply1<Op,                                             \
@@ -232,7 +232,7 @@ bool THC_pointwiseApply1(THCState* state,
                               typename TensorUtils<TensorTypeA>::DataType,
                               unsigned long, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          make_magic_wrapper(aInfo), (unsigned long) totalElements, op);
+          aInfo, (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply1<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
@@ -247,7 +247,7 @@ bool THC_pointwiseApply1(THCState* state,
                               typename TensorUtils<TensorTypeA>::DataType,
                               unsigned long, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          make_magic_wrapper(aInfo), (unsigned long) totalElements, op);
+          aInfo, (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply1<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
@@ -345,7 +345,7 @@ bool THC_pointwiseApply2(THCState* state,
                             typename TensorUtils<TensorTypeB>::DataType,  \
                             TYPE, A, B>),                                 \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        make_magic_wrapper(aInfo), make_magic_wrapper(bInfo),             \
+        aInfo, bInfo,             \
         (TYPE) totalElements, op);
 #else
   #define HANDLE_CASE(TYPE, A, B)                                         \
@@ -426,7 +426,7 @@ bool THC_pointwiseApply2(THCState* state,
                               typename TensorUtils<TensorTypeB>::DataType,
                               unsigned long, -2, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          make_magic_wrapper(aInfo), make_magic_wrapper(bInfo), 
+          aInfo, bInfo, 
           (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply2<Op,
@@ -444,7 +444,7 @@ bool THC_pointwiseApply2(THCState* state,
                               typename TensorUtils<TensorTypeB>::DataType,
                               unsigned long, -1, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          make_magic_wrapper(aInfo), make_magic_wrapper(bInfo), 
+          aInfo, bInfo, 
           (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply2<Op,
@@ -559,8 +559,8 @@ bool THC_pointwiseApply3(THCState* state,
                             typename TensorUtils<TensorTypeC>::DataType,  \
                             TYPE, A, B, C>),                              \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        make_magic_wrapper(aInfo), make_magic_wrapper(bInfo),             \
-        make_magic_wrapper(cInfo), (TYPE) totalElements, op);
+        aInfo, bInfo,             \
+        cInfo, (TYPE) totalElements, op);
 #else
   #define HANDLE_CASE(TYPE, A, B, C)                                      \
     kernelPointwiseApply3<Op,                                             \
@@ -670,8 +670,8 @@ bool THC_pointwiseApply3(THCState* state,
                               typename TensorUtils<TensorTypeC>::DataType,
                               unsigned long, -2, -2, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          make_magic_wrapper(aInfo), make_magic_wrapper(bInfo), 
-          make_magic_wrapper(cInfo), (unsigned long) totalElements, op);
+          aInfo, bInfo, 
+          cInfo, (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply3<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
@@ -690,8 +690,8 @@ bool THC_pointwiseApply3(THCState* state,
                               typename TensorUtils<TensorTypeC>::DataType,
                               unsigned long, -1, -1, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          make_magic_wrapper(aInfo), make_magic_wrapper(bInfo), 
-          make_magic_wrapper(cInfo), (unsigned long) totalElements, op);
+          aInfo, bInfo, 
+          cInfo, (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply3<Op,
                             typename TensorUtils<TensorTypeA>::DataType,

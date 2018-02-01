@@ -414,30 +414,30 @@ __global__ void
      gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,  \
      hid_size, totalElements);
 #else
-  #define LSTM_FORWARD(ITYPE, DIM) THNN_(LSTMForward)             \
-    <real, ITYPE, DIM>                                            \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>        \
-    (inputI, hiddenI,                                             \
-     bias1I, bias2I, cxI, hyI, cyI,                               \
-     hid_size, totalElements);
+#define LSTM_FORWARD(ITYPE, DIM) THNN_(LSTMForward)             \
+  <real, ITYPE, DIM>                                            \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>        \
+  (inputI, hiddenI,                                             \
+   bias1I, bias2I, cxI, hyI, cyI,                               \
+   hid_size, totalElements);
 
-  #define LSTM_BACKWARD(ITYPE, DIM) THNN_(LSTMBackward)           \
-    <real, ITYPE, DIM>                                            \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>        \
-    (storageI, gradingatesI, cxI, cyI,                            \
-     gradoutI, gradoutcI, gradincxI,                              \
-     hid_size, totalElements);
+#define LSTM_BACKWARD(ITYPE, DIM) THNN_(LSTMBackward)           \
+  <real, ITYPE, DIM>                                            \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>        \
+  (storageI, gradingatesI, cxI, cyI,                            \
+   gradoutI, gradoutcI, gradincxI,                              \
+   hid_size, totalElements);
 
-  #define GRU_FORWARD(ITYPE, DIM) THNN_(GRUForward)<real, ITYPE, DIM> \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>            \
-    (inputI, hiddenI, bias1I, bias2I, hxI, hyI, storageI,             \
-     hid_size, totalElements);
+#define GRU_FORWARD(ITYPE, DIM) THNN_(GRUForward)<real, ITYPE, DIM> \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>            \
+  (inputI, hiddenI, bias1I, bias2I, hxI, hyI, storageI,             \
+   hid_size, totalElements);
 
-  #define GRU_BACKWARD(ITYPE, DIM) THNN_(GRUBackward)                     \
-    <real, ITYPE, DIM>                                                    \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>                \
-    (gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,          \
-     hid_size, totalElements);
+#define GRU_BACKWARD(ITYPE, DIM) THNN_(GRUBackward)                     \
+  <real, ITYPE, DIM>                                                    \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>                \
+  (gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,          \
+   hid_size, totalElements);
 #endif
 
 // ************ END Create actual function calls ************ //
