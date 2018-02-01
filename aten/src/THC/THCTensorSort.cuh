@@ -39,7 +39,7 @@ struct ThrustLTOp {
 // `sliceSize - 1`.
 template <typename IndexType, int Dim>
 __global__ void
-fillSliceWithIndex(reference_to_const(TensorInfo<int64_t, IndexType>) out,
+fillSliceWithIndex(TensorInfo<int64_t, IndexType> out,
                    IndexType totalSlices,
                    IndexType sliceSize,
                    IndexType sliceStride) {
