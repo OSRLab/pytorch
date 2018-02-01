@@ -33,8 +33,8 @@ template <typename ModifyOp,
 __launch_bounds__(32 * 16, 4)
 #endif
 __global__ void
-kernelReduceNoncontigDim_shared(reference_to_const(TensorInfo<T, IndexType>) out,
-                         reference_to_const(TensorInfo<T, IndexType>) in,
+kernelReduceNoncontigDim_shared(TensorInfo<T, IndexType> out,
+                         TensorInfo<T, IndexType> in,
                          IndexType reductionStride,
                          IndexType reductionSize,
                          IndexType totalSlices,
@@ -120,8 +120,8 @@ template <typename ModifyOp,
 __launch_bounds__(32 * 16, 4)
 #endif
 __global__ void
-kernelReduceNoncontigDim(reference_to_const(TensorInfo<T, IndexType>) out,
-                         reference_to_const(TensorInfo<T, IndexType>) in,
+kernelReduceNoncontigDim(TensorInfo<T, IndexType> out,
+                         TensorInfo<T, IndexType> in,
                          IndexType reductionStride,
                          IndexType reductionSize,
                          IndexType totalSlices,

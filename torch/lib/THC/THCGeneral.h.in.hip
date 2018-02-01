@@ -50,10 +50,6 @@
 //   {
 //     return Magic_wrapper<T>{x};
 //   }
-  // #define reference_to_const(...) __VA_ARGS__ const&
-  #define reference_to_const(...) __VA_ARGS__
-#else
-  #define reference_to_const(...) __VA_ARGS__
 #endif
 
 
