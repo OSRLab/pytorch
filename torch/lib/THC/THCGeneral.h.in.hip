@@ -5,7 +5,7 @@
 # define CURAND_PATH 1
 # define THRUST_PATH 1
 # define CUDA_PATH 1
-#endif 
+#endif
 
 
 #include "THGeneral.h"
@@ -41,7 +41,7 @@
 //         {
 //             hipHostMalloc(&p_, sizeof(T)); new (p_) T{x};
 //         }
-// 
+//
 //         operator const T&() const [[hc]] { return p_[0]; }
 //     };
 
@@ -50,11 +50,9 @@
 //   {
 //     return Magic_wrapper<T>{x};
 //   }
-  #define make_magic_wrapper(x) x
   // #define reference_to_const(...) __VA_ARGS__ const&
   #define reference_to_const(...) __VA_ARGS__
 #else
-  #define make_magic_wrapper(x) x
   #define reference_to_const(...) __VA_ARGS__
 #endif
 
