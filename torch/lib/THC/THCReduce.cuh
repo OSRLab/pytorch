@@ -348,7 +348,7 @@ bool THC_reduceDim(THCState* state,
                              AccT,                                        \
                              TYPE, OUT, IN>),                             \
             grid, block, smemSize, THCState_getCurrentStream(state),      \
-            make_magic_wrapper(outInfo), make_magic_wrapper(inInfo),      \
+            outInfo, inInfo,      \
             reductionSize,                                                \
             (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);   \
     } else {                                                              \
@@ -359,7 +359,7 @@ bool THC_reduceDim(THCState* state,
                              AccT,                                        \
                              TYPE, OUT, IN>),                             \
             grid, block, 0, THCState_getCurrentStream(state),             \
-            make_magic_wrapper(outInfo), make_magic_wrapper(inInfo),      \
+            outInfo, inInfo,      \
             reductionStride, reductionSize,                               \
             (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);   \
       }else{                                                              \
@@ -369,7 +369,7 @@ bool THC_reduceDim(THCState* state,
                              AccT,                                        \
                              TYPE, OUT, IN>),                             \
           grid, block, 0, THCState_getCurrentStream(state),               \
-          make_magic_wrapper(outInfo), make_magic_wrapper(inInfo),        \
+          outInfo, inInfo,        \
           reductionStride, reductionSize,                                 \
           (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
       }                                                                   \

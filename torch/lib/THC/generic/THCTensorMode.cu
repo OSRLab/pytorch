@@ -240,8 +240,8 @@ THC_API void THCTensor_(mode)(THCState *state,
     hipLaunchKernelGGL( \
       (computeMode<real, SIZE>), \
         grid, blockSize, memsize, THCState_getCurrentStream(state), \
-        THCTensor_(data)(state, contiguous), make_magic_wrapper(tiValues), \
-        make_magic_wrapper(tiIndices), sliceSize); \
+        THCTensor_(data)(state, contiguous), tiValues, \
+        tiIndices, sliceSize); \
   }
 #else
   #define HANDLE_MODE(SIZE) \

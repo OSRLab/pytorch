@@ -7,8 +7,8 @@
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_gatherKernel<TYPE, REAL, DIMS>),                      \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        make_magic_wrapper(tensorInfo), make_magic_wrapper(srcInfo),      \
-        make_magic_wrapper(indexInfo), dim, (TYPE)totalElements);
+        tensorInfo, $1,      \
+        indexInfo, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \
     THCudaTensor_gatherKernel<TYPE, REAL, DIMS>                                \
@@ -110,8 +110,8 @@ void THCTensor_(gather)(THCState* state, THCTensor *tensor,
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_scatterKernel<TYPE, REAL, DIMS>),                     \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        make_magic_wrapper(tensorInfo), make_magic_wrapper(srcInfo),      \
-        make_magic_wrapper(indexInfo), dim, (TYPE)totalElements);
+        tensorInfo, $1,      \
+        indexInfo, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \
     THCudaTensor_scatterKernel<TYPE, REAL, DIMS>                               \
@@ -207,8 +207,8 @@ void THCTensor_(scatter)(THCState* state, THCTensor *tensor, int dim, THCudaLong
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_scatterAddKernel<TYPE, REAL, DIMS>),                  \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        make_magic_wrapper(tensorInfo), make_magic_wrapper(srcInfo),      \
-        make_magic_wrapper(indexInfo), dim, (TYPE)totalElements);
+        tensorInfo, $1,      \
+        indexInfo, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \
     THCudaTensor_scatterAddKernel<TYPE, REAL, DIMS>                               \
@@ -303,7 +303,7 @@ void THCTensor_(scatterAdd)(THCState* state, THCTensor *tensor, int dim, THCudaL
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_scatterFillKernel<TYPE, REAL, DIMS>),                 \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        make_magic_wrapper(tensorInfo), make_magic_wrapper(indexInfo),    \
+        tensorInfo, indexInfo,    \
         value, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \
