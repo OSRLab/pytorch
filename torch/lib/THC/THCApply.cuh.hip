@@ -24,7 +24,7 @@ template <typename Op,
 __launch_bounds__(32 * 16, 4)
 #endif
 __global__ void
-kernelPointwiseApply1(reference_to_const(TensorInfo<Ta, IndexType>) a,
+kernelPointwiseApply1(TensorInfo<Ta, IndexType> a,
                       IndexType totalElements,
                       Op op) {
   for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -46,8 +46,8 @@ template <typename Op,
 __launch_bounds__(32 * 16, 4)
 #endif
 __global__ void
-kernelPointwiseApply2(reference_to_const(TensorInfo<Ta, IndexType>) a,
-                      reference_to_const(TensorInfo<Tb, IndexType>) b,
+kernelPointwiseApply2(TensorInfo<Ta, IndexType> a,
+                      TensorInfo<Tb, IndexType> b,
                       IndexType totalElements,
                       Op op) {
   for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -73,9 +73,9 @@ template <typename Op,
 __launch_bounds__(32 * 16, 4)
 #endif
 __global__ void
-kernelPointwiseApply3(reference_to_const(TensorInfo<Ta, IndexType>) a,
-                      reference_to_const(TensorInfo<Tb, IndexType>) b,
-                      reference_to_const(TensorInfo<Tc, IndexType>) c,
+kernelPointwiseApply3(TensorInfo<Ta, IndexType> a,
+                      TensorInfo<Tb, IndexType> b,
+                      TensorInfo<Tc, IndexType> c,
                       IndexType totalElements,
                       Op op) {
   for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -426,7 +426,7 @@ bool THC_pointwiseApply2(THCState* state,
                               typename TensorUtils<TensorTypeB>::DataType,
                               unsigned long, -2, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo, 
+          aInfo, bInfo,
           (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply2<Op,
@@ -444,7 +444,7 @@ bool THC_pointwiseApply2(THCState* state,
                               typename TensorUtils<TensorTypeB>::DataType,
                               unsigned long, -1, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo, 
+          aInfo, bInfo,
           (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply2<Op,
@@ -670,7 +670,7 @@ bool THC_pointwiseApply3(THCState* state,
                               typename TensorUtils<TensorTypeC>::DataType,
                               unsigned long, -2, -2, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo, 
+          aInfo, bInfo,
           cInfo, (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply3<Op,
@@ -690,7 +690,7 @@ bool THC_pointwiseApply3(THCState* state,
                               typename TensorUtils<TensorTypeC>::DataType,
                               unsigned long, -1, -1, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo, 
+          aInfo, bInfo,
           cInfo, (unsigned long) totalElements, op);
 #else
       kernelPointwiseApply3<Op,
