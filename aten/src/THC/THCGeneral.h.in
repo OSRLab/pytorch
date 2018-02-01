@@ -41,9 +41,6 @@
   {
     return Magic_wrapper<T>{x};
   }
-  #define reference_to_const(...) __VA_ARGS__ const&
-#else
-  #define reference_to_const(...) __VA_ARGS__
 #endif
 
 #ifdef __cplusplus
