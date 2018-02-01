@@ -671,7 +671,6 @@ void THCTensor_(indexSelect)(THCState *state, THCTensor *dst, THCTensor *src, in
   int mpc = THCState_getCurrentDeviceProperties(state)->multiProcessorCount;
 
 #if defined(__HIP_PLATFORM_HCC__)
-<<<<<<< HEAD:aten/src/THC/generic/THCTensorIndex.cu
   #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)\
     hipLaunchKernelGGL(                                            \
     (indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM,             \
@@ -690,7 +689,7 @@ void THCTensor_(indexSelect)(THCState *state, THCTensor *dst, THCTensor *src, in
         dstSelectDim, srcSelectDim, dstTotalSize,                  \
         (IDX_IS_MAJOR) ? sliceSize : numIndices,                   \
         srcSelectDimSize);
-  #else
+#else
   #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)     \
     indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM> \
       <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(                 \
@@ -706,35 +705,6 @@ void THCTensor_(indexSelect)(THCState *state, THCTensor *dst, THCTensor *src, in
         dstSelectDim, srcSelectDim, dstTotalSize,                        \
         (IDX_IS_MAJOR) ? sliceSize : numIndices,                         \
         srcSelectDimSize);
-=======
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                             \
-    (indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        smallIndexGrid, smallIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo,   \
-        indicesInfo,                            \
-        dstSelectDim, srcSelectDim, sliceSize, srcSelectDimSize);
-
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    hipLaunchKernelGGL(                                                     \
-      (indexSelectLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>), \
-        largeIndexGrid, largeIndexBlock, 0, stream,                 \
-        dstInfo, srcInfo,   \
-        indicesInfo,                            \
-        dstSelectDim, srcSelectDim, dstTotalSize, sliceSize, srcSelectDimSize);
-#else
-  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM) \
-    indexSelectSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>     \
-      <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(           \
-        dstInfo, srcInfo, indicesInfo,                            \
-        dstSelectDim, srcSelectDim, sliceSize, srcSelectDimSize);
-
-  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM)         \
-    indexSelectLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, SRC_DIM, IDX_DIM>     \
-      <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(                   \
-        dstInfo, srcInfo, indicesInfo,                                    \
-        dstSelectDim, srcSelectDim, dstTotalSize, sliceSize, srcSelectDimSize);
->>>>>>> make_magic_wrapper was a hack that allowed us to send structs with arbitrary sized arrays BY VALUE to kernels. This was done by storing these in pinned memory. However, this has been resolved and now make_magic_wrapper is not necessary.:torch/lib/THC/generic/THCTensorIndex.cu
 #endif
 
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
