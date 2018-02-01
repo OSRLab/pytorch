@@ -43,7 +43,6 @@
   }
   #define reference_to_const(...) __VA_ARGS__ const&
 #else
-  #define make_magic_wrapper(x) x
   #define reference_to_const(...) __VA_ARGS__
 #endif
 
