@@ -1,10 +1,9 @@
 #ifdef WITH_CUDA
-#if defined(__HIP_PLATFORM_HCC__)
-#include <hip/hip_runtime.h>
-#else
 #include <cuda.h>
 #include <cuda_runtime.h>
-#endif
+#elif defined(__HIP_PLATFORM_HCC__)
+#include <hip/hip_runtime.h>
+#else
 #endif
 
 #if defined(__HIP_PLATFORM_HCC__)
