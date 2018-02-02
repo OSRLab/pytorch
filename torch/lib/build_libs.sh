@@ -282,14 +282,14 @@ function build_rocm_THCS() {
 function build_rocm_ATen() {
   # We create a build directory for the library, which will
   # contain the cmake output
-  mkdir -p build/ATen
-  cd build/ATen
+  mkdir -p build/aten
+  cd  build/aten
   BUILD_C_FLAGS=''
   case ATen in
       THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
       *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
   esac
-  cmake ../../ATen -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
+  cmake ../../../../aten -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
               -DTorch_FOUND="1" \
               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
@@ -384,19 +384,6 @@ function build_aten() {
 mkdir -p tmp_install
 
 # Build
-for arg in "$@"; do
-    if [[ "$arg" == "nccl" ]]; then
-        build_nccl
-    elif [[ "$arg" == "gloo" ]]; then
-        build gloo $GLOO_FLAGS
-    elif [[ "$arg" == "ATen" ]]; then
-        build_aten
-    elif [[ "$arg" == "THD" ]]; then
-        build THD $THD_FLAGS
-    else
-        build $arg
-    fi
-done
 if [[ $WITH_ROCM -eq 1 ]]; then
     mkdir -p HIP
     cd HIP
@@ -442,6 +429,10 @@ for arg in "$@"; do
             build_nccl
         elif [[ "$arg" == "gloo" ]]; then
             build gloo $GLOO_FLAGS
+        elif [[ "$arg" == "ATen" ]]; then
+            build_aten
+        elif [[ "$arg" == "THD" ]]; then
+            build THD $THD_FLAGS
         else
             build $arg
         fi
