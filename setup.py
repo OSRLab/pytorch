@@ -35,7 +35,7 @@ IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
 WITH_ROCM=True
-
+WITH_CUDA=False
 
 WITH_SCALARS = check_env_flag('WITH_SCALARS')
 
@@ -133,7 +133,8 @@ def build_libs(libs):
     if WITH_CUDA:
         my_env["CUDA_BIN_PATH"] = CUDA_HOME
         build_libs_cmd += ['--with-cuda']
-
+    if WITH_ROCM:
+        build_libs_cmd += ['--with-rocm']
     if WITH_NNPACK:
         build_libs_cmd += ['--with-nnpack']
     if WITH_CUDNN:
@@ -144,8 +145,6 @@ def build_libs(libs):
     if WITH_GLOO_IBVERBS:
         build_libs_cmd += ['--with-gloo-ibverbs']
 
-    if WITH_ROCM:
-        build_libs_cmd += ['--with-rocm']
 
     if subprocess.call(build_libs_cmd + libs, env=my_env) != 0:
         sys.exit(1)
