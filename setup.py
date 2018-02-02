@@ -34,7 +34,7 @@ IS_WINDOWS = (platform.system() == 'Windows')
 IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
-#DOKU WITH_ROCM=True
+WITH_ROCM=True
 
 
 WITH_SCALARS = check_env_flag('WITH_SCALARS')
@@ -143,7 +143,7 @@ def build_libs(libs):
 
     if WITH_GLOO_IBVERBS:
         build_libs_cmd += ['--with-gloo-ibverbs']
-=======
+
     if WITH_ROCM:
         build_libs_cmd += ['--with-rocm']
 
@@ -590,7 +590,7 @@ if WITH_CUDA:
         nvtoolext_lib_name = 'nvToolsExt'
 
     library_dirs.append(cuda_lib_path)
-=======
+
 if WITH_ROCM:
     # rocm_include_path = os.path.join(ROCM_HOME, '/include')
     # hcc_include_path = os.path.join(ROCM_HOME, '/hcc/include')
