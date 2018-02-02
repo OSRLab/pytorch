@@ -177,11 +177,11 @@ class build_deps(Command):
 
         libs = []
 
-        libs = ['TH', 'THS', 'THNN']
-        if WITH_CUDA:
-            libs += ['THC', 'THCS', 'THCUNN']
-        if WITH_ROCM:
-            libs += ['THC', 'THCS', 'THCUNN']
+        # libs = ['TH', 'THS', 'THNN']
+        # if WITH_CUDA:
+        #    libs += ['THC', 'THCS', 'THCUNN']
+        # if WITH_ROCM:
+        #    libs += ['THC', 'THCS', 'THCUNN']
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
@@ -333,7 +333,7 @@ class build_ext(build_ext_parent):
             _C_LIB = os.path.join(build_temp, build_dir, lib_filename).replace('\\', '/')
 
             THNN.extra_link_args += [_C_LIB]
-            if WITH_CUDA:
+            if WITH_CUDA or WITH_ROCM:
                 THCUNN.extra_link_args += [_C_LIB]
             else:
                 # To generate .obj files for AutoGPU for the export class
@@ -590,8 +590,26 @@ if WITH_CUDA:
         nvtoolext_lib_name = 'nvToolsExt'
 
     library_dirs.append(cuda_lib_path)
+    cuda_include_path = os.path.join(CUDA_HOME, 'include')
+    include_dirs.append(cuda_include_path)
+    include_dirs.append(tmp_install_path + "/include/THCUNN")
+    extra_compile_args += ['-DWITH_CUDA']
+    extra_compile_args += ['-DCUDA_LIB_PATH=' + cuda_lib_path]
+    main_libraries += ['cudart', nvtoolext_lib_name]
+    main_sources += [
+        "torch/csrc/cuda/Module.cpp",
+        "torch/csrc/cuda/Storage.cpp",
+        "torch/csrc/cuda/Stream.cpp",
+        "torch/csrc/cuda/AutoGPU.cpp",
+        "torch/csrc/cuda/utils.cpp",
+        "torch/csrc/cuda/comm.cpp",
+        "torch/csrc/cuda/python_comm.cpp",
+        "torch/csrc/cuda/expand_utils.cpp",
+        "torch/csrc/cuda/serialization.cpp",
+    ]
+    main_sources += split_types("torch/csrc/cuda/Tensor.cpp", ninja_global)
 
-if WITH_ROCM:
+elif WITH_ROCM:
     # rocm_include_path = os.path.join(ROCM_HOME, '/include')
     # hcc_include_path = os.path.join(ROCM_HOME, '/hcc/include')
     # hipblas_include_path = os.path.join(ROCM_HOME, '/hipblas/include')
@@ -622,25 +640,7 @@ if WITH_ROCM:
     os.environ["LDSHARED"] = 'gcc'
 
     # main_libraries += []
-    main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
-    main_sources += [
-        "torch/csrc/cuda/Module.cpp",
-        "torch/csrc/cuda/Storage.cpp",
-        "torch/csrc/cuda/Stream.cpp",
-        "torch/csrc/cuda/AutoGPU.cpp",
-        "torch/csrc/cuda/utils.cpp",
-        "torch/csrc/cuda/expand_utils.cpp",
-        "torch/csrc/cuda/serialization.cpp",
-    #    "torch/csrc/jit/fusion_compiler.cpp",
-    ]
-    main_sources += split_types("torch/csrc/cuda/Tensor.cpp")
-
-    cuda_include_path = os.path.join(CUDA_HOME, 'include')
-    include_dirs.append(cuda_include_path)
-    include_dirs.append(tmp_install_path + "/include/THCUNN")
-    extra_compile_args += ['-DWITH_CUDA']
-    extra_compile_args += ['-DCUDA_LIB_PATH=' + cuda_lib_path]
-    main_libraries += ['cudart', nvtoolext_lib_name]
+    # main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
@@ -651,8 +651,11 @@ if WITH_ROCM:
         "torch/csrc/cuda/python_comm.cpp",
         "torch/csrc/cuda/expand_utils.cpp",
         "torch/csrc/cuda/serialization.cpp",
+    #    "torch/csrc/jit/fusion_compiler.cpp",
     ]
+
     main_sources += split_types("torch/csrc/cuda/Tensor.cpp", ninja_global)
+
 
 if WITH_NCCL:
     if WITH_SYSTEM_NCCL:
