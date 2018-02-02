@@ -491,17 +491,19 @@ if WITH_ROCM:
     hcc_include_path = '/opt/rocm/hcc/include'
     hipblas_include_path = '/opt/rocm/hipblas/include'
     hipsparse_include_path = '/opt/rocm/hcsparse/include'
-    print(rocm_include_path)
-    print(hcc_include_path)
-    print(hipblas_include_path)
-    print(hipsparse_include_path)
+    hiprand_include_path = '/opt/rocm/hiprand/include'
+    rocrand_include_path = '/opt/rocm/rocrand/include'
     # hip_lib_path = os.path.join(ROCM_HOME, '/hip/lib')
     hip_lib_path = '/opt/rocm/hip/lib'
     hcc_lib_path = '/opt/rocm/hcc/lib'
+    hiprand_lib_path = '/opt/rocm/hiprand/lib'
+    rocrand_lib_path = '/opt/rocm/hiprand/lib'
     include_dirs.append(rocm_include_path)
     include_dirs.append(hcc_include_path)
     include_dirs.append(hipblas_include_path)
     include_dirs.append(hipsparse_include_path)
+    include_dirs.append(hiprand_include_path)
+    include_dirs.append(rocrand_include_path)
     include_dirs.append(tmp_install_path + "/include/THCUNN")
     extra_link_args.append('-L' + hip_lib_path)
     extra_link_args.append('-Wl,-rpath,' + hip_lib_path)
