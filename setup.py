@@ -133,7 +133,7 @@ def build_libs(libs):
     if WITH_CUDA:
         my_env["CUDA_BIN_PATH"] = CUDA_HOME
         build_libs_cmd += ['--with-cuda']
-    elif WITH_ROCM:
+    if WITH_ROCM:
         build_libs_cmd += ['--with-rocm']
     if WITH_NNPACK:
         build_libs_cmd += ['--with-nnpack']
