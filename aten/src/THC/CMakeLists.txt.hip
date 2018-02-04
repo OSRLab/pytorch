@@ -128,39 +128,38 @@ SET(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 SET(src
     THCCachingAllocator.cpp
     THCCachingHostAllocator.cpp
-    THCGeneral.cc
-    THCStorageCopy.c
+    THCGeneral.cpp
+    THCStorageCopy.cpp
     THCStream.cpp
-    THCTensor.c
-    THCTensorCopy.c
+    THCTensor.cpp
+    THCTensorCopy.cpp
     THCTensorRandom.cpp
-    THCThreadLocal.c
+    THCThreadLocal.cpp
     )
 
 SET(src-cuda
-  THCReduceApplyUtils.cu
-  THCBlas.cu
-  THCSleep.cu
-  THCStorage.cu
-  THCStorageCopy.cu
-  THCTensor.cu
-  THCTensorCopy.cu
-  THCTensorMath.cu
-  THCTensorMath2.cu
-  THCTensorMathBlas.cu
-  THCTensorMathMagma.cu
-  THCTensorMathPairwise.cu
-  THCTensorMathReduce.cu
-  THCTensorMathScan.cu
-  THCTensorIndex.cu
-  THCTensorConv.cu
-  THCTensorRandom.cu
-  THCTensorScatterGather.cu
-  THCTensorTopK.cu
-  THCTensorSort.cu
-  THCTensorTypeUtils.cu
-  THCSortUtils.cu
-  THCTensorMode.cu
+    THCReduceApplyUtils.cu
+    THCBlas.cu
+    THCSleep.cu
+    THCStorage.cu
+    THCStorageCopy.cu
+    THCTensor.cu
+    THCTensorCopy.cu
+    THCTensorMath.cu
+    THCTensorMathBlas.cu
+    THCTensorMathMagma.cu
+    THCTensorMathPairwise.cu
+    THCTensorMathReduce.cu
+    THCTensorMathScan.cu
+    THCTensorIndex.cu
+    THCTensorConv.cu
+    THCTensorRandom.cu
+    THCTensorScatterGather.cu
+    THCTensorTopK.cu
+    THCTensorSort.cu
+    THCTensorTypeUtils.cu
+    THCSortUtils.cu
+    THCTensorMode.cu
   )
 
 # loop over all types
@@ -181,7 +180,7 @@ SET(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DGENERIC_GRID_LAUNCH=1 -Wall")
 
 FIND_LIBRARY(HIPBLAS_LIBRARY hipblas HINTS ${HIPBLAS_PATH}/lib)
 FIND_LIBRARY(HIPRNG_LIBRARY hiprng HINTS ${HIPRNG_PATH}/lib)
-HIP_ADD_LIBRARY(THC SHARED ${src} ${src-cuda}) 
+HIP_ADD_LIBRARY(THC SHARED ${src} ${src-cuda})
 TARGET_LINK_LIBRARIES(THC ${TH_LIBRARIES} ${HIPBLAS_LIBRARY} ${HIPRNG_LIBRARY})
 
 IF(NOT THC_SO_VERSION)
@@ -197,104 +196,104 @@ INSTALL(TARGETS THC
   LIBRARY DESTINATION "${THC_INSTALL_LIB_SUBDIR}"
   ARCHIVE DESTINATION "${THC_INSTALL_LIB_SUBDIR}")
 
-INSTALL(FILES
-          THC.h
-          ${CMAKE_CURRENT_BINARY_DIR}/THCGeneral.h
-          THCBlas.h
-          THCSleep.h
-          THCStorage.h
-          THCStorageCopy.h
-          THCStream.h
-          THCThreadLocal.h
-          THCTensor.h
-          THCTensorCopy.h
-          THCTensorRandom.h
-          THCTensorMath.h
-          THCTensorConv.h
-          THCApply.cuh
-          THCReduce.cuh
-          THCReduceAll.cuh
-          THCReduceApplyUtils.cuh
-          THCTensorMathReduce.cuh
-          THCAsmUtils.cuh
-          THCAtomics.cuh
-          THCScanUtils.cuh
-          THCSortUtils.cuh
-          THCAllocator.h
-          THCCachingAllocator.h
-          THCCachingHostAllocator.h
-          THCDeviceUtils.cuh
-          THCDeviceTensor.cuh
-          THCDeviceTensor-inl.cuh
-          THCDeviceTensorUtils.cuh
-          THCDeviceTensorUtils-inl.cuh
-          THCGenerateAllTypes.h
-          THCGenerateByteType.h
-          THCGenerateCharType.h
-          THCGenerateShortType.h
-          THCGenerateIntType.h
-          THCGenerateLongType.h
-          THCGenerateHalfType.h
-          THCGenerateFloatType.h
-          THCGenerateFloatTypes.h
-          THCGenerateDoubleType.h
-          THCHalf.h
-          THCNumerics.cuh
-          THCTensorSort.cuh
-          THCTensorInfo.cuh
-          THCTensorMathPointwise.cuh
-          THCTensorTypeUtils.cuh
-          THCTensorRandom.cuh
-          THCTensorMathMagma.cuh
-          THCThrustAllocator.cuh
-          THCTensorMode.cuh
-          THCTensorTopK.cuh
-          DESTINATION "${THC_INSTALL_INCLUDE_SUBDIR}/THC")
+  INSTALL(FILES
+            THC.h
+            ${CMAKE_CURRENT_BINARY_DIR}/THCGeneral.h
+            THCBlas.h
+            THCSleep.h
+            THCStorage.h
+            THCStorageCopy.h
+            THCStream.h
+            THCThreadLocal.h
+            THCTensor.h
+            THCTensorCopy.h
+            THCTensorRandom.h
+            THCTensorMath.h
+            THCTensorConv.h
+            THCApply.cuh
+            THCReduce.cuh
+            THCReduceAll.cuh
+            THCReduceApplyUtils.cuh
+            THCTensorMathReduce.cuh
+            THCAsmUtils.cuh
+            THCAtomics.cuh
+            THCScanUtils.cuh
+            THCSortUtils.cuh
+            THCAllocator.h
+            THCCachingAllocator.h
+            THCCachingHostAllocator.h
+            THCDeviceUtils.cuh
+            THCDeviceTensor.cuh
+            THCDeviceTensor-inl.cuh
+            THCDeviceTensorUtils.cuh
+            THCDeviceTensorUtils-inl.cuh
+            THCGenerateAllTypes.h
+            THCGenerateByteType.h
+            THCGenerateCharType.h
+            THCGenerateShortType.h
+            THCGenerateIntType.h
+            THCGenerateLongType.h
+            THCGenerateHalfType.h
+            THCGenerateFloatType.h
+            THCGenerateFloatTypes.h
+            THCGenerateDoubleType.h
+            THCHalf.h
+            THCNumerics.cuh
+            THCTensorSort.cuh
+            THCTensorInfo.cuh
+            THCTensorMathPointwise.cuh
+            THCTensorTypeUtils.cuh
+            THCTensorRandom.cuh
+            THCTensorMathMagma.cuh
+            THCThrustAllocator.cuh
+            THCTensorMode.cuh
+            THCTensorTopK.cuh
+            DESTINATION "${ATEN_INSTALL_INCLUDE_SUBDIR}/THC")
 
-INSTALL(FILES
-          generic/THCStorage.c
-          generic/THCStorage.cu
-          generic/THCStorage.h
-          generic/THCTensor.c
-          generic/THCTensor.cu
-          generic/THCTensor.h
-          generic/THCStorageCopy.c
-          generic/THCStorageCopy.cu
-          generic/THCStorageCopy.h
-          generic/THCTensorCopy.c
-          generic/THCTensorCopy.cu
-          generic/THCTensorCopy.h
-          generic/THCTensorMasked.h
-          generic/THCTensorMasked.cu
-          generic/THCTensorMath.h
-          generic/THCTensorMath.cu
-          generic/THCTensorMathBlas.cu
-          generic/THCTensorMathBlas.h
-          generic/THCTensorMathCompare.h
-          generic/THCTensorMathCompare.cu
-          generic/THCTensorMathCompareT.h
-          generic/THCTensorMathCompareT.cu
-          generic/THCTensorMathMagma.h
-          generic/THCTensorMathMagma.cu
-          generic/THCTensorMathPairwise.h
-          generic/THCTensorMathPairwise.cu
-          generic/THCTensorMathPointwise.h
-          generic/THCTensorMathPointwise.cu
-          generic/THCTensorMathReduce.h
-          generic/THCTensorMathReduce.cu
-          generic/THCTensorMathScan.h
-          generic/THCTensorMathScan.cu
-          generic/THCTensorScatterGather.h
-          generic/THCTensorScatterGather.cu
-          generic/THCTensorIndex.h
-          generic/THCTensorIndex.cu
-          generic/THCTensorSort.h
-          generic/THCTensorSort.cu
-          generic/THCDeviceTensorUtils.cu
-          generic/THCTensorRandom.h
-          generic/THCTensorRandom.cu
-          generic/THCTensorMode.h
-          generic/THCTensorMode.cu
-          generic/THCTensorTopK.h
-          generic/THCTensorTopK.cu
-          DESTINATION "${THC_INSTALL_INCLUDE_SUBDIR}/THC/generic")
+  INSTALL(FILES
+            generic/THCStorage.c
+            generic/THCStorage.cu
+            generic/THCStorage.h
+            generic/THCTensor.c
+            generic/THCTensor.cu
+            generic/THCTensor.h
+            generic/THCStorageCopy.c
+            generic/THCStorageCopy.cu
+            generic/THCStorageCopy.h
+            generic/THCTensorCopy.c
+            generic/THCTensorCopy.cu
+            generic/THCTensorCopy.h
+            generic/THCTensorMasked.h
+            generic/THCTensorMasked.cu
+            generic/THCTensorMath.h
+            generic/THCTensorMath.cu
+            generic/THCTensorMathBlas.cu
+            generic/THCTensorMathBlas.h
+            generic/THCTensorMathCompare.h
+            generic/THCTensorMathCompare.cu
+            generic/THCTensorMathCompareT.h
+            generic/THCTensorMathCompareT.cu
+            generic/THCTensorMathMagma.h
+            generic/THCTensorMathMagma.cu
+            generic/THCTensorMathPairwise.h
+            generic/THCTensorMathPairwise.cu
+            generic/THCTensorMathPointwise.h
+            generic/THCTensorMathPointwise.cu
+            generic/THCTensorMathReduce.h
+            generic/THCTensorMathReduce.cu
+            generic/THCTensorMathScan.h
+            generic/THCTensorMathScan.cu
+            generic/THCTensorScatterGather.h
+            generic/THCTensorScatterGather.cu
+            generic/THCTensorIndex.h
+            generic/THCTensorIndex.cu
+            generic/THCTensorSort.h
+            generic/THCTensorSort.cu
+            generic/THCDeviceTensorUtils.cu
+            generic/THCTensorRandom.h
+            generic/THCTensorRandom.cu
+            generic/THCTensorMode.h
+            generic/THCTensorMode.cu
+            generic/THCTensorTopK.h
+            generic/THCTensorTopK.cu
+            DESTINATION "${ATEN_INSTALL_INCLUDE_SUBDIR}/THC/generic")
