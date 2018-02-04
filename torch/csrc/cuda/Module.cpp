@@ -233,16 +233,11 @@ PyObject * THCPModule_getDriverVersion(PyObject *self)
 
 PyObject * THCPModule_getCompiledVersion(PyObject *self)
 {
-  return PyLong_FromLong((long) CUDA_VERSION);
-}
-
-PyObject * THCPModule_getCompiledVersion(PyObject *self)
-{
-#if defined(__HIP_PLATFORM_HCC__)
-  return PyLong_FromLong((long) 0);
-#else
-  return PyLong_FromLong((long) CUDA_VERSION);
-#endif
+  #if defined(__HIP_PLATFORM_HCC__)
+    return PyLong_FromLong((long) 0);
+  #else
+    return PyLong_FromLong((long) CUDA_VERSION);
+  #endif
 }
 
 PyObject * THCPModule_getRNGState(PyObject *_unused)
