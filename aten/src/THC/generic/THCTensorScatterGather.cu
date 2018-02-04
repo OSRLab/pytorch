@@ -7,7 +7,7 @@
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_gatherKernel<TYPE, REAL, DIMS>),                      \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        tensorInfo, $1,      \
+        tensorInfo, srcInfo,      \
         indexInfo, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \
@@ -110,7 +110,7 @@ void THCTensor_(gather)(THCState* state, THCTensor *tensor,
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_scatterKernel<TYPE, REAL, DIMS>),                     \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        tensorInfo, $1,      \
+        tensorInfo, srcInfo,      \
         indexInfo, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \
@@ -207,7 +207,7 @@ void THCTensor_(scatter)(THCState* state, THCTensor *tensor, int dim, THCudaLong
     hipLaunchKernelGGL(                                                   \
       (THCudaTensor_scatterAddKernel<TYPE, REAL, DIMS>),                  \
         grid, block, 0, THCState_getCurrentStream(state),                 \
-        tensorInfo, $1,      \
+        tensorInfo, srcInfo,      \
         indexInfo, dim, (TYPE)totalElements);
 #else
   #define RUN(TYPE, DIMS, REAL)                                           \

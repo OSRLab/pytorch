@@ -640,14 +640,14 @@ elif WITH_ROCM:
 
     # main_libraries += []
     lib_path = os.path.join(cwd, "aten", "src")
-    TH_LIB = os.path.join(lib_path, 'libTH.so.1')
-    THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
+    #TH_LIB = os.path.join(lib_path, 'libTH.so.1')
+    #THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
+    #THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
     THC_LIB = os.path.join(lib_path, 'libTHC.so.1')
     THCS_LIB = os.path.join(lib_path, 'libTHCS.so.1')
-    THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
     THCUNN_LIB = os.path.join(lib_path, 'libTHCUNN.so.1')
 
-    main_link_args += [TH_LIB, THS_LIB, THNN_LIB, THC_LIB, THCS_LIB, THCUNN_LIB]
+    main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
