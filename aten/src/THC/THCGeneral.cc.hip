@@ -937,21 +937,33 @@ void THCHeapUpdate(THCState *state, ptrdiff_t size) {
 
 half THC_float2half(float f)
 {
-  half h;
+half h;
 #ifdef CUDA_PATH
-  TH_float2halfbits(&f, &h.x);
+  #if CUDA_VERSION < 9000
+    TH_float2halfbits(&f, &h.x);
+    return h;
+  #else
+    __half_raw h_raw;
+    TH_float2halfbits(&f, &h_raw.x);
+    return half(h_raw);
+  #endif
 #else
  //  TH_float2halfbits(&f, h);
 #endif
-  return h;
+return h;
 }
 
 float  THC_half2float(half h)
 {
-  float f;
+float f;
 #ifdef CUDA_PATH
-  TH_halfbits2float(&h.x, &f);
-#else
+  #if CUDA_VERSION < 9000
+    TH_halfbits2float(&h.x, &f);
+  #else
+    __half_raw h_raw(h);
+    TH_halfbits2float(&h_raw.x, &f);
+  #endif
+else
 #endif
-  return f;
+return f;
 }

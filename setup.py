@@ -101,7 +101,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen', #'TH', 'THS', 'THNN', 'THC', 'THCS', 'THCUNN'
+    'nccl', 'ATen', #'TH', 'THS', 'THNN', 'THC', 'THCS', 'THCUNN',
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
