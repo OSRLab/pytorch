@@ -767,7 +767,7 @@ struct THCNumerics<half> {
   __device__
   static
   inline
-  static inline __host__ __device__ half atan2(half a, half b) {
+  half atan2(half a, half b) {
     float fa = __half2float(a);
     float fb = __half2float(b);
     return __float2half(atan2f(fa, fb));
@@ -776,7 +776,7 @@ struct THCNumerics<half> {
   __host__
   static
   inline
-  static inline __host__ __device__ half atan2(half a, half b) {
+  half atan2(half a, half b) {
      return THC_float2half(atan2f(THC_half2float(a), THC_half2float(b)));
   }
 };
