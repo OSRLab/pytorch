@@ -311,7 +311,7 @@ struct THCNumerics<half> {
   __device__
   static
   inline
-  static inline __host__ __device__ half expm1(half a) {
+  half expm1(half a) {
     float fa = __half2float(a);
     return __float2half(expm1f(fa));
   }
@@ -319,7 +319,7 @@ struct THCNumerics<half> {
   __host__
   static
   inline
-  static inline __host__ __device__ half expm1(half a) {
+  half expm1(half a) {
     return THC_float2half(expm1f(THC_half2float(a)));
   }
 
