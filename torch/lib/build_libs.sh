@@ -142,6 +142,7 @@ function build() {
   fi
 }
 function build_rocm_THC() {
+  cd ../../aten/src/
   mkdir -p build/THC
   cd build/THC
   BUILD_C_FLAGS=''
@@ -177,6 +178,7 @@ function build_rocm_THC() {
                -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
+  cd ../../torch/lib
 
   local lib_prefix=$INSTALL_DIR/lib/libTHC
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then
@@ -186,6 +188,7 @@ function build_rocm_THC() {
 function build_rocm_THCUNN() {
   # We create a build directory for the library, which will
   # contain the cmake output
+  cd ../../aten/src/
   mkdir -p build/THCUNN
   cd build/THCUNN
   BUILD_C_FLAGS=''
@@ -220,6 +223,7 @@ function build_rocm_THCUNN() {
                -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
+  cd ../../torch/lib
 
   local lib_prefix=$INSTALL_DIR/lib/libTHC
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then
@@ -229,6 +233,7 @@ function build_rocm_THCUNN() {
 function build_rocm_THCS() {
   # We create a build directory for the library, which will
   # contain the cmake output
+  cd ../../aten/src/
   mkdir -p build/THCS
   cd build/THCS
   BUILD_C_FLAGS=''
@@ -264,6 +269,7 @@ function build_rocm_THCS() {
                -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
+  cd ../../torch/lib
 
   local lib_prefix=$INSTALL_DIR/lib/libTHC
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then

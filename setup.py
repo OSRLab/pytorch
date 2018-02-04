@@ -101,7 +101,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen',
+    'nccl', 'ATen', #'TH', 'THS', 'THNN', 'THC', 'THCS', 'THCUNN'
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
@@ -179,11 +179,11 @@ class build_deps(Command):
         # libs = ['TH', 'THS', 'THNN']
         # if WITH_CUDA:
         #    libs += ['THC', 'THCS', 'THCUNN']
-        # if WITH_ROCM:
-        #    libs += ['THC', 'THCS', 'THCUNN']
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
+        if WITH_ROCM:
+            libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
@@ -639,7 +639,15 @@ elif WITH_ROCM:
     os.environ["LDSHARED"] = 'gcc'
 
     # main_libraries += []
-    # main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
+    lib_path = os.path.join(cwd, "aten", "src")
+    TH_LIB = os.path.join(lib_path, 'libTH.so.1')
+    THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
+    THC_LIB = os.path.join(lib_path, 'libTHC.so.1')
+    THCS_LIB = os.path.join(lib_path, 'libTHCS.so.1')
+    THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
+    THCUNN_LIB = os.path.join(lib_path, 'libTHCUNN.so.1')
+
+    main_link_args += [TH_LIB, THS_LIB, THNN_LIB, THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
@@ -695,7 +703,7 @@ if os.getenv('PYTORCH_BINARY_BUILD') and platform.system() == 'Linux':
     STDCPP_LIB = STDCPP_LIB[:-1]
     if type(STDCPP_LIB) != str:  # python 3
         STDCPP_LIB = STDCPP_LIB.decode(sys.stdout.encoding)
-    extra_link_args += [STDCPP_LIB]
+    main_link_args += [STDCPP_LIB]
     version_script = os.path.abspath("tools/pytorch.version")
     extra_link_args += ['-Wl,--version-script=' + version_script]
 
@@ -746,7 +754,7 @@ extensions.append(THNN)
 
 if WITH_CUDA:
     thnvrtc_link_flags = extra_link_args + [make_relative_rpath('lib')]
-    if platform.system() == 'Linux':
+    if IS_LINUX:
         thnvrtc_link_flags = thnvrtc_link_flags + ['-Wl,--no-as-needed']
     # these have to be specified as -lcuda in link_flags because they
     # have to come right after the `no-as-needed` option

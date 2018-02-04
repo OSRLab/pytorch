@@ -47,10 +47,10 @@ find THCUNN/hip -name "*.prehip" -type f -delete
 mkdir -p THCS/hip
 mkdir -p THCS/hip/generic
 cp THCS/*.h THCS/hip/
-cp THCS/*.c THCS/hip/
+# cp THCS/*.c THCS/hip/
 cp THCS/*.cu THCS/hip/
 cp THCS/generic/*.h THCS/hip/generic/
-cp THCS/generic/*.c THCS/hip/generic/
+# cp THCS/generic/*.c THCS/hip/generic/
 cp THCS/generic/*.cu THCS/hip/generic/
 cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/hip/
