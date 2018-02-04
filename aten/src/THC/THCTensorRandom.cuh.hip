@@ -105,7 +105,7 @@ __global__ void renormRowsL1(T* dist, long rows, long cols) {
       sum = THCNumerics<T>::add(sum, val);
     }
 
-    sum = reduceBlock(smem, hipBlockDim_x.x, sum, ReduceAdd<T, T>(), zero);
+    sum = reduceBlock(smem, hipBlockDim_x, sum, ReduceAdd<T, T>(), zero);
     if (hipThreadIdx_x == 0) {
       assert(THCNumerics<T>::gt(sum, zero));
       smem[0] = sum;
