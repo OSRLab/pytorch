@@ -142,8 +142,8 @@ PyObject * THCPModule_getDeviceName_wrap(PyObject *self, PyObject *arg)
   HANDLE_TH_ERRORS
   THPUtils_assert(THPUtils_checkLong(arg), "invalid argument to getDeviceName");
   long device = THPUtils_unpackLong(arg);
- 
-#if defined(__HIP_PLATFORM_HCC__) 
+
+#if defined(__HIP_PLATFORM_HCC__)
   hipDeviceProp_t prop;
   THCudaCheck(hipGetDeviceProperties(&prop, device));
 #else
@@ -160,7 +160,7 @@ PyObject * THCPModule_getDeviceCapability_wrap(PyObject *self, PyObject *arg)
   THPUtils_assert(THPUtils_checkLong(arg), "invalid argument to getDeviceCapability");
   long device = THPUtils_unpackLong(arg);
 
-#if defined(__HIP_PLATFORM_HCC__) 
+#if defined(__HIP_PLATFORM_HCC__)
   hipDeviceProp_t prop;
   THCudaCheck(hipGetDeviceProperties(&prop, device));
 #else
@@ -218,6 +218,7 @@ PyObject * THCPModule_getDriverVersion(PyObject *self)
                     err, hipGetErrorString(err));
     return NULL;
   }
+  return PyLong_FromLong((int64_t) driverVersion);
 #else
   cudaError_t err = cudaDriverGetVersion(&driverVersion);
   if (err != cudaSuccess) {
@@ -227,6 +228,7 @@ PyObject * THCPModule_getDriverVersion(PyObject *self)
     return NULL;
   }
   return PyLong_FromLong((int64_t) driverVersion);
+#endif
 }
 
 PyObject * THCPModule_getCompiledVersion(PyObject *self)

@@ -338,7 +338,7 @@ THC_API void THCTensor_(multinomialAliasSetup)(THCState *state, THCTensor *_prob
                 inputsize,
                 THCudaLongTensor_data(state, smaller_short),
                 THCudaLongTensor_data(state, larger_short),
-                static_cast<int>(inputsize - h_large_c), h_large_c
+                inputsize - h_large_c, h_large_c
                 );
   real q_max = THCTensor_(maxall)(state, _q);
   condDiv<<<
@@ -417,7 +417,6 @@ THC_API void THCTensor_(bernoulli)(THCState* state, THCTensor *self_, double p)
   THCTensor_(freeCopyTo)(state, self, self_);
 };
 
-<<<<<<< HEAD:aten/src/THC/generic/THCTensorRandom.cu
 void THCTensor_(bernoulli_Tensor)(THCState *state, THCTensor *self, THCTensor* p)
 {
 #if defined(THC_REAL_IS_FLOAT)
@@ -427,32 +426,27 @@ void THCTensor_(bernoulli_Tensor)(THCState *state, THCTensor *self, THCTensor* p
 #endif
 }
 
-#define DEFINE_BERNOULLI_TENSOR(NAME, PROB_TYPE, PROB_DATA_TYPE)                              \
-THC_API void THCTensor_(NAME)(THCState* state,                                                \
-        THCTensor *self_, PROB_TYPE *probs_)                                                  \
-{                                                                                             \
-  THCAssertSameGPU(THCTensor_(checkGPU)(state, 2, self_, probs_));                            \
-  ptrdiff_t size = THCTensor_(nElement)(state, self_);                                        \
-  if (size == 0) return;                                                                      \
-  THCGenerator* gen = THCRandom_getGenerator(state);                                          \
-  THCTensor *self = THCTensor_(newContiguous)(state, self_);                                  \
-  PROB_TYPE *probs = PROB_TYPE##_newContiguous(state, probs_);                                \
-  ptrdiff_t prob_size = PROB_TYPE##_nElement(state, probs);                                   \
-  real *result_data = THCTensor_(data)(state, self);                                          \
-  PROB_DATA_TYPE *probs_data = PROB_TYPE##_data(state, probs);                                \
-                                                                                              \
-  THArgCheck(size == prob_size, 3, "inconsistent tensor size");                               \
-
-#if defined(__HIP_PLATFORM_HCC__)
-  hipLaunchKernelGGL(
-    (generate_bernoulli_tensor), NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state), \
-     gen->gen_states, size, result_data, probs_data);
-#else
+#define DEFINE_BERNOULLI_TENSOR(NAME, PROB_TYPE, PROB_DATA_TYPE)               \
+THC_API void THCTensor_(NAME)(THCState* state,                                 \
+        THCTensor *self_, PROB_TYPE *probs_)                                   \
+{                                                                              \
+  THCAssertSameGPU(THCTensor_(checkGPU)(state, 2, self_, probs_));             \
+  ptrdiff_t size = THCTensor_(nElement)(state, self_);                         \
+  if (size == 0) return;                                                       \
+  THCGenerator* gen = THCRandom_getGenerator(state);                           \
+  THCTensor *self = THCTensor_(newContiguous)(state, self_);                   \
+  PROB_TYPE *probs = PROB_TYPE##_newContiguous(state, probs_);                 \
+  ptrdiff_t prob_size = PROB_TYPE##_nElement(state, probs);                    \
+  real *result_data = THCTensor_(data)(state, self);                           \
+  PROB_DATA_TYPE *probs_data = PROB_TYPE##_data(state, probs);                 \
+                                                                               \
+  THArgCheck(size == prob_size, 3, "inconsistent tensor size");                \
+                                                                               \
   generate_bernoulli_tensor<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>( \
-      gen->gen_states, size, result_data, probs_data);
-#endif                                                                                        \
-  PROB_TYPE##_free(state, probs);                                                             \
-  THCTensor_(freeCopyTo)(state, self, self_);                                                 \
+      gen->gen_states, size, result_data, probs_data);                         \
+                                                                               \
+  PROB_TYPE##_free(state, probs);                                              \
+  THCTensor_(freeCopyTo)(state, self, self_);                                  \
 }
 
 DEFINE_BERNOULLI_TENSOR(bernoulli_FloatTensor, THCudaTensor, float)
