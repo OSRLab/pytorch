@@ -303,7 +303,7 @@ function build_rocm_ATen() {
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
 
-  local lib_prefix=$INSTALL_DIR/lib/libATen
+  local lib_prefix=$INSTALL_DIR/lib/libATen$LD_POSTFIX
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then
     rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
   fi
@@ -392,13 +392,13 @@ if [[ $WITH_ROCM -eq 1 ]]; then
 fi
 for arg in "$@"; do
     if [[ $WITH_ROCM -eq 1 ]]; then
-        #if [[ "$arg" == "THC" ]]; then
-        #    build_rocm_THC
-        #elif [[ "$arg" == "THCUNN" ]]; then
-        #    build_rocm_THCUNN
-        #elif [[ "$arg" == "THCS" ]]; then
-        #    build_rocm_THCS
-        if [[ "$arg" == "ATen" ]]; then
+        if [[ "$arg" == "THC" ]]; then
+            build_rocm_THC
+        elif [[ "$arg" == "THCUNN" ]]; then
+            build_rocm_THCUNN
+        elif [[ "$arg" == "THCS" ]]; then
+            build_rocm_THCS
+        elif [[ "$arg" == "ATen" ]]; then
             build_rocm_ATen
         elif [[ "$arg" == "nccl" ]]; then
             build_nccl

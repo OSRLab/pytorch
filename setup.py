@@ -146,7 +146,7 @@ def build_libs(libs):
         build_libs_cmd += ['--with-gloo-ibverbs']
 
 
-    if subprocess.call(build_libs_cmd + libs, env=my_env) != 0:
+    if subprocess.callT(build_libs_cmd + libs, env=my_env) != 0:
         sys.exit(1)
 
     if 'ATen' in libs:

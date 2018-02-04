@@ -2,7 +2,7 @@
 
 set -e
 
-cd torch/lib
+cd aten/src/
 
 # THC
 mkdir -p THC/hip
