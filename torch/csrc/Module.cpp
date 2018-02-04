@@ -544,7 +544,6 @@ PyObject *THPModule_fromDLPack(PyObject *_unused, PyObject *data)
   return torch::createPyObject(atensor);
 }
 
-<<<<<<< HEAD
 PyObject *THPModule_setUserEnabledCuDNN(PyObject *_unused, PyObject *arg)
 {
   THPUtils_assert(PyBool_Check(arg), "set_enabled_cudnn expects a bool, "
@@ -587,10 +586,7 @@ PyObject *THPModule_benchmarkCuDNN(PyObject *_unused)
   else Py_RETURN_FALSE;
 }
 
-#ifdef WITH_CUDA
-=======
 #if defined(WITH_CUDA) || defined(WITH_ROCM)
->>>>>>> Moved python functions on ROCM path
 extern PyObject * THCSPModule_initExtension(PyObject *self);
 #endif
 
@@ -849,7 +845,6 @@ static PyObject* initModule() {
   THPUtils_addPyMethodDefs(methods, TorchMethods);
   THPUtils_addPyMethodDefs(methods, DataLoaderMethods);
   THPUtils_addPyMethodDefs(methods, torch::autograd::python_functions());
-
 #if defined(WITH_CUDA) || defined(WITH_ROCM)
   THPUtils_addPyMethodDefs(methods, THCPModule_methods());
 #endif
