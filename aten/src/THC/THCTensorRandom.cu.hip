@@ -177,8 +177,8 @@ __global__ void generate_bernoulli_tensor(hiprngStateMtgp32 *state, int size,
   }
 }
 
-GENERATE_KERNEL2(generate_uniform, float, float a, float b, float, hiprng_uniform, reverse_bounds(x) * (b-a) + a)
-GENERATE_KERNEL2(generate_uniform, double, double a, double b, double, hiprng_uniform_double, reverse_bounds(x) * (b-a) + a)
+GENERATE_KERNEL2(generate_uniform, float, double a, double b, float, hiprng_uniform, x * (b-a) + a)
+GENERATE_KERNEL2(generate_uniform, double, double a, double b, double, hiprng_uniform_double, x * (b-a) + a)
 
 GENERATE_KERNEL2(generate_normal, float, double mean, double stdv, float, hiprng_normal, (x * stdv) + mean)
 GENERATE_KERNEL2(generate_normal, double, double mean, double stdv, double, hiprng_normal_double, (x * stdv) + mean)

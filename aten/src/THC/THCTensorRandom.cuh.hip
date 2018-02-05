@@ -101,13 +101,13 @@ __global__ void renormRowsL1(T* dist, long rows, long cols) {
     T sum = ScalarConvert<int, T>::to(0);
     for (long col = hipThreadIdx_x; col < cols; col += hipBlockDim_x) {
       val = dist[row * cols + col];
-      assert(THCNumerics<T>::ge(val, zero));
+      //assert(THCNumerics<T>::ge(val, zero));
       sum = THCNumerics<T>::add(sum, val);
     }
 
     sum = reduceBlock(smem, hipBlockDim_x, sum, ReduceAdd<T, T>(), zero);
     if (hipThreadIdx_x == 0) {
-      assert(THCNumerics<T>::gt(sum, zero));
+      //assert(THCNumerics<T>::gt(sum, zero));
       smem[0] = sum;
     }
     __syncthreads();
@@ -177,7 +177,7 @@ sampleMultinomialOnce(long* dest,
     T val;
     for (int cat = hipThreadIdx_x; cat < categories; cat += hipBlockDim_x) {
       val = dist[curDist * categories + cat];
-      assert(THCNumerics<T>::ge(val, zero));
+      //assert(THCNumerics<T>::ge(val, zero));
       sum = THCNumerics<AccT>::add(sum, ScalarConvert<T, AccT>::to(val));
     }
 
@@ -187,8 +187,8 @@ sampleMultinomialOnce(long* dest,
     // Broadcast sum and sample value
     if (hipThreadIdx_x == 0) {
       // Make sure the sum of our distribution didn't overflow
-      // assert(!isinf(sum));
-      assert(THCNumerics<AccT>::gt(sum, accZero));
+      // //assert(!isinf(sum));
+      //assert(THCNumerics<AccT>::gt(sum, accZero));
       asmem[0] = sum;
       smem[0] = sampled[curDist];
     }

@@ -5,7 +5,6 @@
 #define NUM_BLOCKS min((int)THCCeilDiv(size, (ptrdiff_t) BLOCK_SIZE), MAX_NUM_BLOCKS)
 
 #if defined(THC_REAL_IS_FLOAT) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_HALF)
-
 THC_API void THCTensor_(uniform)(THCState* state, THCTensor *self_, double a, double b)
 {
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 1, self_));
@@ -431,10 +430,10 @@ void THCTensor_(bernoulli_Tensor)(THCState *state, THCTensor *self, THCTensor* p
   THC_API void THCTensor_(NAME)(THCState* state,                                 \
           THCTensor *self_, PROB_TYPE *probs_)                                   \
   {                                                                              \
-    THCAssertSameGPU(THCTensor_(checkGPU)(state, 2, self_, probs_));                      \
-    ptrdiff_t size = THCTensor_(nElement)(state, self_);
-    if (size == 0) return;
-    THCGenerator* gen = THCRandom_getGenerator(state);                              \
+    THCAssertSameGPU(THCTensor_(checkGPU)(state, 2, self_, probs_));             \
+    ptrdiff_t size = THCTensor_(nElement)(state, self_);                         \
+    if (size == 0) return;                                                       \
+    THCGenerator* gen = THCRandom_getGenerator(state);                           \
     THCTensor *self = THCTensor_(newContiguous)(state, self_);                   \
     PROB_TYPE *probs = PROB_TYPE##_newContiguous(state, probs_);                 \
     ptrdiff_t prob_size = PROB_TYPE##_nElement(state, probs);                    \
