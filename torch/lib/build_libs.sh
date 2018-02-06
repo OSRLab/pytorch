@@ -299,6 +299,8 @@ function build_rocm_ATen() {
   esac
   cmake ../../../../aten -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
               -DTorch_FOUND="1" \
+              -DNO_CUDA=$((1-$WITH_CUDA)) \
+              -DNO_NNPACK=$((1-$WITH_NNPACK)) \
               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \

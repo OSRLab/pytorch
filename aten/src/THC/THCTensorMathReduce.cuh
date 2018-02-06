@@ -178,7 +178,7 @@ __global__ void THCTensor_kernel_renorm(Real *data, const Real value, const ptrd
   for (unsigned int stride = blockDim.x >> 1; stride > 0; stride >>= 1)
   {
     __syncthreads();
-    if (tx < stride)
+    if (tx < stride)W
       buffer[tx] = THCNumerics<Real>::add(buffer[tx], buffer[tx+stride]);
   }
   // clip norms
@@ -491,7 +491,7 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
      * entire input row. The warp shfl xor loop ultimately gives each thread the
      * true sum.
      */
-    for (unsigned lane_mask = 8; lane_mask > 0; lane_mask >>= 1) {
+    for (unsigned int lane_mask = 8; lane_mask > 0; lane_mask >>= 1) {
       local_sum = THCNumerics<Accreal>::add(local_sum,
           WARP_SHFL_XOR((row < num_rows) ? local_sum : acc_zero, lane_mask, 16));
     }
@@ -517,7 +517,7 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
      * Sums the adjusted M2s. The thread with threadIdx.x == 0 has
      * the total sum, which is equal to the M2 for the entire input row.
      */
-    for (unsigned s = 8; s >= 1; s >>= 1) {
+    for (unsigned int s = 8; s >= 1; s >>= 1) {
       adjusted_M2 = THCNumerics<Accreal>::add(adjusted_M2,
           WARP_SHFL_DOWN((row < num_rows) ? adjusted_M2 : acc_zero, s, 16));
     }
