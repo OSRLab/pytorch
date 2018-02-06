@@ -24,8 +24,8 @@ cp THC/THCTensorRandom.cuh.hip THC/hip/THCTensorRandom.cuh
 cp THC/THCTensorRandom.h.hip THC/hip/THCTensorRandom.h
 cp THC/THCNumerics.cuh.hip THC/hip/THCNumerics.cuh
 cp THC/generic/THCTensorRandom.cu.hip THC/hip/generic/THCTensorRandom.cu
-cp THC/THCGeneral.cc.hip THC/hip/THCGeneral.cc
-cp THC/THCAllocator.cc.hip THC/hip/THCAllocator.cc
+cp THC/THCGeneral.cpp.hip THC/hip/THCGeneral.cpp
+cp THC/THCAllocator.c.hip THC/hip/THCAllocator.c
 cp THC/generic/THCStorage.c.hip THC/hip/generic/THCStorage.c
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/hip/
 /opt/rocm/hip/bin/hipify-perl THC/hip/THCGeneral.h.in
