@@ -290,7 +290,6 @@ function build_rocm_THCS() {
 function build_rocm_ATen() {
   # We create a build directory for the library, which will
   # contain the cmake output
-  cd ../../aten/src/
   mkdir -p build/ATen
   cd build/ATen
   BUILD_C_FLAGS=''
@@ -298,41 +297,27 @@ function build_rocm_ATen() {
       THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
       *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
   esac
-  cmake ../../ATen -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
-              -DTorch_FOUND="1" \
+  cmake ../../../../aten -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
+              -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
               -DNO_CUDA=$((1-$WITH_CUDA)) \
               -DNO_NNPACK=$((1-$WITH_NNPACK)) \
+              -DATEN_NO_CONTRIB=1 \
               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=1
               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
-              -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
-              -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
-              -DCMAKE_INSTALL_LIBDIR="$INSTALL_DIR/lib" \
+              #-DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+              #-DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
+              #-DCMAKE_INSTALL_LIBDIR="$INSTALL_DIR/lib" \
               -DCUDA_NVCC_FLAGS="$CUDA_NVCC_FLAGS" \
               -Dcwrap_files="$CWRAP_FILES" \
-              -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
-              -DTH_LIB_PATH="$INSTALL_DIR/lib" \
-              -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
-              -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
-              -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
-              -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
-              -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
-              -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
-              -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
-              -DTH_SO_VERSION=1 \
-              -DTHC_SO_VERSION=1 \
-              -DTHNN_SO_VERSION=1 \
-              -DTHCUNN_SO_VERSION=1 \
-              -DTHD_SO_VERSION=1 \
-              -DNCCL_EXTERNAL=1 \
-              -Dnanopb_BUILD_GENERATOR=0 \
-              -DCMAKE_DEBUG_POSTFIX="" \
+              #-DNCCL_EXTERNAL=1 \
+              #-Dnanopb_BUILD_GENERATOR=0 \
+              #-DCMAKE_DEBUG_POSTFIX="" \
               -DWITH_ROCM=1 \
-              -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
               ${@:2}
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
-  cd ../../torch/lib
 
   local lib_prefix=$INSTALL_DIR/lib/libATen
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then
@@ -424,11 +409,11 @@ fi
 for arg in "$@"; do
     if [[ $WITH_ROCM -eq 1 ]]; then
         if [[ "$arg" == "THC" ]]; then
-            build_rocm_THC
+            # build_rocm_THC
         elif [[ "$arg" == "THCUNN" ]]; then
-            build_rocm_THCUNN
+            # build_rocm_THCUNN
         elif [[ "$arg" == "THCS" ]]; then
-            build_rocm_THCS
+            # build_rocm_THCS
         elif [[ "$arg" == "ATen" ]]; then
             build_rocm_ATen
         elif [[ "$arg" == "nccl" ]]; then

@@ -175,15 +175,9 @@ class build_deps(Command):
         check_file(os.path.join(lib_path, "pybind11", "CMakeLists.txt"))
 
         libs = []
-
-        # libs = ['TH', 'THS', 'THNN']
-        # if WITH_CUDA:
-        #    libs += ['THC', 'THCS', 'THCUNN']
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
-        if WITH_ROCM:
-            libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
@@ -192,6 +186,7 @@ class build_deps(Command):
             if sys.platform.startswith('linux'):
                 libs += ['gloo']
             libs += ['THD']
+
         if WITH_ROCM:
             os.environ["CC"] = 'hipcc'
             os.environ["CXX"] = 'hipcc'
@@ -644,11 +639,11 @@ elif WITH_ROCM:
     #TH_LIB = os.path.join(lib_path, 'libTH.so.1')
     #THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
     #THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
-    THC_LIB = os.path.join(lib_path, 'libTHC.so.1')
-    THCS_LIB = os.path.join(lib_path, 'libTHCS.so.1')
-    THCUNN_LIB = os.path.join(lib_path, 'libTHCUNN.so.1')
+    #THC_LIB = os.path.join(lib_path, 'libTHC.so.1')
+    #THCS_LIB = os.path.join(lib_path, 'libTHCS.so.1')
+    #THCUNN_LIB = os.path.join(lib_path, 'libTHCUNN.so.1')
 
-    main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
+    #main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
