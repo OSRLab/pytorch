@@ -66,6 +66,11 @@ __device__ __forceinline__ int WARP_BALLOT(int predicate, unsigned int mask = 0x
 
 template <typename T>
 #if defined(__HIP_PLATFORM_HCC__)
+//To handle ambiguity, add a type double version.
+__device__ __forceinline__ inline double WARP_SHFL_XOR(double value, int laneMask, int width = warpSize, unsigned int mask = 0xffffffff) {
+  //(HIP doesn't support double)
+  return (double) __shfl_xor((float) value, laneMask, width);
+}
 __device__ __forceinline__ inline T WARP_SHFL_XOR(T value, int laneMask, int width = warpSize, unsigned int mask = 0xffffffff)
 #else
 __device__ __forceinline__ T WARP_SHFL_XOR(T value, int laneMask, int width = warpSize, unsigned int mask = 0xffffffff)
@@ -108,6 +113,12 @@ __device__ __forceinline__ T WARP_SHFL_UP(T value, unsigned int delta, int width
 
 template <typename T>
 #if defined(__HIP_PLATFORM_HCC__)
+//To handle ambiguity, add a type double version.
+__device__ __forceinline__ inline double WARP_SHFL_DOWN(double value, unsigned int delta, int width = warpSize, unsigned int mask = 0xffffffff)
+{
+  //(HIP doesn't support double)
+  return (double) __shfl_down((float) value, delta, width);
+}
 __device__ __forceinline__ inline T WARP_SHFL_DOWN(T value, unsigned int delta, int width = warpSize, unsigned int mask = 0xffffffff)
 #else
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value, unsigned int delta, int width = warpSize, unsigned int mask = 0xffffffff)
