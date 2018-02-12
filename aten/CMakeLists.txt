@@ -26,7 +26,7 @@ if("${isSystemDir}" STREQUAL "-1")
 endif()
 
 IF(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "--std=c++11 -Wall -Wno-vla -fexceptions ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "--std=c++11 -Wall -Wno-unknown-pragmas -Wno-vla -fexceptions ${CMAKE_CXX_FLAGS}")
   set(CMAKE_C_FLAGS "-fexceptions ${CMAKE_C_FLAGS}")
 ENDIF(NOT MSVC)
 
@@ -36,7 +36,7 @@ ENDIF(NOT MSVC)
 # Flags
 # When using MSVC
 
-# Detect CUDA architecture and get best NVCC flags
+# Detect CUDA architecture and get best NVCC flags
 # finding cuda must be first because other things depend on the result
 IF(NOT CUDA_FOUND)
   FIND_PACKAGE(CUDA 5.5)
@@ -127,7 +127,7 @@ ENDIF ()
 IF (WITH_OPENMP AND NOT CHECKED_OPENMP)
   FIND_PACKAGE(OpenMP)
   SET(CHECKED_OPENMP ON CACHE BOOL "already checked for OpenMP")
-  
+
   # OPENMP_FOUND is not cached in FindOpenMP.cmake (all other variables are cached)
   # see https://github.com/Kitware/CMake/blob/master/Modules/FindOpenMP.cmake
   SET(OPENMP_FOUND ${OPENMP_FOUND} CACHE BOOL "OpenMP Support found")
@@ -389,7 +389,7 @@ IF(NOT AT_CUDA_ENABLED OR NOT CUDNN_FOUND)
   MESSAGE(STATUS "CuDNN not found. Compiling without CuDNN support")
   set(AT_CUDNN_ENABLED 0)
 ELSE()
-  INCLUDE_DIRECTORIES(${CUDNN_INCLUDE_DIRS})
+  INCLUDE_DIRECTORIES(BEFORE ${CUDNN_INCLUDE_DIRS})
   set(AT_CUDNN_ENABLED 1)
 ENDIF()
 
