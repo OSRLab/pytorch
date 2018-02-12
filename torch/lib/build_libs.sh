@@ -290,6 +290,7 @@ function build_rocm_THCS() {
 function build_rocm_ATen() {
   # We create a build directory for the library, which will
   # contain the cmake output
+  cd ../../aten/src/
   mkdir -p build/ATen
   cd build/ATen
   BUILD_C_FLAGS=''
@@ -331,6 +332,7 @@ function build_rocm_ATen() {
               ${@:2}
   make install -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
+  cd ../../torch/lib
 
   local lib_prefix=$INSTALL_DIR/lib/libATen
   if [ -f "$lib_prefix$LD_POSTFIX" ]; then
