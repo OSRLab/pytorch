@@ -3,7 +3,7 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCUDA
   /usr/lib/x86_64-linux-gnu/
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/TH/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH/cmake
   ${CMAKE_MODULE_PATH})
 SET(CMAKE_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/ ${CMAKE_LIBRARY_PATH})
 project(ATen)
@@ -26,7 +26,7 @@ if("${isSystemDir}" STREQUAL "-1")
 endif()
 
 IF(NOT MSVC)
-  set(CMAKE_CXX_FLAGS "--std=c++11 -Wall -Wno-vla -fexceptions ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS "--std=c++11 -Wall -Wno-unknown-pragmas -Wno-vla -fexceptions ${CMAKE_CXX_FLAGS}")
   set(CMAKE_C_FLAGS "-fexceptions ${CMAKE_C_FLAGS}")
 ENDIF(NOT MSVC)
 
@@ -36,7 +36,7 @@ ENDIF(NOT MSVC)
 # Flags
 # When using MSVC
 
-# Detect CUDA architecture and get best NVCC flags
+# Detect CUDA architecture and get best NVCC flags
 # finding cuda must be first because other things depend on the result
 IF(NOT CUDA_FOUND)
   FIND_PACKAGE(CUDA 5.5)
@@ -353,23 +353,23 @@ SET(ATEN_INSTALL_INCLUDE_SUBDIR "include" CACHE PATH "ATen install include subdi
 
 add_definitions(-DTH_INDEX_BASE=0)
 set(TH_LINK_STYLE STATIC)
-add_subdirectory(src/HIP/TH)
+add_subdirectory(src/TH)
 include_directories(
   # dense
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/TH
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THC
-  ${CMAKE_CURRENT_BINARY_DIR}/src/HIP/TH
-  ${CMAKE_CURRENT_BINARY_DIR}/src/HIP/THC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THC
+  ${CMAKE_CURRENT_BINARY_DIR}/src/TH
+  ${CMAKE_CURRENT_BINARY_DIR}/src/THC
   # sparse
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THS
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THCS
-  ${CMAKE_CURRENT_BINARY_DIR}/src/HIP/THS
-  ${CMAKE_CURRENT_BINARY_DIR}/src/HIP/THCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THCS
+  ${CMAKE_CURRENT_BINARY_DIR}/src/THS
+  ${CMAKE_CURRENT_BINARY_DIR}/src/THCS
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP
-  ${CMAKE_CURRENT_BINARY_DIR}/src/HIP)
-add_subdirectory(src/HIP/THNN)
-add_subdirectory(src/HIP/THS)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_BINARY_DIR}/src)
+add_subdirectory(src/THNN)
+add_subdirectory(src/THS)
 
 if(NO_CUDA)
   message("disabling CUDA because NO_CUDA is set")
@@ -379,9 +379,9 @@ else()
   SET(AT_CUDA_ENABLED 1)
   INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
   find_package(CUDA 5.5 REQUIRED)
-  add_subdirectory(src/HIP/THC)
-  add_subdirectory(src/HIP/THCUNN)
-  add_subdirectory(src/HIP/THCS)
+  add_subdirectory(src/THC)
+  add_subdirectory(src/THCUNN)
+  add_subdirectory(src/THCS)
 endif()
 
 find_package(CuDNN)
@@ -389,7 +389,7 @@ IF(NOT AT_CUDA_ENABLED OR NOT CUDNN_FOUND)
   MESSAGE(STATUS "CuDNN not found. Compiling without CuDNN support")
   set(AT_CUDNN_ENABLED 0)
 ELSE()
-  INCLUDE_DIRECTORIES(${CUDNN_INCLUDE_DIRS})
+  INCLUDE_DIRECTORIES(BEFORE ${CUDNN_INCLUDE_DIRS})
   set(AT_CUDNN_ENABLED 1)
 ENDIF()
 
@@ -408,25 +408,25 @@ else()
 endif()
 
 set(cwrap_files
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/ATen/Declarations.cwrap
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THNN/generic/THNN.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THCUNN/generic/THCUNN.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/ATen/nn.yaml
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/ATen/native/native_functions.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/Declarations.cwrap
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THNN/generic/THNN.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THCUNN/generic/THCUNN.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/nn.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/native/native_functions.yaml
 )
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THNN
-${CMAKE_CURRENT_SOURCE_DIR}/src/HIP/THCUNN)
+${CMAKE_CURRENT_SOURCE_DIR}/src/THNN
+${CMAKE_CURRENT_SOURCE_DIR}/src/THCUNN)
 
-add_subdirectory(src/HIP/ATen)
+add_subdirectory(src/ATen)
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/src/HIP
-${CMAKE_CURRENT_BINARY_DIR}/src/HIP/ATen)
+${CMAKE_CURRENT_SOURCE_DIR}/src
+${CMAKE_CURRENT_BINARY_DIR}/src/ATen)
 if(NOT NO_CUDA)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
-add_subdirectory(src/HIP/ATen/test)
+add_subdirectory(src/ATen/test)
 
 if(ATEN_NO_CONTRIB)
   message("disable contrib because ATEN_NO_CONTRIB is set")
