@@ -409,11 +409,11 @@ fi
 for arg in "$@"; do
     if [[ $WITH_ROCM -eq 1 ]]; then
         if [[ "$arg" == "THC" ]]; then
-            # build_rocm_THC
+            build_rocm_THC
         elif [[ "$arg" == "THCUNN" ]]; then
-            # build_rocm_THCUNN
+            build_rocm_THCUNN
         elif [[ "$arg" == "THCS" ]]; then
-            # build_rocm_THCS
+            build_rocm_THCS
         elif [[ "$arg" == "ATen" ]]; then
             build_rocm_ATen
         elif [[ "$arg" == "nccl" ]]; then
