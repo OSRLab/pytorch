@@ -62,7 +62,7 @@ cd HIP
 if [ ! -L "THC" ]; then
     ln -s ../THC/hip THC
 fi
-if [ ! -L "THCS"]; then
+if [ ! -L "THCS" ]; then
     ln -s ../THCS/hip THCS
 fi
 if [ ! -L "THCUNN" ]; then
