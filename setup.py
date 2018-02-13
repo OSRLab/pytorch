@@ -187,12 +187,11 @@ class build_deps(Command):
                 libs += ['gloo']
             libs += ['THD']
 
+        build_libs(libs)
+
         if WITH_ROCM:
             os.environ["CC"] = 'hipcc'
             os.environ["CXX"] = 'hipcc'
-
-        build_libs(libs)
-
 
 build_dep_cmds = {}
 

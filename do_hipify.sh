@@ -59,6 +59,15 @@ find THCS/hip -name "*.prehip" -type f -delete
 # Make link directories
 mkdir -p HIP
 cd HIP
+if [ ! -L "TH" ]; then
+    ln -s ../TH TH
+fi
+if [ ! -L "THS" ]; then
+    ln -s ../THS THS
+fi
+if [ ! -L "THNN" ]; then
+    ln -s ../THNN THNN
+fi
 if [ ! -L "THC" ]; then
     ln -s ../THC/hip THC
 fi
@@ -73,9 +82,6 @@ if [ ! -L "THD" ]; then
 fi
 if [ ! -L "THPP" ]; then
     ln -s ../THPP THPP
-fi
-if [ ! -L "THS" ]; then
-    ln -s ../THS THS
 fi
 if [ ! -L "ATen" ]; then
     ln -s ../ATen ATen

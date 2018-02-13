@@ -288,9 +288,14 @@ function build_rocm_THCS() {
   fi
 }
 
-function build_rocm_aten() {
+function build_rocm_ATen() {
   mkdir -p build/aten
   cd  build/aten
+  BUILD_C_FLAGS=''
+  case ATen in
+      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
+      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
+  esac
   ${CMAKE_VERSION} ../../../../aten \
   ${CMAKE_GENERATOR} \
   -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
@@ -301,10 +306,52 @@ function build_rocm_aten() {
   -DCUDNN_LIBRARY=$CUDNN_LIBRARY \
   -DATEN_NO_CONTRIB=1 \
   -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+  -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
+  -DTorch_FOUND="1" \
+  -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+  -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
+  -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
+  -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+  -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
+  -DCMAKE_INSTALL_LIBDIR="$INSTALL_DIR/lib" \
+  -DCUDA_NVCC_FLAGS="$CUDA_NVCC_FLAGS" \
+  -Dcwrap_files="$CWRAP_FILES" \
+  -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
+  -DTH_LIB_PATH="$INSTALL_DIR/lib" \
+  -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
+  -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
+  -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
+  -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
+  -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
+  -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
+  -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+  -DTH_SO_VERSION=1 \
+  -DTHC_SO_VERSION=1 \
+  -DTHNN_SO_VERSION=1 \
+  -DTHCUNN_SO_VERSION=1 \
+  -DTHD_SO_VERSION=1 \
+  -DNCCL_EXTERNAL=1 \
+  -Dnanopb_BUILD_GENERATOR=0 \
+  -DCMAKE_DEBUG_POSTFIX="" \
+  -DWITH_ROCM=1 \
   # purpusefully not passing C_FLAGS for the same reason as above
   ${CMAKE_INSTALL} -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
+
+  local lib_prefix=$INSTALL_DIR/lib/libATen
+  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
+    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
+  fi
+
+  if [[ $(uname) == 'Darwin' ]]; then
+    cd tmp_install/lib
+    for lib in *.dylib; do
+      echo "Updating install_name for $lib"
+      install_name_tool -id @rpath/$lib $lib
+    done
+    cd ../..
+  fi
 }
 
 function build_nccl() {
