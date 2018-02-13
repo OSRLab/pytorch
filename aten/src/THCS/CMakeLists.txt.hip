@@ -91,12 +91,12 @@ INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}")
 SET(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 
 SET(src
-  THCSTensor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/THCSTensor.cpp
   )
 
 SET(src-cuda
-  THCSTensor.cu
-  THCSparse.cu
+  ${CMAKE_CURRENT_SOURCE_DIR}/THCSTensor.cu
+  ${CMAKE_CURRENT_SOURCE_DIR}/THCSparse.cu
   )
 
 MESSAGE(STATUS "got cuda version " ${CUDA_VERSION})
