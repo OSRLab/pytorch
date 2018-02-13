@@ -85,6 +85,7 @@ ELSE()
   SET(THCS_INSTALL_CMAKE_SUBDIR ${Torch_INSTALL_CMAKE_SUBDIR})
 ENDIF()
 
+INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}")
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}")
 
 SET(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
@@ -131,7 +132,7 @@ INSTALL(FILES
           THCSGenerateFloatTypes.h
           THCSGenerateDoubleType.h
           THCSparse.h
-          DESTINATION "${THCS_INSTALL_INCLUDE_SUBDIR}/THCS")
+          DESTINATION "${ATEN_INSTALL_INCLUDE_SUBDIR}/THCS")
 
 INSTALL(FILES
           generic/THCSTensor.cpp
@@ -139,4 +140,4 @@ INSTALL(FILES
           generic/THCSTensor.h
           generic/THCSTensorMath.h
           generic/THCSTensorMath.cu
-          DESTINATION "${THCS_INSTALL_INCLUDE_SUBDIR}/THCS/generic")
+          DESTINATION "${ATEN_INSTALL_INCLUDE_SUBDIR}/THCS/generic")
