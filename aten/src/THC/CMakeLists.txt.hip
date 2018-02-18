@@ -36,7 +36,7 @@ ELSE()
   SET(HIPSPARSE_PATH $ENV{HIPSPARSE_PATH})
 ENDIF()
 
-SET(THRUST_PATH "/root/Thrust")
+SET(THRUST_PATH "~/Thrust")
 
 # load HIP cmake module and load platform id
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} "${HIP_PATH}/cmake")
