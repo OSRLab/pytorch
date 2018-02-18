@@ -112,6 +112,9 @@ IS_WINDOWS = (platform.system() == 'Windows')
 IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
+WITH_ROCM=True
+WITH_CUDA=False
+
 NUM_JOBS = multiprocessing.cpu_count()
 max_jobs = os.getenv("MAX_JOBS")
 if max_jobs is not None:
@@ -218,7 +221,7 @@ def build_libs(libs):
 
     if WITH_GLOO_IBVERBS:
         build_libs_cmd += ['--with-gloo-ibverbs']
-=======
+
     if WITH_ROCM:
         build_libs_cmd += ['--with-rocm']
 
@@ -273,6 +276,8 @@ class build_deps(Command):
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
+        if WITH_ROCM:
+            libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
@@ -671,8 +676,8 @@ if WITH_CUDA:
         nvtoolext_lib_name = 'nvToolsExt'
 
     library_dirs.append(cuda_lib_path)
-=======
-if WITH_ROCM:
+
+elif WITH_ROCM:
     # rocm_include_path = os.path.join(ROCM_HOME, '/include')
     # hcc_include_path = os.path.join(ROCM_HOME, '/hcc/include')
     # hipblas_include_path = os.path.join(ROCM_HOME, '/hipblas/include')
@@ -703,25 +708,15 @@ if WITH_ROCM:
     os.environ["LDSHARED"] = 'gcc'
 
     # main_libraries += []
-    main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
-    main_sources += [
-        "torch/csrc/cuda/Module.cpp",
-        "torch/csrc/cuda/Storage.cpp",
-        "torch/csrc/cuda/Stream.cpp",
-        "torch/csrc/cuda/AutoGPU.cpp",
-        "torch/csrc/cuda/utils.cpp",
-        "torch/csrc/cuda/expand_utils.cpp",
-        "torch/csrc/cuda/serialization.cpp",
-    #    "torch/csrc/jit/fusion_compiler.cpp",
-    ]
-    main_sources += split_types("torch/csrc/cuda/Tensor.cpp")
+    lib_path = os.path.join(cwd, "aten", "src")
+    #TH_LIB = os.path.join(lib_path, 'libTH.so.1')
+    #THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
+    #THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
+    #THC_LIB = os.path.join(lib_path, 'libTHC.so.1')
+    #THCS_LIB = os.path.join(lib_path, 'libTHCS.so.1')
+    #THCUNN_LIB = os.path.join(lib_path, 'libTHCUNN.so.1')
 
-    cuda_include_path = os.path.join(CUDA_HOME, 'include')
-    include_dirs.append(cuda_include_path)
-    include_dirs.append(tmp_install_path + "/include/THCUNN")
-    extra_compile_args += ['-DWITH_CUDA']
-    extra_compile_args += ['-DCUDA_LIB_PATH=' + cuda_lib_path]
-    main_libraries += ['cudart', nvtoolext_lib_name]
+    #main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
