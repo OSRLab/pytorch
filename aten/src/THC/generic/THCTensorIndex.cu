@@ -508,19 +508,38 @@ void THCTensor_(indexFill)(THCState *state, THCTensor *dst, int dim, THCudaLongT
 
   int mpc = THCState_getCurrentDeviceProperties(state)->multiProcessorCount;
 
-#define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM)  \
-  indexFillSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM> \
-    <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(   \
-      dstInfo, indicesInfo,                             \
-      dstFillDim, sliceSize, dstFillDimSize, val);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM)  \
+    hipLaunchKernelGGL(                                     \
+    (indexFillSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM>), \
+        smallIndexGrid, smallIndexBlock, 0, stream,         \
+        dstInfo,                        \
+        indicesInfo,                    \
+        dstFillDim, sliceSize, dstFillDimSize, val);
 
-#define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM, IDX_IS_MAJOR)   \
-  indexFillLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM, IDX_IS_MAJOR> \
-    <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(                    \
-      dstInfo, indicesInfo,                                              \
-      dstFillDim, sliceSize * numIndices,                                \
-      (IDX_IS_MAJOR) ? sliceSize : numIndices,                           \
-      dstFillDimSize, val);
+  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM, IDX_IS_MAJOR)   \
+    hipLaunchKernelGGL(                                     \
+      (indexFillLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM, IDX_IS_MAJOR>), \
+        largeIndexGrid, largeIndexBlock, 0, stream,         \
+        dstInfo,                        \
+        indicesInfo,                    \
+        dstFillDim, sliceSize * numIndices, \
+        (IDX_IS_MAJOR) ? sliceSize : numIndices, \
+        dstFillDimSize , val);
+#else
+  #define SMALL_INDEX(TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM)  \
+    indexFillSmallIndex<TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM> \
+      <<<smallIndexGrid, smallIndexBlock, 0, stream>>>(   \
+        dstInfo, indicesInfo,                             \
+        dstFillDim, sliceSize, dstFillDimSize, val);
+
+  #define LARGE_INDEX(TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM, IDX_IS_MAJOR)   \
+    indexFillLargeIndex<TENSOR_TYPE, TYPE, DST_DIM, IDX_DIM, IDX_IS_MAJOR> \
+      <<<largeIndexGrid, largeIndexBlock, 0, stream>>>(                    \
+        dstInfo, indicesInfo,                                              \
+        dstFillDim, sliceSize * numIndices,                                \
+        (IDX_IS_MAJOR) ? sliceSize : numIndices,                           \
+        dstFillDimSize, val);
 #endif
 
   dim3 smallIndexGrid(std::min(THCCeilDiv(sliceSize, (ptrdiff_t)128), (ptrdiff_t)(mpc * 8)));
