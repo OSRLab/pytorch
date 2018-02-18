@@ -257,6 +257,7 @@ THC_API void THCTensor_(mode)(THCState *state,
       <<<grid, blockSize, memsize, THCState_getCurrentStream(state)>>>( \
         THCTensor_(data)(state, contiguous), tiValues, tiIndices, sliceSize); \
   }
+#endif
 
     // Tradeoff between compilation time and the number of specializations. Ideally we would have
     // one HANDLE_MODE for each power of 2

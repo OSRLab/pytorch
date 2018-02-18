@@ -146,7 +146,6 @@ SET(src-cuda
   THCTensor.cu
   THCTensorCopy.cu
   THCTensorMath.cu
-  THCTensorMath2.cu
   THCTensorMathBlas.cu
   THCTensorMathMagma.cu
   THCTensorMathPairwise.cu
