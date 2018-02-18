@@ -384,7 +384,7 @@ __global__ void
   }
 
 #if defined(__HIP_PLATFORM_HCC__)
-  #define LSTM_FORWARD(ITYPE, DIM)
+  #define LSTM_FORWARD(ITYPE, DIM)                                \
     hipLaunchKernelGGL(                                           \
     (THNN_(LSTMForward) <real, ITYPE, DIM>),                      \
      grid, block, 0, THCState_getCurrentStream(state),            \
@@ -392,23 +392,23 @@ __global__ void
      bias1I, bias2I, cxI, hyI, cyI,                               \
      hid_size, totalElements);
 
-  #define LSTM_BACKWARD(ITYPE, DIM)
-    hipLaunchKernelGGL(
+  #define LSTM_BACKWARD(ITYPE, DIM)                               \
+    hipLaunchKernelGGL(                                           \
     (THNN_(LSTMBackward) <real, ITYPE, DIM>),                     \
      grid, block, 0, THCState_getCurrentStream(state),            \
      storageI, gradingatesI, cxI, cyI,                            \
      gradoutI, gradoutcI, gradincxI,                              \
      hid_size, totalElements);
 
-  #define GRU_FORWARD(ITYPE, DIM)
-    hipLaunchKernelGGL(
+  #define GRU_FORWARD(ITYPE, DIM)                                    \
+    hipLaunchKernelGGL(                                              \
     (THNN_(GRUForward)<real, ITYPE, DIM>),                           \
      grid, block, 0, THCState_getCurrentStream(state),               \
      inputI, hiddenI, bias1I, bias2I, hxI, hyI, storageI,            \
      hid_size, totalElements);
 
-  #define GRU_BACKWARD(ITYPE, DIM)
-    hipLaunchKernelGGL(
+  #define GRU_BACKWARD(ITYPE, DIM)                                   \
+    hipLaunchKernelGGL(                                              \
     (THNN_(GRUBackward) <real, ITYPE, DIM>),                         \
      grid, block, 0, THCState_getCurrentStream(state),               \
      gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,     \
