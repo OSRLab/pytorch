@@ -12,6 +12,7 @@
 #include "THAllocator.h"
 #include "THCThreadLocal.h"
 #undef log1p
+#undef expm1
 
 #ifdef __HCC__
 #include "hip/hcc_detail/hip_fp16.h"
