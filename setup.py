@@ -181,7 +181,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen', 'THC', 'THCS', 'THCUNN',
+    'nccl', 'ATen', #'THC', 'THCS', 'THCUNN',
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
@@ -273,7 +273,8 @@ class build_deps(Command):
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
         if WITH_ROCM:
-            libs += ['THC', 'THCS', 'THCUNN']
+            pass
+            #libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
@@ -723,7 +724,7 @@ elif WITH_ROCM:
     os.environ["LDSHARED"] = 'gcc'
 
     # main_libraries += []
-    lib_path = os.path.join(cwd, "aten", "src")
+    #lib_path = os.path.join(cwd, "aten", "src")
     #TH_LIB = os.path.join(lib_path, 'libTH.so.1')
     #THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
     #THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
