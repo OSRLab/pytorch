@@ -128,13 +128,13 @@ SET(CMAKE_C_FLAGS "-std=c99 ${CMAKE_C_FLAGS}")
 SET(src
     THCCachingAllocator.cpp
     THCCachingHostAllocator.cpp
-    THCGeneral.cc
-    THCStorageCopy.c
+    THCGeneral.cpp
+    THCStorageCopy.cpp
     THCStream.cpp
-    THCTensor.c
-    THCTensorCopy.c
+    THCTensor.cpp
+    THCTensorCopy.cpp
     THCTensorRandom.cpp
-    THCThreadLocal.c
+    THCThreadLocal.cpp
     )
 
 SET(src-cuda
