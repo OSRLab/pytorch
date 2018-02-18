@@ -72,10 +72,18 @@ void THNN_(SpatialFractionalMaxPooling_updateOutput)(
             devInput.getSize(0));
   dim3 block(outputPlaneSize > 128 ? 128 : outputPlaneSize);
 
-#define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
-  SpatialFractionalMaxPooling_updateOutput<POOL_W, real, accreal>       \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-      devInput, devOutput, devIndices, devSamples, poolSizeW, poolSizeH);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
+    hipLaunchKernelGGL(                                                   \
+    (SpatialFractionalMaxPooling_updateOutput<POOL_W, real, accreal>),    \
+        grid, block, 0, THCState_getCurrentStream(state),                 \
+        devInput, devOutput, devIndices, devSamples, poolSizeW, poolSizeH);
+#else
+  #define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
+    SpatialFractionalMaxPooling_updateOutput<POOL_W, real, accreal>       \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+        devInput, devOutput, devIndices, devSamples, poolSizeW, poolSizeH);
+#endif
 
 #define SFMP_UPDATE_OUTPUT_CASE(POOL_W)                 \
   case POOL_W: SFMP_UPDATE_OUTPUT(POOL_W); break
