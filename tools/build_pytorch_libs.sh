@@ -471,6 +471,9 @@ for arg in "$@"; do
             build_rocm_THCS
         elif [[ "$arg" == "ATen" ]]; then
             build_aten # build_rocm_ATen
+            build_rocm_THC
+            build_rocm_THCS
+            build_rocm_THCUNN
         elif [[ "$arg" == "nccl" ]]; then
             build_nccl
         elif [[ "$arg" == "gloo" ]]; then
