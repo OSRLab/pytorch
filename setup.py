@@ -126,6 +126,9 @@ IS_WINDOWS = (platform.system() == 'Windows')
 IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
+if 'WITH_SCALARS' not in os.environ:
+    os.environ['WITH_SCALARS'] = '1'
+
 WITH_ROCM=True
 WITH_CUDA=False
 
@@ -192,7 +195,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen',
+    'nccl', 'ATen', 'THC', 'THCS', 'THCUNN',
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
@@ -225,7 +228,8 @@ def build_libs(libs):
     if WITH_CUDA:
         my_env["CUDA_BIN_PATH"] = CUDA_HOME
         build_libs_cmd += ['--with-cuda']
-
+    if WITH_ROCM:
+        build_libs_cmd += ['--with-rocm']
     if WITH_NNPACK:
         build_libs_cmd += ['--with-nnpack']
     if WITH_CUDNN:
@@ -241,8 +245,6 @@ def build_libs(libs):
     if WITH_GLOO_IBVERBS:
         build_libs_cmd += ['--with-gloo-ibverbs']
 
-    if WITH_ROCM:
-        build_libs_cmd += ['--with-rocm']
 
     if subprocess.call(build_libs_cmd + libs, env=my_env) != 0:
         sys.exit(1)
@@ -287,12 +289,6 @@ class build_deps(Command):
         check_pydep('typing', 'typing')
 
         libs = []
-
-        libs = ['TH', 'THS', 'THNN']
-        if WITH_CUDA:
-            libs += ['THC', 'THCS', 'THCUNN']
-        if WITH_ROCM:
-            libs += ['THC', 'THCS', 'THCUNN']
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
@@ -306,6 +302,7 @@ class build_deps(Command):
             if sys.platform.startswith('linux'):
                 libs += ['gloo']
             libs += ['THD']
+
         build_libs(libs)
 
         # Use copies instead of symbolic files.
@@ -841,7 +838,7 @@ if os.getenv('PYTORCH_BINARY_BUILD') and platform.system() == 'Linux':
     STDCPP_LIB = STDCPP_LIB[:-1]
     if type(STDCPP_LIB) != str:  # python 3
         STDCPP_LIB = STDCPP_LIB.decode(sys.stdout.encoding)
-    extra_link_args += [STDCPP_LIB]
+    main_link_args += [STDCPP_LIB]
     version_script = os.path.abspath("tools/pytorch.version")
     extra_link_args += ['-Wl,--version-script=' + version_script]
 
@@ -881,7 +878,7 @@ if not IS_WINDOWS:
 
 if WITH_CUDA:
     thnvrtc_link_flags = extra_link_args + [make_relative_rpath('lib')]
-    if platform.system() == 'Linux':
+    if IS_LINUX:
         thnvrtc_link_flags = thnvrtc_link_flags + ['-Wl,--no-as-needed']
     # these have to be specified as -lcuda in link_flags because they
     # have to come right after the `no-as-needed` option
