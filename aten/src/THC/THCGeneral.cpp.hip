@@ -1,7 +1,5 @@
 #include "THCGeneral.h"
 #include "TH.h"
-#include "THCTensorRandom.h"
-#include "THCBlas.h"
 #include "THCAllocator.h"
 #include "THCCachingHostAllocator.h"
 #include "THCStream.h"
@@ -9,6 +7,7 @@
 #include "THCTensorRandom.h"
 #include <stdlib.h>
 #include <stdint.h>
+
 
 /* Size of scratch space available in global memory per each SM + stream */
 #define MIN_GLOBAL_SCRATCH_SPACE_PER_SM_STREAM 4 * sizeof(float)
@@ -932,7 +931,7 @@ void THCHeapUpdate(THCState *state, ptrdiff_t size) {
 #undef MIN_GLOBAL_SCRATCH_SPACE_PER_DEVICE
 
 #include "THCStorage.c"
-#include "THCAllocator.cc"
+#include "THCAllocator.c"
 /* from THCHalf.h */
 
 half THC_float2half(float f)
