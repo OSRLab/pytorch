@@ -213,6 +213,7 @@ function build_rocm_THC() {
                -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
                -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
                -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+               -DATEN_INSTALL_INCLUDE_SUBDIR="$INSTALL_DIR/include" \
                -DTH_SO_VERSION=1 \
                -DTHC_SO_VERSION=1 \
                -DTHNN_SO_VERSION=1 \
@@ -258,6 +259,7 @@ function build_rocm_THCUNN() {
                -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
                -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
                -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+               -DATEN_INSTALL_INCLUDE_SUBDIR="$INSTALL_DIR/include" \
                -DTH_SO_VERSION=1 \
                -DTHC_SO_VERSION=1 \
                -DTHNN_SO_VERSION=1 \
@@ -304,6 +306,7 @@ function build_rocm_THCS() {
                -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
                -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
                -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+               -DATEN_INSTALL_INCLUDE_SUBDIR="$INSTALL_DIR/include" \
                -DTH_SO_VERSION=1 \
                -DTHC_SO_VERSION=1 \
                -DTHNN_SO_VERSION=1 \
