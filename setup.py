@@ -181,7 +181,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen', 'THC', 'THCS', 'THCUNN',
+    'nccl', 'ATen', #'THC', 'THCS', 'THCUNN',
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
@@ -274,7 +274,8 @@ class build_deps(Command):
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
         if WITH_ROCM:
-            libs += ['THC', 'THCS', 'THCUNN']
+            pass
+            #libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
