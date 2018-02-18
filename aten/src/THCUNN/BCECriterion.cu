@@ -69,6 +69,7 @@ struct bce_functor_weights
     Dtype w = thrust::get<2>(x);
 #if defined (__NVCC__)
     assert(input >= 0. && input <= 1.);
+#endif
     return - w * (t * THCNumerics<Acctype>::log(input + eps<Acctype>()) +
         (Acctype(1) - t) * THCNumerics<Acctype>::log(Acctype(1) - input + eps<Acctype>()));
   }
