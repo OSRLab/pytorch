@@ -50,7 +50,9 @@ struct bce_updateOutput_no_reduce_functor
       const Dtype *target,
       Dtype *output)
   {
+#if defined (__NVCC__)
     assert(*input >= 0. && *input <= 1.);
+#endif
     *output = ScalarConvert<Acctype, Dtype>::to(
         -(*target * THCNumerics<Acctype>::log(*input + eps<Acctype>()) +
           (Acctype(1) - *target) * THCNumerics<Acctype>::log(Acctype(1) - *input + eps<Acctype>())));
