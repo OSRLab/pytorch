@@ -143,7 +143,6 @@ function build() {
 }
 function build_rocm_THC() {
   cd ../../aten/src/
-  ROCM_INSTALL_DIR="$PWD/tmp_install"
   mkdir -p build/THC
   cd build/THC
   BUILD_C_FLAGS=''
@@ -155,7 +154,7 @@ function build_rocm_THC() {
   esac
   cmake ../../THC/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
                -DTorch_FOUND="1" \
-               -DCMAKE_INSTALL_PREFIX="$ROCM_INSTALL_DIR" \
+               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
                -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
                -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
                -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
