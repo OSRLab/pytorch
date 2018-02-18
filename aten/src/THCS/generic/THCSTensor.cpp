@@ -97,7 +97,8 @@ THCSTensor* THCSTensor_(rawResize)(THCState *state, THCSTensor *self, int nDimI,
   }
   self->nDimensionI = nDimI;
   self->nDimensionV = nDimV;
-  return self;
+#endif
+return self;
 }
 
 // directly assign without cloning or retaining (internal method)
