@@ -134,12 +134,8 @@ PyObject * THCPModule_getDriverVersion(PyObject *self)
                     err, cudaGetErrorString(err));
     return NULL;
   }
+#endif
   return PyLong_FromLong((int64_t) driverVersion);
-}
-
-PyObject * THCPModule_getCompiledVersion(PyObject *self)
-{
-  return PyLong_FromLong((long) CUDA_VERSION);
 }
 
 PyObject * THCPModule_getCompiledVersion(PyObject *self)
