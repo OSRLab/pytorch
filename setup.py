@@ -567,7 +567,7 @@ if WITH_DISTRIBUTED:
     include_dirs += [tmp_install_path + "/include/THD"]
     main_link_args += [THD_LIB]
 
-if IS_WINDOWS and not WITH_CUDA:
+if IS_WINDOWS and not WITH_CUDA and not WITH_ROCM:
     main_sources += ["torch/csrc/generated/AutoGPU_cpu_win.cpp"]
 
 if WITH_CUDA:
