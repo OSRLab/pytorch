@@ -8,6 +8,9 @@ cp -r aten/src/* aten/hip-src/
 
 cd aten/hip-src/
 
+# Extract the aten CMakeLists file.
+cp ../CMakeLists.txt.hip ../CMakeLists.txt
+
 # Extract the THC (.hip) files.
 # cp THC/CMakeLists.txt.hip THC/CMakeLists.txt
 cp THC/THCAllocator.c.hip THC/THCAllocator.c
