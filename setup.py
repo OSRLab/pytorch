@@ -806,6 +806,7 @@ if not IS_WINDOWS:
     DL = Extension("torch._dl",
                    sources=["torch/csrc/dl.c"],
                    language='c',
+                   extra_link_args=["-shared"],
                    )
     extensions.append(DL)
 
