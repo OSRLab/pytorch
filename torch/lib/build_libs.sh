@@ -16,7 +16,6 @@ if [[ "$1" == "--with-cuda" ]]; then
   shift
 elif [[ "$1" == "--with-rocm" ]]; then
   WITH_ROCM=1
-  WITH_CUDA=0
   shift
 fi
 
@@ -141,158 +140,11 @@ function build() {
     cd ../..
   fi
 }
-function build_rocm_THC() {
-  cd ../../aten/src/
-  mkdir -p build/THC
-  cd build/THC
-  BUILD_C_FLAGS=''
 
-  # case $1 in
-  case THC in
-      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
-      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
-  esac
-  cmake ../../THC/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
-               -DTorch_FOUND="1" \
-               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
-               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
-               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
-               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
-               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
-               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
-               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
-               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
-               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
-               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
-               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
-               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
-               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
-               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
-               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
-               -DATEN_INSTALL_INCLUDE_SUBDIR="$INSTALL_DIR/include" \
-               -DTH_SO_VERSION=1 \
-               -DTHC_SO_VERSION=1 \
-               -DTHNN_SO_VERSION=1 \
-               -DTHCUNN_SO_VERSION=1 \
-               -DTHD_SO_VERSION=1 \
-               -DNO_CUDA=0 \
-               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
-  make install -j$(getconf _NPROCESSORS_ONLN)
-  cd ../..
-  cd ../../torch/lib
-
-  local lib_prefix=$INSTALL_DIR/lib/libTHC
-  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
-    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
-  fi
-}
-function build_rocm_THCUNN() {
-  # We create a build directory for the library, which will
-  # contain the cmake output
-  cd ../../aten/src/
-  mkdir -p build/THCUNN
-  cd build/THCUNN
-  BUILD_C_FLAGS=''
-  case THCUNN in
-      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
-      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
-  esac
-  cmake ../../THCUNN/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
-               -DTorch_FOUND="1" \
-               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
-               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
-               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
-               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
-               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
-               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
-               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
-               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
-               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
-               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
-               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
-               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
-               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
-               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
-               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
-               -DATEN_INSTALL_INCLUDE_SUBDIR="$INSTALL_DIR/include" \
-               -DTH_SO_VERSION=1 \
-               -DTHC_SO_VERSION=1 \
-               -DTHNN_SO_VERSION=1 \
-               -DTHCUNN_SO_VERSION=1 \
-               -DTHD_SO_VERSION=1 \
-               -DNO_CUDA=0 \
-               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
-  make install -j$(getconf _NPROCESSORS_ONLN)
-  cd ../..
-  cd ../../torch/lib
-
-  local lib_prefix=$INSTALL_DIR/lib/libTHC
-  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
-    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
-  fi
-}
-function build_rocm_THCS() {
-  # We create a build directory for the library, which will
-  # contain the cmake output
-  cd ../../aten/src/
-  mkdir -p build/THCS
-  cd build/THCS
-  BUILD_C_FLAGS=''
-  # case $1 in
-  case THCS in
-      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
-      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
-  esac
-  cmake ../../THCS/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
-               -DTorch_FOUND="1" \
-               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
-               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
-               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
-               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
-               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
-               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
-               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
-               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
-               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
-               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
-               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
-               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
-               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
-               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
-               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
-               -DATEN_INSTALL_INCLUDE_SUBDIR="$INSTALL_DIR/include" \
-               -DTH_SO_VERSION=1 \
-               -DTHC_SO_VERSION=1 \
-               -DTHNN_SO_VERSION=1 \
-               -DTHCUNN_SO_VERSION=1 \
-               -DTHD_SO_VERSION=1 \
-               -DNO_CUDA=0 \
-               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
-  make install -j$(getconf _NPROCESSORS_ONLN)
-  cd ../..
-  cd ../../torch/lib
-
-  local lib_prefix=$INSTALL_DIR/lib/libTHC
-  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
-    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
-  fi
-
-  if [[ $(uname) == 'Darwin' ]]; then
-    cd tmp_install/lib
-    for lib in *.dylib; do
-      echo "Updating install_name for $lib"
-      install_name_tool -id @rpath/$lib $lib
-    done
-    cd ../..
-  fi
-}
 function build_rocm_aten() {
   mkdir -p build/aten
   cd  build/aten
-  ${CMAKE_VERSION} ../../../../aten \
+  ${CMAKE_VERSION} ../../../../aten/hip \
   ${CMAKE_GENERATOR} \
   -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
   -DNO_CUDA=$((1-$WITH_CUDA)) \
@@ -308,6 +160,7 @@ function build_rocm_aten() {
   ${CMAKE_INSTALL} -j$(getconf _NPROCESSORS_ONLN)
   cd ../..
 }
+
 function build_nccl() {
    mkdir -p build/nccl
    cd build/nccl
@@ -356,20 +209,7 @@ function build_aten() {
 # In the torch/lib directory, create an installation directory
 mkdir -p tmp_install
 
-# Build
-for arg in "$@"; do
-    if [[ "$arg" == "nccl" ]]; then
-        build_nccl
-    elif [[ "$arg" == "gloo" ]]; then
-        build gloo $GLOO_FLAGS
-    elif [[ "$arg" == "ATen" ]]; then
-        build_aten
-    elif [[ "$arg" == "THD" ]]; then
-        build THD $THD_FLAGS
-    else
-        build $arg
-    fi
-done
+# Link folders if ROCm
 if [[ $WITH_ROCM -eq 1 ]]; then
     mkdir -p HIP
     cd HIP
@@ -393,36 +233,26 @@ if [[ $WITH_ROCM -eq 1 ]]; then
     fi
     cd ..
 fi
+
+# Build
 for arg in "$@"; do
+  if [[ "$arg" == "nccl" ]]; then
+      build_nccl
+  elif [[ "$arg" == "gloo" ]]; then
+      build gloo $GLOO_FLAGS
+  elif [[ "$arg" == "ATen" ]]; then
     if [[ $WITH_ROCM -eq 1 ]]; then
-        if [[ "$arg" == "THC" ]]; then
-            build_rocm_THC
-        elif [[ "$arg" == "THCUNN" ]]; then
-            build_rocm_THCUNN
-        elif [[ "$arg" == "THCS" ]]; then
-            build_rocm_THCS
-        elif [[ "$arg" == "ATen" ]]; then
-            build_aten # build_rocm_ATen
-            build_rocm_THC
-            build_rocm_THCS
-            build_rocm_THCUNN
-        elif [[ "$arg" == "nccl" ]]; then
-            build_nccl
-        elif [[ "$arg" == "gloo" ]]; then
-            build gloo $GLOO_FLAGS
-        else
-            build $arg
-        fi
+      build_rocm_aten
     else
-        if [[ "$arg" == "nccl" ]]; then
-            build_nccl
-        elif [[ "$arg" == "gloo" ]]; then
-            build gloo $GLOO_FLAGS
-        else
-            build $arg
-        fi
+      build_aten
     fi
+  elif [[ "$arg" == "THD" ]]; then
+      build THD $THD_FLAGS
+  else
+      build $arg
+  fi
 done
+
 # If all the builds succeed we copy the libraries, headers,
 # binaries to torch/lib
 rm -rf "$INSTALL_DIR/lib/cmake"
