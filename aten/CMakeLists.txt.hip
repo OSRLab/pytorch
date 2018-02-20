@@ -3,7 +3,7 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCUDA
   /usr/lib/x86_64-linux-gnu/
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/TH/cmake
   ${CMAKE_MODULE_PATH})
 SET(CMAKE_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/ ${CMAKE_LIBRARY_PATH})
 project(ATen)
@@ -381,36 +381,36 @@ SET(ATEN_INSTALL_INCLUDE_SUBDIR "include" CACHE PATH "ATen install include subdi
 
 add_definitions(-DTH_INDEX_BASE=0)
 set(TH_LINK_STYLE STATIC)
-add_subdirectory(src/TH)
+add_subdirectory(hip-src/TH)
 include_directories(
   # dense
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/THC
-  ${CMAKE_CURRENT_BINARY_DIR}/src/TH
-  ${CMAKE_CURRENT_BINARY_DIR}/src/THC
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/TH
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THC
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/TH
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/THC
   # sparse
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/THS
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/THCS
-  ${CMAKE_CURRENT_BINARY_DIR}/src/THS
-  ${CMAKE_CURRENT_BINARY_DIR}/src/THCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THS
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCS
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/THS
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/THCS
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
-  ${CMAKE_CURRENT_BINARY_DIR}/src)
-add_subdirectory(src/THNN)
-add_subdirectory(src/THS)
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-src)
+add_subdirectory(hip-src/THNN)
+add_subdirectory(hip-src/THS)
 
 if (WITH_ROCM)
   SET(AT_CUDA_ENABLED 1)
-  add_subdirectory(src/THC/hip)
-  add_subdirectory(src/THCUNN/hip)
-  add_subdirectory(src/THCS/hip)
-elif(NOT NO_CUDA)
+  add_subdirectory(hip-src/THC)
+  add_subdirectory(hip-src/THCUNN)
+  add_subdirectory(hip-src/THCS)
+elseif(NOT NO_CUDA)
   SET(AT_CUDA_ENABLED 1)
   INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
   find_package(CUDA 5.5 REQUIRED)
-  add_subdirectory(src/THC)
-  add_subdirectory(src/THCUNN)
-  add_subdirectory(src/THCS)
+  add_subdirectory(hip-src/THC)
+  add_subdirectory(hip-src/THCUNN)
+  add_subdirectory(hip-src/THCS)
 else()
   message("disabling CUDA because NO_CUDA is set")
   SET(CUDA_FLAG -n)
@@ -420,7 +420,7 @@ endif()
 find_package(CuDNN)
 IF(WITH_ROCM)
   set(AT_CUDNN_ENABLED 1)
-ELIF(NOT AT_CUDA_ENABLED OR NOT CUDNN_FOUND)
+ELSEIF(NOT AT_CUDA_ENABLED OR NOT CUDNN_FOUND)
   MESSAGE(STATUS "CuDNN not found. Compiling without CuDNN support")
   set(AT_CUDNN_ENABLED 0)
 ELSE()
@@ -443,25 +443,25 @@ else()
 endif()
 
 set(cwrap_files
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/Declarations.cwrap
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/THNN/generic/THNN.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/THCUNN/generic/THCUNN.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/nn.yaml
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/native/native_functions.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/Declarations.cwrap
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THNN/generic/THNN.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCUNN/generic/THCUNN.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/nn.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/native/native_functions.yaml
 )
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/src/THNN
-${CMAKE_CURRENT_SOURCE_DIR}/src/THCUNN/hip)
+${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THNN
+${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCUNN)
 
-add_subdirectory(src/ATen/hip)
+add_subdirectory(hip-src/ATen)
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/src
-${CMAKE_CURRENT_BINARY_DIR}/src/ATen)
+${CMAKE_CURRENT_SOURCE_DIR}/hip-src
+${CMAKE_CURRENT_BINARY_DIR}/hip-src/ATen)
 if(NOT NO_CUDA AND NOT WITH_ROCM)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
-add_subdirectory(src/ATen/hip/test)
+add_subdirectory(hip-src/ATen/test)
 
 if(ATEN_NO_CONTRIB)
   message("disable contrib because ATEN_NO_CONTRIB is set")

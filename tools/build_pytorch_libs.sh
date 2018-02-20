@@ -186,7 +186,7 @@ function build() {
 function build_rocm_aten() {
   mkdir -p build/aten
   cd  build/aten
-  ${CMAKE_VERSION} ../../../../aten/hip \
+  ${CMAKE_VERSION} ../../../../aten \
   ${CMAKE_GENERATOR} \
   -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
   -DNO_CUDA=$((1-$WITH_CUDA)) \
