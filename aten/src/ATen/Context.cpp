@@ -9,9 +9,7 @@
 #include <stdexcept>
 
 #if AT_CUDA_ENABLED()
-#if !defined(__HIP_PLATFORM_HCC__)
 #include <cuda.h>
-#endif
 #include "THC/THC.h"
 #include "ATen/CUDAGenerator.h"
 #endif
