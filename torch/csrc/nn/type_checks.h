@@ -68,7 +68,7 @@ static inline THIntTensor* THNN_IntTensor_Unpack(PyObject* obj) {
   return torch::nn::unpack<THIntTensor>(obj);
 }
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 
 static inline bool THNN_CudaHalfTensor_Check(PyObject* obj) {
   return torch::nn::check_type(obj, at::TypeID::CUDAHalf);

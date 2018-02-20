@@ -62,6 +62,13 @@ cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/hip/
 find THCS/hip -name "*.prehip" -type f -delete
 
+#### ATen Files ####
+mkdir -p ATen/hip
+cp ATen/* ATen/hip/
+cp ATen/CMakeLists.txt.hip ATen/hip/CMakeLists.txt
+/opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/hip/cuda/
+find ATen/hip/cuda/ -name "*.prehip" -type f -delete
+
 # Make link directories
 mkdir -p HIP
 cd HIP
