@@ -2,72 +2,45 @@
 
 set -e
 
-cd aten/src/
+#### Create HIP aten folder ####
+mkdir -p aten/hip-src
+cp -r aten/src/* aten/hip-src/
 
-##### THC Files ####
-mkdir -p THC/hip
-mkdir -p THC/hip/generic
-cp THC/*.h THC/hip/
-cp THC/*.c THC/hip/
-cp THC/*.cpp THC/hip/
-cp THC/*.cu THC/hip/
-cp THC/*.cuh THC/hip/
+cd aten/hip-src/
 
-# THC Generic Files
-cp THC/generic/*.h THC/hip/generic/
-cp THC/generic/*.c THC/hip/generic/
-cp THC/generic/*.cu THC/hip/generic/
-
-# THC HIP Files
-cp THC/CMakeLists.txt.hip THC/hip/CMakeLists.txt
-cp THC/THCAllocator.c.hip THC/hip/THCAllocator.c
-cp THC/THCApply.cuh.hip THC/hip/THCApply.cuh
-cp THC/THCBlas.cu.hip THC/hip/THCBlas.cu
-cp THC/THCGeneral.cpp.hip THC/hip/THCGeneral.cpp
-cp THC/THCGeneral.h.in.hip THC/hip/THCGeneral.h.in
-cp THC/THCNumerics.cuh.hip THC/hip/THCNumerics.cuh
-cp THC/THCTensorRandom.cu.hip THC/hip/THCTensorRandom.cu
-cp THC/THCTensorRandom.cuh.hip THC/hip/THCTensorRandom.cuh
-cp THC/THCTensorRandom.h.hip THC/hip/THCTensorRandom.h
-cp THC/generic/THCStorage.c.hip THC/hip/generic/THCStorage.c
-cp THC/generic/THCTensorRandom.cu.hip THC/hip/generic/THCTensorRandom.cu
+# Extract the THC (.hip) files.
+# cp THC/CMakeLists.txt.hip THC/CMakeLists.txt
+cp THC/THCAllocator.c.hip THC/THCAllocator.c
+cp THC/THCApply.cuh.hip THC/THCApply.cuh
+cp THC/THCBlas.cu.hip THC/THCBlas.cu
+cp THC/THCGeneral.cpp.hip THC/THCGeneral.cpp
+cp THC/THCGeneral.h.in.hip THC/THCGeneral.h.in
+cp THC/THCNumerics.cuh.hip THC/THCNumerics.cuh
+cp THC/THCTensorRandom.cu.hip THC/THCTensorRandom.cu
+cp THC/THCTensorRandom.cuh.hip THC/THCTensorRandom.cuh
+cp THC/THCTensorRandom.h.hip THC/THCTensorRandom.h
+cp THC/generic/THCStorage.c.hip THC/generic/THCStorage.c
+cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 
 # Run hipify script in place
-/opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/hip/
-/opt/rocm/hip/bin/hipify-perl THC/hip/THCGeneral.h.in
-find THC/hip -name "*.prehip" -type f -delete
+/opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/
+/opt/rocm/hip/bin/hipify-perl THC/THCGeneral.h.in
+find THC/ -name "*.prehip" -type f -delete
 
-##### THCUNN Files ####
-mkdir -p THCUNN/hip
-mkdir -p THCUNN/hip/generic
-cp THCUNN/*.h THCUNN/hip/
-cp THCUNN/*.cu THCUNN/hip/
-cp THCUNN/*.cuh THCUNN/hip/
-cp THCUNN/generic/*.h THCUNN/hip/generic/
-cp THCUNN/generic/*.cu THCUNN/hip/generic/
-cp THCUNN/CMakeLists.txt.hip THCUNN/hip/CMakeLists.txt
-/opt/rocm/hip/bin/hipconvertinplace-perl.sh THCUNN/hip/
-find THCUNN/hip -name "*.prehip" -type f -delete
+# Extract the THCUNN (.hip) files.
+# cp THCUNN/CMakeLists.txt.hip THCUNN/CMakeLists.txt
+/opt/rocm/hip/bin/hipconvertinplace-perl.sh THCUNN/
+find THCUNN/ -name "*.prehip" -type f -delete
 
-#### THCS Files ####
-mkdir -p THCS/hip
-mkdir -p THCS/hip/generic
-cp THCS/*.h THCS/hip/
-cp THCS/*.cpp THCS/hip/
-cp THCS/*.cu THCS/hip/
-cp THCS/generic/*.h THCS/hip/generic/
-cp THCS/generic/*.cpp THCS/hip/generic/
-cp THCS/generic/*.cu THCS/hip/generic/
-cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
-/opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/hip/
-find THCS/hip -name "*.prehip" -type f -delete
+# Extract the THCS (.hip) files.
+# cp THCS/CMakeLists.txt.hip THCS/CMakeLists.txt
+/opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/
+find THCS/ -name "*.prehip" -type f -delete
 
-#### ATen Files ####
-mkdir -p ATen/hip
-cp ATen/* ATen/hip/
-cp ATen/CMakeLists.txt.hip ATen/hip/CMakeLists.txt
-/opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/hip/cuda/
-find ATen/hip/cuda/ -name "*.prehip" -type f -delete
+# Extract the ATen files.
+cp ATen/CMakeLists.txt.hip ATen/CMakeLists.txt
+/opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/
+find ATen/cuda/ -name "*.prehip" -type f -delete
 
 # Make link directories
 mkdir -p HIP
@@ -82,13 +55,13 @@ if [ ! -L "THNN" ]; then
     ln -s ../THNN THNN
 fi
 if [ ! -L "THC" ]; then
-    ln -s ../THC/hip THC
+    ln -s ../THC THC
 fi
 if [ ! -L "THCS" ]; then
-    ln -s ../THCS/hip THCS
+    ln -s ../THCS THCS
 fi
 if [ ! -L "THCUNN" ]; then
-    ln -s ../THCUNN/hip THCUNN
+    ln -s ../THCUNN THCUNN
 fi
 if [ ! -L "THD" ]; then
     ln -s ../THD THD
