@@ -12,6 +12,7 @@ cd aten/hip-src/
 cp ../CMakeLists.txt.hip ../CMakeLists.txt
 
 # Extract the THC (.hip) files.
+cp THC/CMakeLists.txt.hip THC/CMakeLists.txt
 cp THC/THCAllocator.c.hip THC/THCAllocator.c
 cp THC/THCApply.cuh.hip THC/THCApply.cuh
 cp THC/THCBlas.cu.hip THC/THCBlas.cu
@@ -30,14 +31,17 @@ cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 find THC/ -name "*.prehip" -type f -delete
 
 # Extract the THCUNN (.hip) files.
+cp THCUNN/CMakeLists.txt.hip THCUNN/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCUNN/
 find THCUNN/ -name "*.prehip" -type f -delete
 
 # Extract the THCS (.hip) files.
+cp THCS/CMakeLists.txt.hip THCS/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/
 find THCS/ -name "*.prehip" -type f -delete
 
 # Extract the ATen files.
+cp ATen/CMakeLists.txt.hip ATen/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
