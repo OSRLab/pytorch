@@ -313,6 +313,59 @@ function build_rocm_ATen() {
     done
     cd ../..
   fi
+function build_rocm_THD() {
+  # We create a build directory for the library, which will
+  # contain the cmake output
+  mkdir -p build/THD
+  cd build/THD
+  BUILD_C_FLAGS=$C_FLAGS" -fexceptions";
+  cmake ../../THD -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
+              -DTorch_FOUND="1" \
+              -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+              -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
+              -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
+              -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+              -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
+              -DCMAKE_INSTALL_LIBDIR="$INSTALL_DIR/lib" \
+              -DCUDA_NVCC_FLAGS="$CUDA_NVCC_FLAGS" \
+              -Dcwrap_files="$CWRAP_FILES" \
+              -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
+              -DTH_LIB_PATH="$INSTALL_DIR/lib" \
+              -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
+              -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
+              -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
+              -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
+              -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
+              -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
+              -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+              -DTH_SO_VERSION=1 \
+              -DTHC_SO_VERSION=1 \
+              -DTHNN_SO_VERSION=1 \
+              -DTHCUNN_SO_VERSION=1 \
+              -DTHD_SO_VERSION=1 \
+              -DNCCL_EXTERNAL=1 \
+              -Dnanopb_BUILD_GENERATOR=0 \
+              -DCMAKE_DEBUG_POSTFIX="" \
+              -DWITH_ROCM=1 \
+              -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
+              ${@:2}
+  make install -j$(getconf _NPROCESSORS_ONLN)
+  cd ../..
+
+  local lib_prefix=$INSTALL_DIR/lib/libATen
+  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
+    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
+  fi
+
+  if [[ $(uname) == 'Darwin' ]]; then
+    cd tmp_install/lib
+    for lib in *.dylib; do
+      echo "Updating install_name for $lib"
+      install_name_tool -id @rpath/$lib $lib
+    done
+    cd ../..
+  fi
+}
 }
 function build_nccl() {
    mkdir -p build/nccl
@@ -328,6 +381,66 @@ function build_nccl() {
      ln -s "${INSTALL_DIR}/lib/libnccl.so.1" "${INSTALL_DIR}/lib/libnccl.so"
    fi
    cd ../..
+}
+
+function build_rocm_gloo() {
+  # We create a build directory for the library, which will
+  # contain the cmake output
+  mkdir -p build/gloo
+  cd build/gloo
+  BUILD_C_FLAGS=''
+  case gloo in
+      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
+      nanopb ) BUILD_C_FLAGS=$C_FLAGS" -fPIC -fexceptions";;
+      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
+  esac
+  cmake ../../gloo -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
+              -DUSE_HIP="1" \
+              -DTorch_FOUND="1" \
+              -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+              -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
+              -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
+              -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
+              -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
+              -DCMAKE_INSTALL_LIBDIR="$INSTALL_DIR/lib" \
+              -DCUDA_NVCC_FLAGS="$CUDA_NVCC_FLAGS" \
+              -Dcwrap_files="$CWRAP_FILES" \
+              -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
+              -DTH_LIB_PATH="$INSTALL_DIR/lib" \
+              -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
+              -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
+              -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
+              -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
+              -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
+              -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
+              -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
+              -DTH_SO_VERSION=1 \
+              -DTHC_SO_VERSION=1 \
+              -DTHNN_SO_VERSION=1 \
+              -DTHCUNN_SO_VERSION=1 \
+              -DTHD_SO_VERSION=1 \
+              -DNCCL_EXTERNAL=1 \
+              -Dnanopb_BUILD_GENERATOR=0 \
+              -DCMAKE_DEBUG_POSTFIX="" \
+              -DWITH_ROCM=1 \
+              -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
+              ${@:2}
+  make install -j$(getconf _NPROCESSORS_ONLN)
+  cd ../..
+
+  local lib_prefix=$INSTALL_DIR/lib/libATen
+  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
+    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
+  fi
+
+  if [[ $(uname) == 'Darwin' ]]; then
+    cd tmp_install/lib
+    for lib in *.dylib; do
+      echo "Updating install_name for $lib"
+      install_name_tool -id @rpath/$lib $lib
+    done
+    cd ../..
+  fi
 }
 
 # In the torch/lib directory, create an installation directory
@@ -365,12 +478,14 @@ for arg in "$@"; do
             build_rocm_THCUNN
         elif [[ "$arg" == "THCS" ]]; then
             build_rocm_THCS
+        elif [[ "$arg" == "THD" ]]; then
+            build_rocm_THD
         elif [[ "$arg" == "ATen" ]]; then
             build_rocm_ATen
         elif [[ "$arg" == "nccl" ]]; then
             build_nccl
         elif [[ "$arg" == "gloo" ]]; then
-            build gloo $GLOO_FLAGS
+            build_rocm_gloo
         else
             build $arg
         fi

@@ -56,6 +56,21 @@ cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/hip/
 find THCS/hip -name "*.prehip" -type f -delete
 
+# gloo
+cp -r gloo_postfix/* gloo/gloo/
+hipconvertinplace-perl.sh gloo/gloo
+sed -i 's/cudaStream_t/hipStream_t/g' gloo/gloo/*.cc
+sed -i 's/cudaStream_t/hipStream_t/g' gloo/gloo/test/*.cc
+find gloo/gloo -name "*.prehip" -type f -delete
+
+# THD
+cp THD/CMakeLists.txt.hip THD/CMakeLists.txt
+sed -i 's/cudaStream_t/hipStream_t/g' THD/base/Cuda.h
+sed -i 's/cudaStream_t/hipStream_t/g' THD/base/Cuda.cpp
+sed -i 's/cudaStream_t/hipStream_t/g' THD/base/Cuda.hpp
+sed -i 's/cudaStream_t/hipStream_t/g' THD/base/data_channels/GlooCache.hpp
+sed -i 's/cudaMemcpy/hipMemcpy/g' THD/base/data_channels/GlooCache.hpp
+
 # Make link directories
 mkdir -p HIP
 cd HIP
