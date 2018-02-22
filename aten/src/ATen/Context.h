@@ -13,9 +13,15 @@
 // Forwarde declare these CUDA types here to avoid including CUDA headers in
 // ATen headers, which would make ATen always require CUDA to build.
 struct THCState;
+#if defined(__HIP_PLATFORM_HCC__)
+struct ihipStream_t
+typedef struct ihipStream_t *cudaStream_t;
+struct hipDeviceProp_t;
+#else
 struct CUstream_st;
 typedef struct CUstream_st *cudaStream_t;
 struct cudaDeviceProp;
+#endif
 
 namespace at {
 
