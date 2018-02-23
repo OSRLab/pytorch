@@ -15,7 +15,7 @@
 struct THCState;
 #if defined(__HIP_PLATFORM_HCC__)
 struct ihipStream_t
-typedef struct ihipStream_t *cudaStream_t;
+typedef struct ihipStream_t *hipStream_t;
 struct hipDeviceProp_t;
 #else
 struct CUstream_st;
