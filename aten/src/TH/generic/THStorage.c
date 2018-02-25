@@ -32,7 +32,7 @@ THStorage* THStorage_(newWithAllocator)(ptrdiff_t size,
                                         void *allocatorContext)
 {
   THStorage *storage = (THStorage*) THAlloc(sizeof(THStorage));
-  storage->data = allocator->malloc(allocatorContext, sizeof(real)*size);
+  storage->data = (real*) allocator->malloc(allocatorContext, sizeof(real)*size);
   storage->size = size;
   storage->refcount = 1;
   storage->flag = TH_STORAGE_REFCOUNTED | TH_STORAGE_RESIZABLE | TH_STORAGE_FREEMEM;
@@ -157,7 +157,7 @@ void THStorage_(resize)(THStorage *storage, ptrdiff_t size)
       if (size == 0) {
         storage->data = NULL;
       } else {
-        storage->data = storage->allocator->malloc(
+        storage->data = (real*) storage->allocator->malloc(
             storage->allocatorContext,
             sizeof(real)*size);
       }
@@ -173,7 +173,7 @@ void THStorage_(resize)(THStorage *storage, ptrdiff_t size)
         storage->allocator->free(storage->allocatorContext, old_data);
       }
     } else {
-      storage->data = storage->allocator->realloc(
+      storage->data = (real*) storage->allocator->realloc(
               storage->allocatorContext,
               storage->data,
               sizeof(real)*size);
