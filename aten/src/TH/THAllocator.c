@@ -82,7 +82,7 @@ THMapAllocatorContext *THMapAllocatorContext_new(const char *filename, int flags
         "in shared mode");
 
   if (filename) {
-    ctx->filename = THAlloc(strlen(filename)+1);
+    ctx->filename = (char*) THAlloc(strlen(filename)+1);
     strcpy(ctx->filename, filename);
 #ifdef _WIN32
     char *suffixname = "_event";
