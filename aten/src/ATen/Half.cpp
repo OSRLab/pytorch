@@ -25,6 +25,11 @@ template<> AT_API double convert(Half f) {
   return convert<float, Half>(f);
 }
 
+template<> AT_API __fp16 convert(Half f) {
+  __fp16 h = reinterpret_cast<__fp16&>(f.x);
+  return h;
+}
+
 template<> AT_API Half convert(int64_t f) {
   return convert<Half,double>(static_cast<double>(f));
 }
