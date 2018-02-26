@@ -13,7 +13,7 @@
 // ATen headers, which would make ATen always require CUDA to build.
 struct THCState;
 #if defined(__HIP_PLATFORM_HCC__)
-struct ihipStream_t
+struct ihipStream_t;
 typedef struct ihipStream_t *hipStream_t;
 struct hipDeviceProp_t;
 #else
