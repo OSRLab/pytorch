@@ -43,6 +43,8 @@ find THCS/ -name "*.prehip" -type f -delete
 # Extract the ATen files.
 cp ATen/CMakeLists.txt.hip ATen/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/
+sed -i 's/cudaHostAllocator/hipHostAllocator/g' ATen/PinnedMemoryAllocator.cpp
+sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' ATen/Context.cpp
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
 # Make link directories
