@@ -1,3 +1,6 @@
+SET(CMAKE_C_COMPILER ${HIP_HIPCC_EXECUTABLE})
+SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
+
 ADD_EXECUTABLE(scalar_test scalar_test.cpp)
 target_link_libraries(scalar_test ATen)
 
