@@ -105,6 +105,8 @@ IF(NOT MSVC AND NOT "${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
 ENDIF()
 ########################
 
+SET_SOURCE_FILES_PROPERTIES(${PROJECT_SOURCE_DIR}/hip-src/TH/THTensor.cpp PROPERTIES COMPILE_FLAGS "")
+
 ################################################################################
 # Helper functions
 ################################################################################
