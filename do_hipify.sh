@@ -47,6 +47,9 @@ sed -i 's/cudaHostAllocator/hipHostAllocator/g' ATen/PinnedMemoryAllocator.cpp
 sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' ATen/Context.cpp
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
+# Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
+sed -i 's/_OPENMP/_OPENMP_STUBBED/g' TH/generic/THTensorMath.c
+
 # Make link directories
 mkdir -p HIP
 cd HIP
