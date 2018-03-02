@@ -189,14 +189,14 @@ function build_rocm_aten() {
   ${CMAKE_VERSION} ../../../../aten \
   ${CMAKE_GENERATOR} \
   -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
-  -DNO_CUDA=0 \ # So files build normally.
+  -DNO_CUDA=0 \
   -DNO_NNPACK=$((1-$WITH_NNPACK)) \
   -DCUDNN_INCLUDE_DIR=$CUDNN_INCLUDE_DIR \
   -DCUDNN_LIB_DIR=$CUDNN_LIB_DIR \
   -DCUDNN_LIBRARY=$CUDNN_LIBRARY \
   -DATEN_NO_CONTRIB=1 \
   -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=1
   -DWITH_ROCM=1
   # purpusefully not passing C_FLAGS for the same reason as above
   ${CMAKE_INSTALL} -j$(getconf _NPROCESSORS_ONLN)
