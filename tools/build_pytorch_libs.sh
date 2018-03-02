@@ -189,7 +189,7 @@ function build_rocm_aten() {
   ${CMAKE_VERSION} ../../../../aten \
   ${CMAKE_GENERATOR} \
   -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
-  -DNO_CUDA=$((1-$WITH_CUDA)) \
+  -DNO_CUDA=0 \ # So files build normally.
   -DNO_NNPACK=$((1-$WITH_NNPACK)) \
   -DCUDNN_INCLUDE_DIR=$CUDNN_INCLUDE_DIR \
   -DCUDNN_LIB_DIR=$CUDNN_LIB_DIR \
