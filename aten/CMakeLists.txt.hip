@@ -1,12 +1,73 @@
 cmake_minimum_required(VERSION 3.0)
+
 set(CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake
+  "${HIP_PATH}/cmake"
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCUDA
   /usr/lib/x86_64-linux-gnu/
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/TH/cmake
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH/cmake
   ${CMAKE_MODULE_PATH})
 SET(CMAKE_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/ ${CMAKE_LIBRARY_PATH})
 project(ATen)
+
+# HIP_PATH
+IF(NOT DEFINED $ENV{HIP_PATH})
+  SET(HIP_PATH /opt/rocm/hip)
+ELSE()
+  SET(HIP_PATH $ENV{HIP_PATH})
+ENDIF()
+
+# HCC_PATH
+IF(NOT DEFINED $ENV{HCC_PATH})
+  SET(HCC_PATH /opt/rocm/hcc)
+ELSE()
+  SET(HCC_PATH $ENV{HCC_PATH})
+ENDIF()
+
+# HIPBLAS_PATH
+IF(NOT DEFINED $ENV{HIPBLAS_PATH})
+  SET(HIPBLAS_PATH /opt/rocm/hipblas)
+ELSE()
+  SET(HIPBLAS_PATH $ENV{HIPBLAS_PATH})
+ENDIF()
+
+# HIPRNG_PATH
+IF(NOT DEFINED $ENV{HIPRNG_PATH})
+  SET(HIPRNG_PATH /opt/rocm/hcrng)
+ELSE()
+  SET(HIPRNG_PATH $ENV{HIPRNG_PATH})
+ENDIF()
+
+# HIPSPARSE_PATH
+IF(NOT DEFINED $ENV{HIPSPARSE_PATH})
+  SET(HIPSPARSE_PATH /opt/rocm/hcsparse)
+ELSE()
+  SET(HIPSPARSE_PATH $ENV{HIPSPARSE_PATH})
+ENDIF()
+
+# THRUST_PATH
+SET(THRUST_PATH "~/Thrust")
+
+FIND_PACKAGE(HIP 1.0 REQUIRED)
+EXECUTE_PROCESS(COMMAND ${HIP_PATH}/bin/hipconfig -P OUTPUT_VARIABLE PLATFORM)
+EXECUTE_PROCESS(COMMAND ${HIP_PATH}/bin/hipconfig --cpp_config OUTPUT_VARIABLE HIP_CXX_FLAGS)
+
+# Prepare the HIP Compiler Settings
+# SET(HIP_CXX_FLAGS "-D__HIP_PLATFORM_HCC__ -I/opt/rocm/hip/include -I/opt/rocm/hcc/include ${HIP_CXX_FLAGS}")
+SET(HIP_HIPCC_FLAGS "-DGENERIC_GRID_LAUNCH=1 ${HIP_HIPCC_FLAGS}")
+SET(CMAKE_C_COMPILER hcc)
+SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
+SET(CMAKE_CXX_FLAGS  "-std=c++11 ${CMAKE_CXX_FLAGS} ${HIP_CXX_FLAGS}")
+
+MESSAGE(STATUS "ROCM TRUE:")
+MESSAGE(STATUS "CMAKE_CXX_COMPILER: " ${CMAKE_CXX_COMPILER})
+
+# Load HIP Directories
+INCLUDE_DIRECTORIES(${HIP_PATH}/include)
+INCLUDE_DIRECTORIES(${HIPBLAS_PATH}/include)
+INCLUDE_DIRECTORIES(${HIPSPARSE_PATH}/include)
+INCLUDE_DIRECTORIES(${HIPRNG_PATH}/include)
+INCLUDE_DIRECTORIES(${THRUST_PATH})
 
 cmake_policy(SET CMP0012 NEW)
 
@@ -40,9 +101,6 @@ endif()
 
 # RPATH stuff
 # see https://cmake.org/Wiki/CMake_RPATH_handling
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH ON)
-endif()
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
@@ -64,27 +122,11 @@ ENDIF(NOT MSVC)
 # Flags
 # When using MSVC
 
-# Detect CUDA architecture and get best NVCC flags
-# finding cuda must be first because other things depend on the result
-IF(NOT CUDA_FOUND)
-  FIND_PACKAGE(CUDA 5.5)
-ENDIF()
-
-IF(MSVC)
-  # we want to respect the standard, and we are bored of those **** .
-  ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE=1)
-  LIST(APPEND CUDA_NVCC_FLAGS "-Xcompiler /wd4819 -Xcompiler /wd4503")
-  ADD_DEFINITIONS(-DTH_EXPORTS)
-  IF (WITH_ROCM)
-    ADD_DEFINITIONS(-DTHC_EXPORTS)
-  ENDIF()
-ENDIF(MSVC)
-
 IF (NOT MSVC)
   IF (CMAKE_VERSION VERSION_LESS "3.1")
-    #SET(CMAKE_C_FLAGS "-std=c11 ${CMAKE_C_FLAGS}")
+    SET(CMAKE_C_FLAGS "-std=c11 ${CMAKE_C_FLAGS}")
   ELSE ()
-    #SET(CMAKE_C_STANDARD 11)
+    SET(CMAKE_C_STANDARD 11)
   ENDIF ()
 ENDIF(NOT MSVC)
 
@@ -135,22 +177,9 @@ ENDIF()
 
 # OpenMP support?
 SET(WITH_OPENMP ON CACHE BOOL "OpenMP support if available?")
-IF (APPLE AND CMAKE_COMPILER_IS_GNUCC)
-  EXEC_PROGRAM (uname ARGS -v  OUTPUT_VARIABLE DARWIN_VERSION)
-  STRING (REGEX MATCH "[0-9]+" DARWIN_VERSION ${DARWIN_VERSION})
-  MESSAGE (STATUS "MAC OS Darwin Version: ${DARWIN_VERSION}")
-  IF (DARWIN_VERSION GREATER 9)
-    SET(APPLE_OPENMP_SUCKS 1)
-  ENDIF (DARWIN_VERSION GREATER 9)
-  EXECUTE_PROCESS (COMMAND ${CMAKE_C_COMPILER} -dumpversion
-    OUTPUT_VARIABLE GCC_VERSION)
-  IF (APPLE_OPENMP_SUCKS AND GCC_VERSION VERSION_LESS 4.6.2)
-    MESSAGE(STATUS "Warning: Disabling OpenMP (unstable with this version of GCC)")
-    MESSAGE(STATUS " Install GCC >= 4.6.2 or change your OS to enable OpenMP")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-    SET(WITH_OPENMP OFF CACHE BOOL "OpenMP support if available?" FORCE)
-  ENDIF ()
-ENDIF ()
+
+# Disable -fomp when using HIP. -hc includes openmp libs.
+SET(WITH_OPENMP OFF)
 
 IF (WITH_OPENMP AND NOT CHECKED_OPENMP)
   FIND_PACKAGE(OpenMP)
@@ -161,37 +190,16 @@ IF (WITH_OPENMP AND NOT CHECKED_OPENMP)
   SET(OPENMP_FOUND ${OPENMP_FOUND} CACHE BOOL "OpenMP Support found")
 ENDIF (WITH_OPENMP AND NOT CHECKED_OPENMP)
 
+# Disable -fomp when using HIP. -hc includes openmp libs.
+SET(OPENMP_FOUND OFF)
+
 IF(OPENMP_FOUND)
   MESSAGE(STATUS "Compiling with OpenMP support")
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 ENDIF(OPENMP_FOUND)
 
-
 SET(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-
-FIND_PACKAGE(MAGMA)
-IF(CUDA_FOUND AND MAGMA_FOUND)
-  INCLUDE_DIRECTORIES("${MAGMA_INCLUDE_DIR}")
-  SET(CMAKE_REQUIRED_INCLUDES "${MAGMA_INCLUDE_DIR};${CUDA_INCLUDE_DIRS}")
-  INCLUDE(CheckPrototypeDefinition)
-  check_prototype_definition(magma_get_sgeqrf_nb
-   "magma_int_t magma_get_sgeqrf_nb( magma_int_t m, magma_int_t n );"
-   "0"
-   "magma.h"
-    MAGMA_V2)
-  IF (MAGMA_V2)
-    add_definitions(-DMAGMA_V2)
-  ENDIF (MAGMA_V2)
-
-  SET(USE_MAGMA 1)
-  MESSAGE(STATUS "Compiling with MAGMA support")
-  MESSAGE(STATUS "MAGMA INCLUDE DIRECTORIES: ${MAGMA_INCLUDE_DIR}")
-  MESSAGE(STATUS "MAGMA LIBRARIES: ${MAGMA_LIBRARIES}")
-  MESSAGE(STATUS "MAGMA V2 check: ${MAGMA_V2}")
-ELSE()
-  MESSAGE(STATUS "MAGMA not found. Compiling without MAGMA support")
-ENDIF()
 
 # ARM specific flags
 FIND_PACKAGE(ARM)
@@ -381,85 +389,49 @@ SET(ATEN_INSTALL_INCLUDE_SUBDIR "include" CACHE PATH "ATen install include subdi
 
 add_definitions(-DTH_INDEX_BASE=0)
 set(TH_LINK_STYLE STATIC)
-add_subdirectory(hip-src/TH)
+add_subdirectory(src/TH)
 include_directories(
   # dense
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/TH
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THC
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/TH
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/THC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/TH
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THC
+  ${CMAKE_CURRENT_BINARY_DIR}/src/TH
+  ${CMAKE_CURRENT_BINARY_DIR}/src/THC
   # sparse
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THS
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCS
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/THS
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-src/THCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THCS
+  ${CMAKE_CURRENT_BINARY_DIR}/src/THS
+  ${CMAKE_CURRENT_BINARY_DIR}/src/THCS
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-src)
-add_subdirectory(hip-src/THNN)
-add_subdirectory(hip-src/THS)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_BINARY_DIR}/src)
+add_subdirectory(src/THNN)
+add_subdirectory(src/THS)
 
-if (WITH_ROCM)
-  SET(AT_CUDA_ENABLED 1)
-  add_subdirectory(hip-src/THC)
-  add_subdirectory(hip-src/THCUNN)
-  add_subdirectory(hip-src/THCS)
-elseif(NOT NO_CUDA)
-  SET(AT_CUDA_ENABLED 1)
-  INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
-  find_package(CUDA 5.5 REQUIRED)
-  add_subdirectory(hip-src/THC)
-  add_subdirectory(hip-src/THCUNN)
-  add_subdirectory(hip-src/THCS)
-else()
-  message("disabling CUDA because NO_CUDA is set")
-  SET(CUDA_FLAG -n)
-  SET(AT_CUDA_ENABLED 0)
-endif()
 
-find_package(CuDNN)
-IF(NOT AT_CUDA_ENABLED OR NOT CUDNN_FOUND)
-  MESSAGE(STATUS "CuDNN not found. Compiling without CuDNN support")
-  set(AT_CUDNN_ENABLED 0)
-ELSE()
-  INCLUDE_DIRECTORIES(BEFORE ${CUDNN_INCLUDE_DIRS})
-  set(AT_CUDNN_ENABLED 1)
-ENDIF()
+SET(AT_CUDA_ENABLED 1)
+add_subdirectory(src/THC)
+add_subdirectory(src/THCUNN)
+add_subdirectory(src/THCS)
+set(AT_CUDNN_ENABLED 0)
 
-if(NO_NNPACK)
-  message("disabling NNPACK because NO_NNPACK is set")
-  set(AT_NNPACK_ENABLED 0)
-else()
-  find_package(NNPACK)
-  if(NOT NNPACK_FOUND)
-    MESSAGE(STATUS "NNPACK not found. Compiling without nNPACK support")
-    set(AT_NNPACK_ENABLED 0)
-  ELSE()
-    INCLUDE_DIRECTORIES(${NNPACK_INCLUDE_DIRS})
-    set(AT_NNPACK_ENABLED 1)
-  ENDIF()
-endif()
 
 set(cwrap_files
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/Declarations.cwrap
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THNN/generic/THNN.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCUNN/generic/THCUNN.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/nn.yaml
-  ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/native/native_functions.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/Declarations.cwrap
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THNN/generic/THNN.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/THCUNN/generic/THCUNN.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/nn.yaml
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ATen/native/native_functions.yaml
 )
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THNN
-${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCUNN)
+${CMAKE_CURRENT_SOURCE_DIR}/src/THNN
+${CMAKE_CURRENT_SOURCE_DIR}/src/THCUNN)
 
-add_subdirectory(hip-src/ATen)
+add_subdirectory(src/ATen)
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/hip-src
-${CMAKE_CURRENT_BINARY_DIR}/hip-src/ATen)
-if(NOT NO_CUDA AND NOT WITH_ROCM)
-  include_directories(${CUDA_INCLUDE_DIRS})
-endif()
-add_subdirectory(hip-src/ATen/test)
+${CMAKE_CURRENT_SOURCE_DIR}/src
+${CMAKE_CURRENT_BINARY_DIR}/src/ATen)
+add_subdirectory(src/ATen/test)
 
 if(ATEN_NO_CONTRIB)
   message("disable contrib because ATEN_NO_CONTRIB is set")
