@@ -45,6 +45,8 @@ cp ATen/CMakeLists.txt.hip ATen/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/
 sed -i 's/cudaHostAllocator/hipHostAllocator/g' ATen/PinnedMemoryAllocator.cpp
 sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' ATen/Context.cpp
+sed -i 's/curand.h/hiprng.h/g' ATen/native/cuda/*
+sed -i 's/curand_kernel.h/hiprng_kernel.h/g' ATen/native/cuda/*
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
