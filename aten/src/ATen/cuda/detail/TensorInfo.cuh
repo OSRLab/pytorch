@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ATen/ATen.h"
-#ifdef(__HIP_PLATFORM_HCC__)
+#if defined(__HIP_PLATFORM_HCC__)
 #include <hip/hip_runtime.h>
 #endif
 namespace at {
