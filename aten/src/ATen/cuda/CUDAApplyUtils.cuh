@@ -322,22 +322,23 @@ bool CUDA_tensor_apply2(at::Tensor a,
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
 
-#define HANDLE_CASE(TYPE, A, B)                                           \
-  #if defined(__HIP_PLATFORM_HCC__)                                       \
-    hipLaunchKernelGGL(                                                   \
-        (kernelPointwiseApply2<Op,                                        \
-                          scalar1,                                        \
-                          scalar2,                                        \
-                          TYPE, A, B>),                                   \
-         grid, block, 0, at::globalContext().getCurrentCUDAStream(),      \
-         aInfo, bInfo, (TYPE) totalElements, op);
+  #if defined(__HIP_PLATFORM_HCC__)
+    #define HANDLE_CASE(TYPE, A, B)                                         \
+      hipLaunchKernelGGL(                                                   \
+          (kernelPointwiseApply2<Op,                                        \
+                            scalar1,                                        \
+                            scalar2,                                        \
+                            TYPE, A, B>),                                   \
+           grid, block, 0, at::globalContext().getCurrentCUDAStream(),      \
+           aInfo, bInfo, (TYPE) totalElements, op);
   #else
-    kernelPointwiseApply2<Op,                                             \
-                          scalar1,                                        \
-                          scalar2,                                        \
-                          TYPE, A, B>                                     \
-     <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(    \
-         aInfo, bInfo, (TYPE) totalElements, op);
+    #define HANDLE_CASE(TYPE, A, B)                                         \
+      kernelPointwiseApply2<Op,                                             \
+                            scalar1,                                        \
+                            scalar2,                                        \
+                            TYPE, A, B>                                     \
+       <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(    \
+           aInfo, bInfo, (TYPE) totalElements, op);
   #endif
 
 
@@ -543,24 +544,25 @@ bool CUDA_tensor_apply3(at::Tensor a,
     c = c.contiguous();
   }
 
-#define HANDLE_CASE(TYPE, A, B, C)                                      \
-#if defined(__HIP_PLATFORM_HCC__)                                       \
-  hipLaunchKernelGGL(                                                   \
-      (kernelPointwiseApply3<Op,                                        \
-                        scalar1,                                        \
-                        scalar2,                                        \
-                        scalar3,                                        \
-                        TYPE, A, B, C>),                                \
-      grid, block, 0, at::globalContext().getCurrentCUDAStream(),       \
-      aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(TYPE, A, B, C)                                      \
+    hipLaunchKernelGGL(                                                   \
+        (kernelPointwiseApply3<Op,                                        \
+                          scalar1,                                        \
+                          scalar2,                                        \
+                          scalar3,                                        \
+                          TYPE, A, B, C>),                                \
+        grid, block, 0, at::globalContext().getCurrentCUDAStream(),       \
+        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
 #else
-  kernelPointwiseApply3<Op,                                             \
-                        scalar1,                                        \
-                        scalar2,                                        \
-                        scalar3,                                        \
-                        TYPE, A, B, C>                                  \
-    <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
-      aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+  #define HANDLE_CASE(TYPE, A, B, C)                                      \
+    kernelPointwiseApply3<Op,                                             \
+                          scalar1,                                        \
+                          scalar2,                                        \
+                          scalar3,                                        \
+                          TYPE, A, B, C>                                  \
+      <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
+        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
 #endif
 #define HANDLE_C_CASE(TYPE, A, B, C)            \
   {                                             \
@@ -817,26 +819,27 @@ bool CUDA_tensor_apply4(at::Tensor a,
     d = d.contiguous();
   }
 
-#define HANDLE_CASE(TYPE, A, B, C, D)                                   \
-#if defined(__HIP_PLATFORM_HCC__)                                       \
-  hipLaunchKernelGGL(                                                   \
-  (kernelPointwiseApply4<Op,                                            \
-                        scalar1,                                        \
-                        scalar2,                                        \
-                        scalar3,                                        \
-                        scalar4,                                        \
-                        TYPE, A, B, C, D>),                             \
-    grid, block, 0, at::globalContext().getCurrentCUDAStream(),         \
-    aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
+#if defined(__HIP_PLATFORM_HCC__)
+  #define HANDLE_CASE(TYPE, A, B, C, D)                                   \
+    hipLaunchKernelGGL(                                                   \
+    (kernelPointwiseApply4<Op,                                            \
+                          scalar1,                                        \
+                          scalar2,                                        \
+                          scalar3,                                        \
+                          scalar4,                                        \
+                          TYPE, A, B, C, D>),                             \
+      grid, block, 0, at::globalContext().getCurrentCUDAStream(),         \
+      aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
 #else
-  kernelPointwiseApply4<Op,                                             \
-                        scalar1,                                        \
-                        scalar2,                                        \
-                        scalar3,                                        \
-                        scalar4,                                        \
-                        TYPE, A, B, C, D>                               \
-    <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
-    aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
+  #define HANDLE_CASE(TYPE, A, B, C, D)                                   \
+    kernelPointwiseApply4<Op,                                             \
+                          scalar1,                                        \
+                          scalar2,                                        \
+                          scalar3,                                        \
+                          scalar4,                                        \
+                          TYPE, A, B, C, D>                               \
+      <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
+      aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
 #endif
 #define HANDLE_D_CASE(TYPE, A, B, C, D)         \
   {                                             \
