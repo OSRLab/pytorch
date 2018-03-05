@@ -5,7 +5,7 @@
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 
-#if defined(__HIP_PLATFORM_HCC__)
+#if !defined(__HIP_PLATFORM_HCC__)
 namespace at {
 #if CUDA_VERSION < 9000
 template <> AT_API
