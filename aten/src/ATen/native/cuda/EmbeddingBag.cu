@@ -172,13 +172,23 @@ embedding_bag_cuda(const Tensor &weight, const Tensor &indices,
 
   dim3 block = dim3(32, 8);
   int grid = 1024;
+
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(weight.type(), "embedding_bag_cuda", [&] {
     using cuda_scalar_t = cuda::type<scalar_t>;
+#if defined(__HIP_PLATFORM_HCC__)
+    hipLaunchKernelGGL(
+      EmbeddingBag_updateOutputKernel<cuda_scalar_t>,grid, block, 0, stream, //might need to use scalar_t
+          indices.data<int64_t>(), offsets.data<int64_t>(),
+          weight.data<cuda_scalar_t>(), output.data<cuda_scalar_t>(),  //might need to use scalar_t
+          offset2bag.data<int64_t>(), numIndices, numBags, stride, mode,
+          bag_size.data<int64_t>())
+#else
     EmbeddingBag_updateOutputKernel<cuda_scalar_t><<<grid, block, 0, stream>>>(
         indices.data<int64_t>(), offsets.data<int64_t>(),
         weight.data<cuda_scalar_t>(), output.data<cuda_scalar_t>(),
         offset2bag.data<int64_t>(), numIndices, numBags, stride, mode,
         bag_size.data<int64_t>());
+#endif
   });
 
   THCudaCheck(cudaGetLastError());
@@ -269,6 +279,16 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(
       grad.type(), "embedding_bag_backward_cuda", [&] {
         using cuda_scalar_t = cuda::type<scalar_t>;
+#if defined(__HIP_PLATFORM_HCC__)
+        hipLaunchKernelGGL(
+          EmbeddingBag_accGradParametersKernel<
+              cuda_scalar_t>, grid, block, 0, stream, // might need to use scalar_t
+              sorted_indices.data<int64_t>(), orig_indices.data<int64_t>(),
+              grad.data<cuda_scalar_t>(), grad_weight.data<cuda_scalar_t>(),  // might need to use scalar_t
+              offset2bag.data<int64_t>(),
+              count.defined() ? count.data<int64_t>() : nullptr, numel, stride,
+              mode, bag_size.data<int64_t>())
+#else
         EmbeddingBag_accGradParametersKernel<
             cuda_scalar_t><<<grid, block, 0, stream>>>(
             sorted_indices.data<int64_t>(), orig_indices.data<int64_t>(),
@@ -276,6 +296,7 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
             offset2bag.data<int64_t>(),
             count.defined() ? count.data<int64_t>() : nullptr, numel, stride,
             mode, bag_size.data<int64_t>());
+#endif
       });
 
   THCudaCheck(cudaGetLastError());
