@@ -46,7 +46,6 @@ cp ATen/CMakeLists.txt.hip ATen/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/cuda/*.cu
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/cuda/*.cuh
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/native/cuda/*.cu
-/opt/rocm/hip/bin/hipconvertinplace-perl.sh ATen/native/cuda/*.cuh
 sed -i 's/cudaHostAllocator/hipHostAllocator/g' ATen/PinnedMemoryAllocator.cpp
 sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' ATen/Context.cpp
 sed -i 's/curand.h/hiprng.h/g' ATen/native/cuda/*
