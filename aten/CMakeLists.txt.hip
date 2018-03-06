@@ -10,6 +10,9 @@ project(ATen)
 
 cmake_policy(SET CMP0012 NEW)
 
+ADD_DEFINITIONS(-D__HIP_PLATFORM_HCC__)
+
+
 # ---[ If running on Ubuntu, check system version and compiler version.
 if(EXISTS "/etc/os-release")
   execute_process(COMMAND
