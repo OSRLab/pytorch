@@ -322,25 +322,13 @@ bool CUDA_tensor_apply2(at::Tensor a,
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
 
-  #if defined(__HIP_PLATFORM_HCC__)
-    #define HANDLE_CASE(TYPE, A, B)                                         \
-      hipLaunchKernelGGL(                                                   \
-          (kernelPointwiseApply2<Op,                                        \
-                            scalar1,                                        \
-                            scalar2,                                        \
-                            TYPE, A, B>),                                   \
-           grid, block, 0, at::globalContext().getCurrentCUDAStream(),      \
-           aInfo, bInfo, (TYPE) totalElements, op);
-  #else
-    #define HANDLE_CASE(TYPE, A, B)                                         \
-      kernelPointwiseApply2<Op,                                             \
-                            scalar1,                                        \
-                            scalar2,                                        \
-                            TYPE, A, B>                                     \
-       <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(    \
-           aInfo, bInfo, (TYPE) totalElements, op);
-  #endif
-
+#define HANDLE_CASE(TYPE, A, B)                                         \
+  kernelPointwiseApply2<Op,                                             \
+                        scalar1,                                        \
+                        scalar2,                                        \
+                        TYPE, A, B>                                     \
+   <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(    \
+       aInfo, bInfo, (TYPE) totalElements, op);
 
 #define HANDLE_B_CASE(TYPE, A, B)               \
   {                                             \
@@ -410,42 +398,22 @@ bool CUDA_tensor_apply2(at::Tensor a,
     // version and the completely generic version, to reduce
     // compilation time.
     if (aInfo.isContiguous() && bInfo.isContiguous()) {
-#if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply2<Op,
-                            scalar1,
-                            scalar2,
-                          uint64_t, -2, -2>),
-           grid, block, 0, at::globalContext().getCurrentCUDAStream(),
-           aInfo, bInfo, (uint64_t) totalElements, op);
-#else
       kernelPointwiseApply2<Op,
                             scalar1,
                             scalar2,
                           uint64_t, -2, -2>
         <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(
            aInfo, bInfo, (uint64_t) totalElements, op);
-#endif
     } else {
 #if CUDA_VERSION < 9000
       grid.x = std::min((unsigned int)at::globalContext().getCurrentDeviceProperties()->multiProcessorCount * AT_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
-#if defined(__HIP_PLATFORM_HCC__)
-    hipLaunchKernelGGL(
-      (kernelPointwiseApply2<Op,
-                            scalar1,
-                            scalar2,
-                            uint64_t, -1, -1>),
-           grid, block, 0, at::globalContext().getCurrentCUDAStream(),
-           aInfo, bInfo, (uint64_t) totalElements, op);
-#else
       kernelPointwiseApply2<Op,
                             scalar1,
                             scalar2,
                             uint64_t, -1, -1>
         <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(
            aInfo, bInfo, (uint64_t) totalElements, op);
-#endif
     }
   }
 #undef HANDLE_CASE
@@ -544,26 +512,15 @@ bool CUDA_tensor_apply3(at::Tensor a,
     c = c.contiguous();
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, A, B, C)                                      \
-    hipLaunchKernelGGL(                                                   \
-        (kernelPointwiseApply3<Op,                                        \
-                          scalar1,                                        \
-                          scalar2,                                        \
-                          scalar3,                                        \
-                          TYPE, A, B, C>),                                \
-        grid, block, 0, at::globalContext().getCurrentCUDAStream(),       \
-        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
-#else
-  #define HANDLE_CASE(TYPE, A, B, C)                                      \
-    kernelPointwiseApply3<Op,                                             \
-                          scalar1,                                        \
-                          scalar2,                                        \
-                          scalar3,                                        \
-                          TYPE, A, B, C>                                  \
-      <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
-        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
-#endif
+#define HANDLE_CASE(TYPE, A, B, C)                                      \
+  kernelPointwiseApply3<Op,                                             \
+                        scalar1,                                        \
+                        scalar2,                                        \
+                        scalar3,                                        \
+                        TYPE, A, B, C>                                  \
+    <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
+      aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+
 #define HANDLE_C_CASE(TYPE, A, B, C)            \
   {                                             \
     if (cInfo.isContiguous()) {                 \
@@ -662,16 +619,6 @@ bool CUDA_tensor_apply3(at::Tensor a,
     // version and the completely generic version, to reduce
     // compilation time.
     if (aInfo.isContiguous() && bInfo.isContiguous() && cInfo.isContiguous()) {
-#if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply3<Op,
-                              scalar1,
-                              scalar2,
-                              scalar3,
-                              uint64_t, -2, -2, -2>),
-          grid, block, 0, at::globalContext().getCurrentCUDAStream(),
-          aInfo, bInfo, cInfo, (uint64_t) totalElements, op);
-#else
       kernelPointwiseApply3<Op,
                             scalar1,
                             scalar2,
@@ -679,21 +626,11 @@ bool CUDA_tensor_apply3(at::Tensor a,
                             uint64_t, -2, -2, -2>
         <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(
           aInfo, bInfo, cInfo, (uint64_t) totalElements, op);
-#endif
     } else {
 #if CUDA_VERSION < 9000
   grid.x = std::min((unsigned int)at::globalContext().getCurrentDeviceProperties()->multiProcessorCount * AT_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
-#if defined(__HIP_PLATFORM_HCC__)
-  hipLaunchKernelGGL(
-  	(kernelPointwiseApply3<Op,
-                          scalar1,
-                          scalar2,
-                          scalar3,
-                          uint64_t, -1, -1, -1>),
-            grid, block, 0, at::globalContext().getCurrentCUDAStream(),
-            aInfo, bInfo, cInfo, (uint64_t) totalElements, op);
-#else
+
 	kernelPointwiseApply3<Op,
                         scalar1,
                         scalar2,
@@ -701,7 +638,6 @@ bool CUDA_tensor_apply3(at::Tensor a,
                         uint64_t, -1, -1, -1>
         <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(
           aInfo, bInfo, cInfo, (uint64_t) totalElements, op);
-#endif
     }
   }
 #undef HANDLE_CASE
@@ -819,28 +755,16 @@ bool CUDA_tensor_apply4(at::Tensor a,
     d = d.contiguous();
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, A, B, C, D)                                   \
-    hipLaunchKernelGGL(                                                   \
-    (kernelPointwiseApply4<Op,                                            \
-                          scalar1,                                        \
-                          scalar2,                                        \
-                          scalar3,                                        \
-                          scalar4,                                        \
-                          TYPE, A, B, C, D>),                             \
-      grid, block, 0, at::globalContext().getCurrentCUDAStream(),         \
-      aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
-#else
-  #define HANDLE_CASE(TYPE, A, B, C, D)                                   \
-    kernelPointwiseApply4<Op,                                             \
-                          scalar1,                                        \
-                          scalar2,                                        \
-                          scalar3,                                        \
-                          scalar4,                                        \
-                          TYPE, A, B, C, D>                               \
-      <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
-      aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
-#endif
+#define HANDLE_CASE(TYPE, A, B, C, D)                                   \
+  kernelPointwiseApply4<Op,                                             \
+                        scalar1,                                        \
+                        scalar2,                                        \
+                        scalar3,                                        \
+                        scalar4,                                        \
+                        TYPE, A, B, C, D>                               \
+    <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(   \
+    aInfo, bInfo, cInfo, dInfo, (TYPE) totalElements, op);
+
 #define HANDLE_D_CASE(TYPE, A, B, C, D)         \
   {                                             \
     if (dInfo.isContiguous()) {                 \
@@ -967,17 +891,6 @@ bool CUDA_tensor_apply4(at::Tensor a,
     // version and the completely generic version, to reduce
     // compilation time.
     if (aInfo.isContiguous() && bInfo.isContiguous() && cInfo.isContiguous() && dInfo.isContiguous()) {
-#if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply4<Op,
-                              scalar1,
-                              scalar2,
-                              scalar3,
-                              scalar4,
-                              uint64_t, -2, -2, -2, -2>),
-            grid, block, 0, at::globalContext().getCurrentCUDAStream(),
-            aInfo, bInfo, cInfo, dInfo, (uint64_t) totalElements, op);
-#else
       kernelPointwiseApply4<Op,
                             scalar1,
                             scalar2,
@@ -986,22 +899,11 @@ bool CUDA_tensor_apply4(at::Tensor a,
                             uint64_t, -2, -2, -2, -2>
         <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(
           aInfo, bInfo, cInfo, dInfo, (uint64_t) totalElements, op);
-#endif
     } else {
 #if CUDA_VERSION < 9000
   grid.x = std::min((unsigned int)at::globalContext().getCurrentDeviceProperties()->multiProcessorCount * AT_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
-#if defined(__HIP_PLATFORM_HCC__)
-    hipLaunchKernelGGL(
-    	(kernelPointwiseApply4<Op,
-                            scalar1,
-                            scalar2,
-                            scalar3,
-                            scalar4,
-                            uint64_t, -1, -1, -1, -1>),
-              grid, block, 0, at::globalContext().getCurrentCUDAStream(),
-              aInfo, bInfo, cInfo, dInfo, (uint64_t) totalElements, op);
-#else
+
 	kernelPointwiseApply4<Op,
                         scalar1,
                         scalar2,
@@ -1010,7 +912,6 @@ bool CUDA_tensor_apply4(at::Tensor a,
                         uint64_t, -1, -1, -1, -1>
         <<<grid, block, 0, at::globalContext().getCurrentCUDAStream()>>>(
           aInfo, bInfo, cInfo, dInfo, (uint64_t) totalElements, op);
-#endif
     }
   }
 #undef HANDLE_CASE
