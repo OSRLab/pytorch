@@ -4,7 +4,7 @@
 
 #include <curand.h>
 #include <curand_kernel.h>
-#ifndef(__HIP_PLATFORM_HCC__)
+#if !defined(__HIP_PLATFORM_HCC__)
 #include <curand_philox4x32_x.h>
 #endif
 #include <TH/THAtomic.h>
