@@ -1,9 +1,6 @@
 #pragma once
 
 #include "ATen/ATen.h"
-#if defined(__HIP_PLATFORM_HCC__)
-#include <hip/hip_runtime.h>
-#endif
 namespace at {
 namespace cuda {
 namespace detail {
