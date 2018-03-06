@@ -2,9 +2,9 @@
 #include "ATen/NativeFunctions.h"
 #include "ATen/cuda/CUDAApplyUtils.cuh"
 
+#if !defined(__HIP_PLATFORM_HCC__)
 #include <curand.h>
 #include <curand_kernel.h>
-#if !defined(__HIP_PLATFORM_HCC__)
 #include <curand_philox4x32_x.h>
 #endif
 #include <TH/THAtomic.h>
