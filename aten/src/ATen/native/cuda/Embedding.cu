@@ -318,10 +318,9 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
       grad.data<cuda_scalar_t>(),
       grad_weight.data<cuda_scalar_t>(),
       count.defined() ? count.data<int64_t>() : nullptr,
-      num_indices,
-      stride,
-      padding_idx);
-#endif
+      static_cast<int64_t>(num_indices),
+      static_cast<int64_t>(stride),
+      static_cast<int>(padding_idx));
   });
   THCudaCheck(cudaGetLastError());
 
@@ -375,8 +374,7 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
       unique_indices.data<int64_t>(),
       scalar_cast<accscalar_t>(max_norm),
       scalar_cast<accscalar_t>(norm_type),
-      dim);
-#endif
+      scalar_cast<int>(dim));
   });
   THCudaCheck(cudaGetLastError());
 
