@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(__HCC__)
+#include "hip/hip_runtime.h"
+#endif
+
 #include "ATen/ATenGeneral.h"
 #include "ATen/CPUGeneral.h"
 #include "ATen/Allocator.h"
