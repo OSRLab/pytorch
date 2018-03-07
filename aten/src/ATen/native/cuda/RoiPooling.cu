@@ -132,9 +132,9 @@ std::tuple<Tensor, Tensor> RoiPooling2d_forward_cuda(
   dim3 grid((output.numel() + 512 - 1) / 512);
 #if defined(__HIP_PLATFORM_HCC__)
   hipLaunchKernelGGL(
-      RoiPooling2d_forward_kernel, grid, block, 0, globalContext().getCurrentCUDAStream(),
-      static_cast<const int>(output.numel()), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), static_cast<const int>(inputChannels),
-      static_cast<const int>(inputHeight), static_cast<const int>(inputWidth), static_cast<const int>(pooledHeight), static_cast<const int>(pooledWidth), output.data<float>(), argmaxes.data<int>());
+      RoiPooling2d_forward_kernel<float>, grid, block, 0, globalContext().getCurrentCUDAStream(),
+      static_cast<int>(output.numel()), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), static_cast<int>(inputChannels),
+      static_cast<int>(inputHeight), static_cast<int>(inputWidth), static_cast<int>(pooledHeight), static_cast<int>(pooledWidth), output.data<float>(), argmaxes.data<int>());
 #else
   RoiPooling2d_forward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     output.numel(), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), inputChannels,
@@ -206,10 +206,10 @@ Tensor RoiPooling2d_backward_cuda(
   dim3 grid((gradInput.numel() + 512 - 1) / 512);
 #if defined(__HIP_PLATFORM_HCC__)
   hipLaunchKernelGGL(
-      RoiPooling2d_backward_kernel, grid, block, 0, globalContext().getCurrentCUDAStream(),
-        static_cast<const int>(gradOutput.numel()), gradOutput.data<float>(), argmaxes.data<int>(), static_cast<const int>(proposals),
-        static_cast<float>(spatialScale), static_cast<const int>(inputChannels), static_cast<const int>(inputHeight), static_cast<const int>(inputWidth),
-        static_cast<const int>(pooledHeight), static_cast<const int>(pooledWidth), gradInput.data<float>(), rois.data<float>()));
+      RoiPooling2d_backward_kernel<float>, grid, block, 0, globalContext().getCurrentCUDAStream(),
+        static_cast<int>(gradOutput.numel()), gradOutput.data<float>(), argmaxes.data<int>(), static_cast<int>(proposals),
+        static_cast<float>(spatialScale), static_cast<int>(inputChannels), static_cast<int>(inputHeight), static_cast<int>(inputWidth),
+        static_cast<int>(pooledHeight), static_cast<int>(pooledWidth), gradInput.data<float>(), rois.data<float>()));
 #else
   RoiPooling2d_backward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), proposals,
