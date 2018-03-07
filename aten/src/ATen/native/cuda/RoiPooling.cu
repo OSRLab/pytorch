@@ -133,8 +133,8 @@ std::tuple<Tensor, Tensor> RoiPooling2d_forward_cuda(
 #if defined(__HIP_PLATFORM_HCC__)
   hipLaunchKernelGGL(
       RoiPooling2d_forward_kernel, grid, block, 0, globalContext().getCurrentCUDAStream(),
-      (unsigned long) output.numel(), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), (unsigned long) inputChannels,
-      (unsigned long) inputHeight, (unsigned long) inputWidth, (unsigned long) pooledHeight, (unsigned long) pooledWidth, output.data<float>(), argmaxes.data<int>());
+      static_cast<const int>(output.numel()), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), static_cast<const int>(inputChannels),
+      static_cast<const int>(inputHeight), static_cast<const int>(inputWidth), static_cast<const int>(pooledHeight), static_cast<const int>(pooledWidth), output.data<float>(), argmaxes.data<int>());
 #else
   RoiPooling2d_forward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     output.numel(), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), inputChannels,
@@ -207,9 +207,9 @@ Tensor RoiPooling2d_backward_cuda(
 #if defined(__HIP_PLATFORM_HCC__)
   hipLaunchKernelGGL(
       RoiPooling2d_backward_kernel, grid, block, 0, globalContext().getCurrentCUDAStream(),
-        (unsigned long) gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), (unsigned long) proposals,
-        static_cast<float>(spatialScale), (unsigned long) inputChannels, (unsigned long) inputHeight, (unsigned long) inputWidth,
-        (unsigned long) pooledHeight, (unsigned long) pooledWidth, gradInput.data<float>(), rois.data<float>()));
+        static_cast<const int>(gradOutput.numel()), gradOutput.data<float>(), argmaxes.data<int>(), static_cast<const int>(proposals),
+        static_cast<float>(spatialScale), static_cast<const int>(inputChannels), static_cast<const int>(inputHeight), static_cast<const int>(inputWidth),
+        static_cast<const int>(pooledHeight), static_cast<const int>(pooledWidth), gradInput.data<float>(), rois.data<float>()));
 #else
   RoiPooling2d_backward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), proposals,
