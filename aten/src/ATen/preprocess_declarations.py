@@ -57,9 +57,11 @@ def process_types_and_backends(option):
     pairs = set(p for pair in pairs for p in expand(pair))
 
     # disable CUDA Half if there is a Sparse argument
+    # for arg in option.get('arguments', []):
+    #     if arg['type'] == 'THSTensor*':
+    #         pairs.discard(('CUDA', 'Half'))
     for arg in option.get('arguments', []):
-        if arg['type'] == 'THSTensor*':
-            pairs.discard(('CUDA', 'Half'))
+        pairs.discard(('CUDA', 'Half'))
 
     # special case remove Half for cpu unless it is explicitly enabled,
     if not option.get('cpu_half', False):
