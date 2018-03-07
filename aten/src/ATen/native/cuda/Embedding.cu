@@ -213,16 +213,16 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
 
    AT_DISPATCH_FLOATING_TYPES_AND_HALF(grad.type(), "embedding_backward", [&] {
      using cuda_scalar_t = cuda::type<scalar_t>;
-     #if defined(__HIP_PLATFORM_HCC__)
+#if defined(__HIP_PLATFORM_HCC__)
      hipLaunchKernelGGL(
        embedding_backward_feature_kernel, grid, block, 0, stream,
          indices.data<int64_t>(),
          grad.data<cuda_scalar_t>(), // might need to use type scalar_t
          grad_weight.data<cuda_scalar_t>(), // might need to use type scalar_t
-         num_indices,
-         stride,
-         padding_idx)
-     #else
+         static_cast<int64_t>(num_indices),
+         static_cast<int64_t>(stride),
+         static_cast<int>(padding_idx))
+#else
      embedding_backward_feature_kernel<<<grid, block, 0, stream>>>(
        indices.data<int64_t>(),
        grad.data<cuda_scalar_t>(),
@@ -230,9 +230,8 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
        num_indices,
        stride,
        padding_idx);
-    #endif
+#endif
    });
-
    THCudaCheck(cudaGetLastError());
    return grad_weight;
   }
@@ -308,9 +307,9 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
       grad.data<cuda_scalar_t>(), // might need to use scalar_t
       grad_weight.data<cuda_scalar_t>(), // might need to use scalar_t
       count.defined() ? count.data<int64_t>() : nullptr,
-      num_indices,
-      stride,
-      padding_idx)
+      static_cast<int64_t>(num_indices),
+      static_cast<int64_t>(stride),
+      static_cast<int>(padding_idx))
 #else
     embedding_backward_kernel<<<grid, block, 0, stream>>>(
       sorted_indices.data<int64_t>(),
@@ -368,7 +367,7 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
         unique_indices.data<int64_t>(),
         scalar_cast<accscalar_t>(max_norm),
         scalar_cast<accscalar_t>(norm_type),
-        dim)
+        scalar_cast<int>(dim))
 #else
     renorm_kernel<<<grid, block, 128 * sizeof(accscalar_t), stream>>>(
       self.data<cuda_scalar_t>(),

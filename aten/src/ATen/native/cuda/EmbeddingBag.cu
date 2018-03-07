@@ -180,7 +180,9 @@ embedding_bag_cuda(const Tensor &weight, const Tensor &indices,
       EmbeddingBag_updateOutputKernel<cuda_scalar_t>,grid, block, 0, stream, //might need to use scalar_t
           indices.data<int64_t>(), offsets.data<int64_t>(),
           weight.data<cuda_scalar_t>(), output.data<cuda_scalar_t>(),  //might need to use scalar_t
-          offset2bag.data<int64_t>(), numIndices, numBags, stride, mode,
+          offset2bag.data<int64_t>(), static_cast<int64_t>(numIndices),
+          static_cast<int64_t>(numBags), static_cast<int64_t>(stride),
+          static_cast<int>(mode),
           bag_size.data<int64_t>())
 #else
     EmbeddingBag_updateOutputKernel<cuda_scalar_t><<<grid, block, 0, stream>>>(
@@ -286,8 +288,9 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
               sorted_indices.data<int64_t>(), orig_indices.data<int64_t>(),
               grad.data<cuda_scalar_t>(), grad_weight.data<cuda_scalar_t>(),  // might need to use scalar_t
               offset2bag.data<int64_t>(),
-              count.defined() ? count.data<int64_t>() : nullptr, numel, stride,
-              mode, bag_size.data<int64_t>())
+              count.defined() ? count.data<int64_t>() : nullptr,
+              static_cast<ptrdiff_t>(numel), static_cast<int64_t>(stride),
+              static_cast<int>(mode), bag_size.data<int64_t>())
 #else
         EmbeddingBag_accGradParametersKernel<
             cuda_scalar_t><<<grid, block, 0, stream>>>(
