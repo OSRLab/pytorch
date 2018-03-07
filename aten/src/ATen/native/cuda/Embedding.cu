@@ -218,9 +218,9 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
         indices.data<int64_t>(),
         grad.data<scalar_t>(),
         grad_weight.data<scalar_t>(),
-        num_indices,
-        stride,
-        padding_idx)
+        static_cast<int64_t>(num_indices),
+        static_cast<int64_t>(stride),
+        static_cast<int>(padding_idx))
 #else
      embedding_backward_feature_kernel<<<grid, block, 0, stream>>>(
        indices.data<int64_t>(),
@@ -231,7 +231,6 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
        padding_idx);
 #endif
    });
-
    THCudaCheck(cudaGetLastError());
    return grad_weight;
   }
@@ -306,9 +305,9 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
         grad.data<scalar_t>(),
         grad_weight.data<scalar_t>(),
         count.defined() ? count.data<int64_t>() : nullptr,
-        num_indices,
-        stride,
-        padding_idx)
+        static_cast<int64_t>(num_indices),
+        static_cast<int64_t>(stride),
+        static_cast<int>(padding_idx))
 #else
     embedding_backward_kernel<<<grid, block, 0, stream>>>(
       sorted_indices.data<int64_t>(),
@@ -365,7 +364,7 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
         unique_indices.data<int64_t>(),
         scalar_cast<accscalar_t>(max_norm),
         scalar_cast<accscalar_t>(norm_type),
-        dim)
+        scalar_cast<int>(dim))
 #else
     renorm_kernel<<<grid, block, 128 * sizeof(accscalar_t), stream>>>(
       self.data<scalar_t>(),
