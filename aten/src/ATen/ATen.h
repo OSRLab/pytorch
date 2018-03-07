@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(__HCC__)
+#include "hip/hip_runtime.h"
+#endif
+
 #include "ATen/ATenGeneral.h"
 #include "ATen/Allocator.h"
 #include "ATen/Scalar.h"
@@ -13,6 +17,3 @@
 #include "ATen/Formatting.h"
 #include "ATen/TensorOperators.h"
 #include "ATen/TensorMethods.h"
-#if defined(__HIP_PLATFORM_HCC__)
-#include "hip/hip_runtime.h"
-#endif
