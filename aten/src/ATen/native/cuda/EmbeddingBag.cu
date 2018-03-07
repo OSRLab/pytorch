@@ -182,7 +182,7 @@ int mode, int64_t *bag_size)
         offset2bag.data<int64_t>(), static_cast<int64_t>(numIndices),
         static_cast<int64_t>(numBags), static_cast<int64_t>(stride),
         static_cast<int>(mode),
-        bag_size.data<int64_t>())
+        bag_size.data<int64_t>());
 #else
     EmbeddingBag_updateOutputKernel<scalar_t><<<grid, block, 0, stream>>>(
         indices.data<int64_t>(), offsets.data<int64_t>(),
@@ -280,11 +280,6 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
   DISPATCH_ALL_FLOATING_TYPES(
       grad.type(), "embedding_bag_backward_cuda", [&]() {
 #if defined(__HIP_PLATFORM_HCC__)
-
-    int64_t *input, int64_t *indices, scalar_t *gradOutput,
-    scalar_t *gradWeight, int64_t *offset2bag, int64_t *count, ptrdiff_t numel,
-    int64_t stride, int mode, int64_t *bag_size)
-
       hipLaunchKernelGGL(
         EmbeddingBag_accGradParametersKernel<
             scalar_t>, grid, block, 0, stream,
@@ -293,7 +288,7 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
             offset2bag.data<int64_t>(),
             count.defined() ? count.data<int64_t>() : nullptr,
             static_cast<ptrdiff_t>(numel), static_cast<int64_t>(stride),
-            static_cast<int>(mode), bag_size.data<int64_t>())
+            static_cast<int>(mode), bag_size.data<int64_t>());
 #else
         EmbeddingBag_accGradParametersKernel<
             scalar_t><<<grid, block, 0, stream>>>(
