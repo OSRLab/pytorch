@@ -174,7 +174,6 @@ embedding_bag_cuda(const Tensor &weight, const Tensor &indices,
   int grid = 1024;
   DISPATCH_ALL_FLOATING_TYPES(weight.type(), "embedding_bag_cuda", [&]() {
 #if defined(__HIP_PLATFORM_HCC__)
-int mode, int64_t *bag_size)
   hipLaunchKernelGGL(
     EmbeddingBag_updateOutputKernel<scalar_t>,grid, block, 0, stream,
         indices.data<int64_t>(), offsets.data<int64_t>(),
