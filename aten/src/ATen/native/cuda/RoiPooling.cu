@@ -209,7 +209,7 @@ Tensor RoiPooling2d_backward_cuda(
       RoiPooling2d_backward_kernel<float>, grid, block, 0, globalContext().getCurrentCUDAStream(),
         static_cast<int>(gradOutput.numel()), gradOutput.data<float>(), argmaxes.data<int>(), static_cast<int>(proposals),
         static_cast<float>(spatialScale), static_cast<int>(inputChannels), static_cast<int>(inputHeight), static_cast<int>(inputWidth),
-        static_cast<int>(pooledHeight), static_cast<int>(pooledWidth), gradInput.data<float>(), rois.data<float>()));
+        static_cast<int>(pooledHeight), static_cast<int>(pooledWidth), gradInput.data<float>(), rois.data<float>());
 #else
   RoiPooling2d_backward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), proposals,
