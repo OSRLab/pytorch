@@ -173,11 +173,20 @@ embedding_bag_cuda(const Tensor &weight, const Tensor &indices,
   dim3 block = dim3(32, 8);
   int grid = 1024;
   DISPATCH_ALL_FLOATING_TYPES(weight.type(), "embedding_bag_cuda", [&]() {
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL(
+    EmbeddingBag_updateOutputKernel<scalar_t>,grid, block, 0, stream,
+        indices.data<int64_t>(), offsets.data<int64_t>(),
+        weight.data<scalar_t>(), output.data<scalar_t>(),
+        offset2bag.data<int64_t>(), numIndices, numBags, stride, mode,
+        bag_size.data<int64_t>())
+#else
     EmbeddingBag_updateOutputKernel<scalar_t><<<grid, block, 0, stream>>>(
         indices.data<int64_t>(), offsets.data<int64_t>(),
         weight.data<scalar_t>(), output.data<scalar_t>(),
         offset2bag.data<int64_t>(), numIndices, numBags, stride, mode,
         bag_size.data<int64_t>());
+#endif
   });
 
   THCudaCheck(cudaGetLastError());
@@ -267,6 +276,16 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
   dim3 block(32, 4);
   DISPATCH_ALL_FLOATING_TYPES(
       grad.type(), "embedding_bag_backward_cuda", [&]() {
+#if defined(__HIP_PLATFORM_HCC__)
+      hipLaunchKernelGGL(
+        EmbeddingBag_accGradParametersKernel<
+            scalar_t>, grid, block, 0, stream,
+            sorted_indices.data<int64_t>(), orig_indices.data<int64_t>(),
+            grad.data<scalar_t>(), grad_weight.data<scalar_t>(),
+            offset2bag.data<int64_t>(),
+            count.defined() ? count.data<int64_t>() : nullptr, numel, stride,
+            mode, bag_size.data<int64_t>())
+#else
         EmbeddingBag_accGradParametersKernel<
             scalar_t><<<grid, block, 0, stream>>>(
             sorted_indices.data<int64_t>(), orig_indices.data<int64_t>(),
@@ -274,6 +293,7 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
             offset2bag.data<int64_t>(),
             count.defined() ? count.data<int64_t>() : nullptr, numel, stride,
             mode, bag_size.data<int64_t>());
+#endif
       });
 
   THCudaCheck(cudaGetLastError());

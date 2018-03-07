@@ -130,9 +130,16 @@ std::tuple<Tensor, Tensor> RoiPooling2d_forward_cuda(
 
   dim3 block(512);
   dim3 grid((output.numel() + 512 - 1) / 512);
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL(
+      RoiPooling2d_forward_kernel, grid, block, 0, globalContext().getCurrentCUDAStream(),
+      (unsigned long) output.numel(), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), (unsigned long) inputChannels,
+      (unsigned long) inputHeight, (unsigned long) inputWidth, (unsigned long) pooledHeight, (unsigned long) pooledWidth, output.data<float>(), argmaxes.data<int>());
+#else
   RoiPooling2d_forward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     output.numel(), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), inputChannels,
     inputHeight, inputWidth, pooledHeight, pooledWidth, output.data<float>(), argmaxes.data<int>());
+#endif
   AT_ASSERT(cudaGetLastError() == cudaSuccess, "RoiPooling2d_forward_kernel failed");
 
   return std::make_tuple(output, argmaxes);
@@ -197,10 +204,18 @@ Tensor RoiPooling2d_backward_cuda(
 
   dim3 block(512);
   dim3 grid((gradInput.numel() + 512 - 1) / 512);
+#if defined(__HIP_PLATFORM_HCC__)
+  hipLaunchKernelGGL(
+      RoiPooling2d_backward_kernel, grid, block, 0, globalContext().getCurrentCUDAStream(),
+        (unsigned long) gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), (unsigned long) proposals,
+        static_cast<float>(spatialScale), (unsigned long) inputChannels, (unsigned long) inputHeight, (unsigned long) inputWidth,
+        (unsigned long) pooledHeight, (unsigned long) pooledWidth, gradInput.data<float>(), rois.data<float>()));
+#else
   RoiPooling2d_backward_kernel<<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
     gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), proposals,
     static_cast<float>(spatialScale), inputChannels, inputHeight, inputWidth,
     pooledHeight, pooledWidth, gradInput.data<float>(), rois.data<float>());
+#endif
   AT_ASSERT(cudaGetLastError() == cudaSuccess, "RoiPooling2d_forward_kernel failed");
 
   return gradInput;
