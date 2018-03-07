@@ -367,7 +367,7 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
         unique_indices.data<int64_t>(),
         scalar_cast<accscalar_t>(max_norm),
         scalar_cast<accscalar_t>(norm_type),
-        scalar_cast<int>(dim))
+        scalar_cast<int>(dim));
 #else
     renorm_kernel<<<grid, block, 128 * sizeof(accscalar_t), stream>>>(
       self.data<cuda_scalar_t>(),
