@@ -14,5 +14,5 @@
 #include "ATen/TensorOperators.h"
 #include "ATen/TensorMethods.h"
 #if defined(__HIP_PLATFORM_HCC__)
-#include "<hip/hip_runtime.h>"
+#include "hip/hip_runtime.h"
 #endif
