@@ -50,10 +50,13 @@ void poisson_cuda_kernel(
 namespace at { namespace native {
 Tensor _s_poisson_cuda(const Tensor& lambda, Generator* gen) {
   Tensor ret = lambda.type().tensor(lambda.sizes());
+
+  #if !defined(__HIP_PLATFORM_HCC__)
   auto lambda_ = lambda.toType(ScalarType::Float);
   AT_DISPATCH_FLOATING_TYPES(ret.type(), "poisson", [&] {
      poisson_cuda_kernel<scalar_t>(ret, lambda_, next_philox_seed(gen));
    });
+  #endif
   return ret;
 }
 
