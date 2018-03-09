@@ -28,7 +28,7 @@ cp THC/THCTensorRandom.cu.hip THC/THCTensorRandom.cu
 cp THC/THCTensorRandom.cuh.hip THC/THCTensorRandom.cuh
 cp THC/THCTensorRandom.h.hip THC/THCTensorRandom.h
 cp THC/generic/THCStorage.c.hip THC/generic/THCStorage.c
-cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
+#cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 
 # Run hipify script in place
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/
@@ -56,6 +56,9 @@ sed -i 's/cudaHostAllocator/hipHostAllocator/g' ATen/PinnedMemoryAllocator.cpp
 sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' ATen/Context.cpp
 sed -i 's/curand.h/hiprng.h/g' ATen/native/cuda/*
 sed -i 's/curand_kernel.h/hiprng_kernel.h/g' ATen/native/cuda/*
+sed -i 's/curand_uniform/hiprng_uniform/g' THC/generic/THCTensorRandom.cu
+sed -i 's/curand_uniform_double/hiprng_uniform_double/g' THC/generic/THCTensorRandom.cu
+
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
