@@ -15,7 +15,7 @@
 #include <THC/THCApply.cuh>
 #include <THC/THCNumerics.cuh>
 #include <THC/THCTensorRandom.h>
-#if !defined(__HIP_PLATFORM_HCC__)
+
 THCGenerator* THCRandom_getGenerator(THCState* state);
 
 namespace at {
@@ -31,6 +31,7 @@ namespace dist {
   template <typename scalar>
   struct PoissonOpCUDA {
     static void apply(Tensor& ret, const Tensor& lambda, std::pair<uint64_t, uint64_t> seeds) {
+      #if !defined(__HIP_PLATFORM_HCC__)
       at::cuda::CUDA_tensor_apply2<scalar, float>(ret, lambda,
         [seeds] __device__ (scalar& ret_val, const float& lambda, bool early_exit) {
           curandStatePhilox4_32_10_t state;
@@ -38,6 +39,7 @@ namespace dist {
           ret_val = scalar_cast<scalar>(curand_poisson(&state, lambda));
         }
       );
+      #endif
     }
   };
 
@@ -45,11 +47,14 @@ namespace dist {
 
 Tensor _s_poisson_cuda(const Tensor& lambda, Generator* gen) {
   Tensor ret = lambda.type().tensor(lambda.sizes());
+
+  #if !defined(__HIP_PLATFORM_HCC__)
   auto lambda_ = lambda.toType(ScalarType::Float);
   dispatch_floating_types<void, dist::PoissonOpCUDA>(ret.type(), "poisson", ret, lambda_, dist::next_philox_seed(gen));
+  #endif
+
   return ret;
 }
 
 } // at::native
 } // at
-#endif

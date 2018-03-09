@@ -478,10 +478,19 @@ DEFINE_BERNOULLI_TENSOR(bernoulli_FloatTensor, THCudaTensor, float)
 DEFINE_BERNOULLI_TENSOR(bernoulli_DoubleTensor, THCudaDoubleTensor, double)
 
 #if defined(THC_REAL_IS_DOUBLE)
-
 GENERATE_KERNEL1(generate_geometric, double, double p, double, hiprng_uniform_double, ceil(log(x) / log(1-p)))
 #else
 GENERATE_KERNEL1(generate_geometric, real, double p, float, hiprng_uniform, (ScalarConvert<float, real>::to(ceilf(logf(x) / log(1-p)))))
+#endif
+
+#if defined(THC_REAL_IS_LONG) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_FLOAT)
+#define CURAND64(STATE) (((uint64_t) hcrngRandomInteger(&state[blockIdx.x])) << 32) | (uint64_t) hcrngRandomInteger(&state[blockIdx.x])
+GENERATE_KERNEL2(generate_random, real, int32_t base, uint32_t range, uint32_t, hcrngRandomInteger, (real)(x % range + base))
+GENERATE_KERNEL2(generate_random_64, real, int64_t base, uint64_t range, uint64_t, CURAND64, (real)(x % range + base))
+#elif defined(THC_REAL_IS_HALF)
+GENERATE_KERNEL2(generate_random, real, int32_t base, uint32_t range, uint32_t, hcrngRandomInteger, (ScalarConvert<uint32_t, real>::to(x % range + base)))
+#else
+GENERATE_KERNEL2(generate_random, real, int32_t base, uint32_t range, uint32_t, hcrngRandomInteger, (real)(x % range + base))
 #endif
 
 THC_API void THCTensor_(geometric)(THCState* state, THCTensor *self_, double p)
@@ -496,6 +505,70 @@ THC_API void THCTensor_(geometric)(THCState* state, THCTensor *self_, double p)
 
   generate_geometric<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
       gen->gen_states, static_cast<int>(size), data, p);
+
+  THCTensor_(freeCopyTo)(state, self, self_);
+};
+
+THC_API void THCTensor_(clampedRandom)(THCState* state, THCTensor *self_, int64_t min_val, int64_t max_val)
+{
+  THArgCheck(min_val < max_val, 2,
+             "max must be greater than min, but got: min = %lld, max = %lld", min_val, max_val);
+  THCAssertSameGPU(THCTensor_(checkGPU)(state, 1, self_));
+  ptrdiff_t size = THCTensor_(nElement)(state, self_);
+  if (size == 0) return;
+  THCGenerator* gen = THCRandom_getGenerator(state);
+  THCTensor *self = THCTensor_(newContiguous)(state, self_);
+  real *data = THCTensor_(data)(state, self);
+
+  uint64_t range = max_val - min_val;
+
+#if defined(THC_REAL_IS_LONG) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_FLOAT)
+  if (range > 1ULL << 32) {
+    generate_random_64<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+        gen->gen_states, size, data, min_val, range);
+  } else {
+#endif
+    generate_random<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+        gen->gen_states, size, data, min_val, range);
+#if defined(THC_REAL_IS_LONG) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_FLOAT)
+  }
+#endif
+
+  THCTensor_(freeCopyTo)(state, self, self_);
+};
+
+THC_API void THCTensor_(cappedRandom)(THCState* state, THCTensor *self_, int64_t max_val)
+{
+  THCTensor_(clampedRandom)(state, self_, 0LL, max_val);
+};
+
+#define HLF_MANT_DIG 11
+
+THC_API void THCTensor_(random)(THCState* state, THCTensor *self_)
+{
+  THCAssertSameGPU(THCTensor_(checkGPU)(state, 1, self_));
+  ptrdiff_t size = THCTensor_(nElement)(state, self_);
+  if (size == 0) return;
+  THCGenerator* gen = THCRandom_getGenerator(state);
+  THCTensor *self = THCTensor_(newContiguous)(state, self_);
+  real *data = THCTensor_(data)(state, self);
+
+#if defined(THC_REAL_IS_HALF)
+  generate_random<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+      gen->gen_states, size, data, 0UL, (1UL << HLF_MANT_DIG) + 1);
+#elif defined(THC_REAL_IS_FLOAT)
+  generate_random<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+      gen->gen_states, size, data, 0UL, (1UL << FLT_MANT_DIG) + 1);
+#elif defined(THC_REAL_IS_DOUBLE)
+  generate_random_64<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+      gen->gen_states, size, data, 0ULL, (1ULL << DBL_MANT_DIG) + 1);
+#elif defined(THC_REAL_IS_LONG)
+  generate_random_64<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+      gen->gen_states, size, data, 0ULL, static_cast<uint64_t>(std::numeric_limits<real>::max()) + 1);
+#else
+  generate_random<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>(
+      gen->gen_states, size, data, 0UL, static_cast<uint32_t>(std::numeric_limits<real>::max()) + 1);
+#endif
 
   THCTensor_(freeCopyTo)(state, self, self_);
 };

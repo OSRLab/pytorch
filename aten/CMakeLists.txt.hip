@@ -300,6 +300,9 @@ int main()
 }
 " HAS_C11_ATOMICS)
 
+# For ROCm stack, the hcc/hipcc compiler cannot use C11 atomics. Prefer GCC.
+SET(HAS_C11_ATOMICS OFF)
+
 IF(NOT HAS_C11_ATOMICS)
   CHECK_C_SOURCE_RUNS("
 #include <intrin.h>

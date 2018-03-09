@@ -59,6 +59,8 @@ sed -i 's/curand_kernel.h/hiprng_kernel.h/g' ATen/native/cuda/*
 sed -i 's/std::abs/fabs/g' ATen/native/cuda/Embedding.cu
 sed -i 's/std::pow/powf/g' ATen/native/cuda/Embedding.cu
 sed -i 's/assert/\/\/ assert/g' ATen/native/cuda/EmbeddingBag.cu
+sed -i 's/curand_uniform/hiprng_uniform/g' THC/generic/THCTensorRandom.cu
+sed -i 's/curand_uniform_double/hiprng_uniform_double/g' THC/generic/THCTensorRandom.cu
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
