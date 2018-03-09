@@ -56,6 +56,9 @@ sed -i 's/cudaHostAllocator/hipHostAllocator/g' ATen/PinnedMemoryAllocator.cpp
 sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' ATen/Context.cpp
 sed -i 's/curand.h/hiprng.h/g' ATen/native/cuda/*
 sed -i 's/curand_kernel.h/hiprng_kernel.h/g' ATen/native/cuda/*
+sed -i 's/std::abs/fabs/g' ATen/native/cuda/Embedding.cu
+sed -i 's/std::pow/powf/g' ATen/native/cuda/Embedding.cu
+sed -i 's/assert/\/\/ assert/g' ATen/native/cuda/EmbeddingBag.cu
 find ATen/cuda/ -name "*.prehip" -type f -delete
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
