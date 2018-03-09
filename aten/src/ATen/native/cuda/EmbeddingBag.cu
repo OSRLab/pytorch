@@ -269,8 +269,7 @@ Tensor embedding_bag_backward_cuda(const Tensor &grad_, const Tensor &indices,
   dim3 block(32, 4);
   DISPATCH_ALL_FLOATING_TYPES(
       grad.type(), "embedding_bag_backward_cuda", [&]() {
-        EmbeddingBag_accGradParametersKernel<
-            scalar_t><<<grid, block, 0, stream>>>(
+        EmbeddingBag_accGradParametersKernel<scalar_t><<<grid, block, 0, stream>>>(
             sorted_indices.data<int64_t>(), orig_indices.data<int64_t>(),
             grad.data<scalar_t>(), grad_weight.data<scalar_t>(),
             offset2bag.data<int64_t>(),
