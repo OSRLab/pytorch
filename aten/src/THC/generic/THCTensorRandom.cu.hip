@@ -483,6 +483,16 @@ GENERATE_KERNEL1(generate_geometric, double, double p, double, hiprng_uniform_do
 GENERATE_KERNEL1(generate_geometric, real, double p, float, hiprng_uniform, (ScalarConvert<float, real>::to(ceilf(logf(x) / log(1-p)))))
 #endif
 
+#if defined(THC_REAL_IS_LONG) || defined(THC_REAL_IS_DOUBLE) || defined(THC_REAL_IS_FLOAT)
+#define CURAND64(STATE) (((uint64_t) hcrngRandomInteger(&state[blockIdx.x])) << 32) | (uint64_t) hcrngRandomInteger(&state[blockIdx.x])
+GENERATE_KERNEL2(generate_random, real, int32_t base, uint32_t range, uint32_t, hcrngRandomInteger, (real)(x % range + base))
+GENERATE_KERNEL2(generate_random_64, real, int64_t base, uint64_t range, uint64_t, CURAND64, (real)(x % range + base))
+#elif defined(THC_REAL_IS_HALF)
+GENERATE_KERNEL2(generate_random, real, int32_t base, uint32_t range, uint32_t, hcrngRandomInteger, (ScalarConvert<uint32_t, real>::to(x % range + base)))
+#else
+GENERATE_KERNEL2(generate_random, real, int32_t base, uint32_t range, uint32_t, hcrngRandomInteger, (real)(x % range + base))
+#endif
+
 THC_API void THCTensor_(geometric)(THCState* state, THCTensor *self_, double p)
 {
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 1, self_));
