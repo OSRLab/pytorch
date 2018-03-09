@@ -28,7 +28,7 @@ cp THC/THCTensorRandom.cu.hip THC/THCTensorRandom.cu
 cp THC/THCTensorRandom.cuh.hip THC/THCTensorRandom.cuh
 cp THC/THCTensorRandom.h.hip THC/THCTensorRandom.h
 cp THC/generic/THCStorage.c.hip THC/generic/THCStorage.c
-#cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
+cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 
 # Run hipify script in place
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THC/
