@@ -40,6 +40,10 @@ if 'WITH_SCALARS' not in os.environ:
 WITH_ROCM=True
 WITH_CUDA=False
 
+# If using ROCM stack disable distributed for now
+if WITH_ROCM:
+  WITH_DISTRIBUTED=False
+
 WITH_SCALARS = check_env_flag('WITH_SCALARS')
 
 try:
