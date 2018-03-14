@@ -97,3 +97,10 @@ if [ ! -L "ATen" ]; then
     ln -s ../ATen ATen
 fi
 cd ../../../.
+
+# Disable the loading of the CUDA runtime in torch/cuda/__init__.py
+sed -i 's/_cudart = _load_cudart()/# _cudart = _load_cudart()/g' torch/cuda/__init__.py
+sed -i 's/_cudart.cudaGetErrorName.restype = ctypes.c_char_p/# _cudart.cudaGetErrorName.restype = ctypes.c_char_p/g' torch/cuda/__init__.py
+sed -i 's/_cudart.cudaGetErrorString.restype = ctypes.c_char_p/# _cudart.cudaGetErrorString.restype = ctypes.c_char_p/g' torch/cuda/__init__.py
+sed -i 's/_lazy_call(_check_capability)/# _lazy_call(_check_capability)/g' torch/cuda/__init__.py
+
