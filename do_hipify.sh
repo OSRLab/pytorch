@@ -64,6 +64,10 @@ find ATen/cuda/ -name "*.prehip" -type f -delete
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
 sed -i 's/_OPENMP/_OPENMP_STUBBED/g' TH/generic/THTensorMath.c
 
+# Fix the preprocessor directives for C++AMP
+sed -i 's/#if/#ifdef/g' ATen/*
+sed -i 's/#ifdef AT_CUDNN_ENABLED()/#ifdef AT_CUDNN_ENABLED/g' ATen/*
+
 # Make link directories
 mkdir -p HIP
 cd HIP
