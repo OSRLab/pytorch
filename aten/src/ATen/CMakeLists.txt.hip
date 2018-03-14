@@ -47,18 +47,14 @@ INCLUDE_DIRECTORIES(${THRUST_PATH})
 EXECUTE_PROCESS(COMMAND ${HIP_PATH}/bin/hipconfig -P OUTPUT_VARIABLE PLATFORM)
 EXECUTE_PROCESS(COMMAND ${HIP_PATH}/bin/hipconfig --cpp_config OUTPUT_VARIABLE HIP_CXX_FLAGS)
 
-SET(CMAKE_C_COMPILER hcc)
+SET(CMAKE_C_COMPILER gcc)
 SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
-
-ADD_DEFINITIONS(-D__HIP_PLATFORM_HCC__)
 
 # SET(CMAKE_C_FLAGS "-std=c99 -Werror=implicit-function-declaration ${CMAKE_C_FLAGS}")
 # SET(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} ${HIP_CXX_FLAGS}")
-SET(CMAKE_C_FLAGS "-D__HIP_PLATFORM_HCC__ -I/opt/rocm/hip/include -I/opt/rocm/hcc/include")
 SET(CMAKE_CXX_FLAGS  "-std=c++11 ${CMAKE_CXX_FLAGS} ${HIP_CXX_FLAGS}")
 
 # Set the Flags for hcc & hipcc
-SET(HIP_HIPCC_FLAGS "-D__HIP_PLATFORM_HCC__ -I/opt/rocm/hip/include -I/opt/rocm/hcc/include")
 
 # Show message that we're using ROCm.
 MESSAGE(STATUS "ROCM TRUE:")
