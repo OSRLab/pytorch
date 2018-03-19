@@ -10,11 +10,6 @@ struct squareupdateOutput_functor
   {
     *output = (*input) * (*input);
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __device__ __host__
-  ~squareupdateOutput_functor() {}
-#endif
 };
 
 template <typename T>
@@ -24,11 +19,6 @@ struct squareupdateGradInput_functor
   {
     *gradInput = ScalarConvert<double, T>::to(2.0) * (*gradOutput) * (*input);
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __device__ __host__
-  ~squareupdateGradInput_functor() {}
-#endif
 };
 
 #include "generic/Square.cu"

@@ -10,18 +10,6 @@ struct PReLUUpdateOutput
 {
   T* weight_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  PReLUUpdateOutput() = default;
-
-  __host__ __device__
-  PReLUUpdateOutput(const PReLUUpdateOutput& t) = default;
-
-  __host__ __device__
-  ~PReLUUpdateOutput() {}
-
-  __host__ __device__
-#endif
   PReLUUpdateOutput(T* weight)
     : weight_(weight)
   {}
@@ -49,18 +37,6 @@ struct PReLUUpdateGradInput
 {
   T *weight_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  PReLUUpdateGradInput() = default;
-
-  __host__ __device__
-  ~PReLUUpdateGradInput() {}
-
-  __host__ __device__
-  PReLUUpdateGradInput(const PReLUUpdateGradInput& t) = default;
-
-  __host__ __device__
-#endif
   PReLUUpdateGradInput(T *weight)
     : weight_(weight)
   {}
@@ -101,18 +77,6 @@ struct PReLUAccGradParameters
 {
   T scale;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  PReLUAccGradParameters() = default;
-
-  __host__ __device__
-  PReLUAccGradParameters(const PReLUAccGradParameters& f) = default;
-
-  __host__ __device__
-  ~PReLUAccGradParameters() {}
-
-  __host__ __device__
-#endif
   PReLUAccGradParameters(T scale)
     : scale(scale)
   {}
@@ -128,18 +92,6 @@ struct PReLUAccGradParameters1to1
 {
   T scale;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  PReLUAccGradParameters1to1() = default;
-
-  __host__ __device__
-  PReLUAccGradParameters1to1(const PReLUAccGradParameters1to1& f) = default;
-
-  __host__ __device__
-  ~PReLUAccGradParameters1to1() {}
-
-  __host__ __device__
-#endif
   PReLUAccGradParameters1to1(T scale)
     : scale(scale)
   {}

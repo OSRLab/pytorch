@@ -9,18 +9,6 @@ struct softPlusupdateOutput_functor
   const T threshold;
   const T beta;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  softPlusupdateOutput_functor() = default;
-
-  __host__ __device__
-  softPlusupdateOutput_functor(const softPlusupdateOutput_functor& f) = default;
-
-  __host__ __device__
-  ~softPlusupdateOutput_functor() {}
-
-  __host__ __device__
-#endif
   softPlusupdateOutput_functor(T threshold_, T beta_)
     : threshold(threshold_)
     , beta(beta_)
@@ -38,18 +26,6 @@ struct softPlusupdateGradInput_functor
   const T threshold;
   const T beta;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  softPlusupdateGradInput_functor() = default;
-
-  __host__ __device__
-  softPlusupdateGradInput_functor(const softPlusupdateGradInput_functor& f) = default;
-
-  __host__ __device__
-  ~softPlusupdateGradInput_functor() {}
-
-  __host__ __device__
-#endif
   softPlusupdateGradInput_functor(T threshold_, T beta_)
     : threshold(threshold_)
     , beta(beta_)

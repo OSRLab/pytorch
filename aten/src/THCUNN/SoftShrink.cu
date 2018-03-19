@@ -8,18 +8,6 @@ struct SoftShrinkUpdateOutput
 {
   const T lambda_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  SoftShrinkUpdateOutput() = default;
-
-  __host__ __device__
-  SoftShrinkUpdateOutput(const SoftShrinkUpdateOutput& f) = default;
-
-  __host__ __device__
-  ~SoftShrinkUpdateOutput() {}
-
-  __host__ __device__
-#endif
   SoftShrinkUpdateOutput(T lambda)
     : lambda_(lambda)
   {}
@@ -38,18 +26,6 @@ struct SoftShrinkUpdateGradInput
 {
   const T lambda_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  SoftShrinkUpdateGradInput() = default;
-
-  __host__ __device__
-  SoftShrinkUpdateGradInput(const SoftShrinkUpdateGradInput& f) = default;
-
-  __host__ __device__
-  ~SoftShrinkUpdateGradInput() {}
-
-  __host__ __device__
-#endif
   SoftShrinkUpdateGradInput(T lambda)
     : lambda_(lambda)
   {}

@@ -15,9 +15,6 @@
 
 template <typename T, typename MaskT>
 struct TensorMaskedFillOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorMaskedFillOp(T v) : value(v) {}
   __device__ inline void operator()(T* t, MaskT* mask) {
     if (*mask) {
@@ -25,18 +22,11 @@ struct TensorMaskedFillOp {
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorMaskedFillOp() {}
-#endif
-
   T value;
 };
 
 template <typename T, typename MaskT, typename MaskPrefixSumT>
 struct TensorMaskedCopyOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorMaskedCopyOp(T* s) : in(s) {}
 
   __device__ inline void operator()(T* out,
@@ -47,19 +37,12 @@ struct TensorMaskedCopyOp {
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorMaskedCopyOp() {}
-#endif
-
   // Where we are copying from
   T* in;
 };
 
 template <typename T, typename MaskT, typename MaskPrefixSumT>
 struct TensorMaskedSelectOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorMaskedSelectOp(T* t) : out(t) {}
   __device__ inline void operator()(MaskT* mask,
                                     MaskPrefixSumT* maskPrefixSum,
@@ -69,9 +52,6 @@ struct TensorMaskedSelectOp {
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorMaskedSelectOp() {}
-#endif
   T* out;
 };
 
