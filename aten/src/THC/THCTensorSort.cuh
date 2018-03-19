@@ -15,9 +15,6 @@
 
 template <typename T>
 struct ThrustGTOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__
-#endif
   __device__ bool operator()(const T& lhs, const T& rhs) const {
     return THCNumerics<T>::gt(lhs, rhs);
   }
@@ -25,9 +22,6 @@ struct ThrustGTOp {
 
 template <typename T>
 struct ThrustLTOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__
-#endif
   __device__ bool operator()(const T& lhs, const T& rhs) const {
     return THCNumerics<T>::lt(lhs, rhs);
   }
