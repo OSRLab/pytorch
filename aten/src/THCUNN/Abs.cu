@@ -19,14 +19,6 @@ struct absupdateOutput_functor
 template <typename T>
 struct absupdateGradInput_functor
 {
-#ifdef __HIP_PLATFORM_HCC__
-  __host__ __device__
-  absupdateGradInput_functor() = default;
-
-  __host__ __device__
-  ~absupdateGradInput_functor() {}
-#endif
-
   __device__ void operator()(T* gradInput, const T* input, const T* gradOutput) const
   {
     *gradInput = *input < 0 ? - *gradOutput : *gradOutput;
