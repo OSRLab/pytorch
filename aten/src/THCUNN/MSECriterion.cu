@@ -16,11 +16,6 @@
 template <typename Dtype, typename Acctype>
 struct mse_functor
 {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  mse_functor() {}
-#endif
-
   __host__ __device__ Acctype operator()(const Dtype &x, const Dtype &y) const
   {
     Acctype z = ScalarConvert<Dtype, Acctype>::to(x)-y;
@@ -50,18 +45,6 @@ struct mse_updateGradInput_functor
 {
   const Acctype norm;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  mse_updateGradInput_functor() = default;
-
-  __host__ __device__
-  mse_updateGradInput_functor(const mse_updateGradInput_functor& f) = default;
-
-  __host__ __device__
-  ~mse_updateGradInput_functor() {}
-
-  __host__ __device__
-#endif
   mse_updateGradInput_functor(Acctype norm_)
     : norm(norm_)
   {}

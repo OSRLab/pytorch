@@ -8,18 +8,6 @@ struct LeakyReLUUpdateOutput
 {
   const T negval_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  LeakyReLUUpdateOutput() = default;
-
-  __host__ __device__
-  LeakyReLUUpdateOutput(const LeakyReLUUpdateOutput& o) = default;
-
-  __host__ __device__
-  ~LeakyReLUUpdateOutput() {}
-
-  __host__ __device__
-#endif
   LeakyReLUUpdateOutput(T negval)
     : negval_(negval)
   {}
@@ -37,18 +25,6 @@ struct LeakyReLUUpdateOutputIP
 {
   const T negval_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  LeakyReLUUpdateOutputIP() = default;
-
-  __host__ __device__
-  LeakyReLUUpdateOutputIP(const LeakyReLUUpdateOutputIP& r) = default;
-
-  __host__ __device__
-  ~LeakyReLUUpdateOutputIP() {}
-
-  __host__ __device__
-#endif
   LeakyReLUUpdateOutputIP(T negval)
     : negval_(negval)
   {}
@@ -64,18 +40,6 @@ struct LeakyReLUUpdateGradInput
 {
   const T negval_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  LeakyReLUUpdateGradInput() = default;
-
-  __host__ __device__
-  LeakyReLUUpdateGradInput(const LeakyReLUUpdateGradInput& f) = default;
-
-  __host__ __device__
-  ~LeakyReLUUpdateGradInput() {}
-
-  __host__ __device__
-#endif
   LeakyReLUUpdateGradInput(T negval)
     : negval_(negval)
   {}
@@ -94,18 +58,6 @@ struct LeakyReLUUpdateGradInputIP
 {
   const T negval_;
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  LeakyReLUUpdateGradInputIP() = default;
-
-  __host__ __device__
-  LeakyReLUUpdateGradInputIP(const LeakyReLUUpdateGradInputIP& t) = default;
-
-  __host__ __device__
-  ~LeakyReLUUpdateGradInputIP() {}
-
-  __host__ __device__
-#endif
   LeakyReLUUpdateGradInputIP(T negval)
     : negval_(negval)
   {}
