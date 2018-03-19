@@ -62,6 +62,10 @@ sed -i 's/assert/\/\/ assert/g' ATen/native/cuda/EmbeddingBag.cu
 sed -i 's/curand_uniform/hiprng_uniform/g' THC/generic/THCTensorRandom.cu
 sed -i 's/curand_uniform_double/hiprng_uniform_double/g' THC/generic/THCTensorRandom.cu
 find ATen/cuda/ -name "*.prehip" -type f -delete
+find ATen/ -name "*.prehip" -type f -delete
+
+# Due to an issue in HCC, change filename of CuDNN batch norm 
+mv ATen/native/cudnn/BatchNorm.cpp ATen/native/cudnn/BatchNormCuDNN.cpp
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
 sed -i 's/_OPENMP/_OPENMP_STUBBED/g' TH/generic/THTensorMath.c
