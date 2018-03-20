@@ -222,7 +222,7 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
          grad_weight.data<cuda_scalar_t>(), // might need to use type scalar_t
          static_cast<int64_t>(num_indices),
          static_cast<int64_t>(stride),
-         static_cast<int>(padding_idx))
+         static_cast<int>(padding_idx));
 #else
      embedding_backward_feature_kernel<<<grid, block, 0, stream>>>(
        indices.data<int64_t>(),
@@ -310,7 +310,7 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
       count.defined() ? count.data<int64_t>() : nullptr,
       static_cast<int64_t>(num_indices),
       static_cast<int64_t>(stride),
-      static_cast<int>(padding_idx))
+      static_cast<int>(padding_idx));
 #else
     embedding_backward_kernel<<<grid, block, 0, stream>>>(
       sorted_indices.data<int64_t>(),
@@ -321,6 +321,7 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
       static_cast<int64_t>(num_indices),
       static_cast<int64_t>(stride),
       static_cast<int>(padding_idx));
+#endif
   });
   THCudaCheck(cudaGetLastError());
 
@@ -375,6 +376,7 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
       scalar_cast<accscalar_t>(max_norm),
       scalar_cast<accscalar_t>(norm_type),
       scalar_cast<int>(dim));
+#endif
   });
   THCudaCheck(cudaGetLastError());
 
