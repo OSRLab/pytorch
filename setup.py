@@ -684,7 +684,6 @@ if WITH_CUDA:
         "torch/csrc/cuda/serialization.cpp",
         "torch/csrc/nn/THCUNN.cpp",
     ]
-    main_sources += split_types("torch/csrc/cuda/Tensor.cpp", ninja_global)
 
 elif WITH_ROCM:
     rocm_include_path = '/opt/rocm/include'
