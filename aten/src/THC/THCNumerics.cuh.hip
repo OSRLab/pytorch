@@ -17,6 +17,20 @@ template <typename T>
 struct THCNumerics {
 };
 
+template <typename scalar_t>
+static inline __host__ __device__ scalar_t powi(scalar_t a, scalar_t b) {
+  assert(THCNumerics<scalar_t>::ge(b, 0));
+  scalar_t result = 1;
+  while (b) {
+    if (b & 1) {
+       result *= a;
+    }
+    b /= 2;
+    a *= a;
+  }
+  return result;
+}
+
 template <>
 struct THCNumerics<uint8_t> {
   static inline __host__ __device__ uint8_t (min)() { return 0; }
@@ -35,6 +49,7 @@ struct THCNumerics<uint8_t> {
   static inline __host__ __device__  uint8_t sub(uint8_t a, uint8_t b) { return a - b; }
   static inline __host__ __device__  uint8_t div(uint8_t a, uint8_t b) { return a / b; }
   static inline __host__ __device__  uint8_t abs(uint8_t a) { return a; }
+  static inline __host__ __device__  uint8_t pow(uint8_t a, uint8_t b) { return powi<uint8_t>(a, b); }
 };
 
 template <>
@@ -54,6 +69,7 @@ struct THCNumerics<int8_t> {
   static inline __host__ __device__  int8_t mul(int8_t a, int8_t b) { return a * b; }
   static inline __host__ __device__  int8_t sub(int8_t a, int8_t b) { return a - b; }
   static inline __host__ __device__  int8_t div(int8_t a, int8_t b) { return a / b; }
+  static inline __host__ __device__  int8_t pow(int8_t a, int8_t b) { return powi<int8_t>(a, b); }
   static inline __host__ int8_t abs(int8_t a) { return std::abs(a); }
   static inline __device__ int8_t abs(int8_t a) { return a < 0 ? -a : a; }
 };
@@ -75,6 +91,7 @@ struct THCNumerics<int16_t> {
   static inline __host__ __device__  int16_t mul(int16_t a, int16_t b) { return a * b; }
   static inline __host__ __device__  int16_t sub(int16_t a, int16_t b) { return a - b; }
   static inline __host__ __device__  int16_t div(int16_t a, int16_t b) { return a / b; }
+  static inline __host__ __device__  int16_t pow(int16_t a, int16_t b) { return powi<int16_t>(a, b); }
   static inline __host__ int16_t abs(int16_t a) { return std::abs(a); }
   static inline __device__ int16_t abs(int16_t a) { return a < 0 ? -a : a; }
 };
@@ -96,6 +113,7 @@ struct THCNumerics<int32_t> {
   static inline __host__ __device__  int32_t mul(int32_t a, int32_t b) { return a * b; }
   static inline __host__ __device__  int32_t sub(int32_t a, int32_t b) { return a - b; }
   static inline __host__ __device__  int32_t div(int32_t a, int32_t b) { return a / b; }
+  static inline __host__ __device__  int32_t pow(int32_t a, int32_t b) { return powi<int32_t>(a, b); }
   static inline __host__ int32_t abs(int32_t a) { return std::abs(a); }
   static inline __device__ int32_t abs(int32_t a) { return a < 0 ? -a : a; }
 };
@@ -117,6 +135,7 @@ struct THCNumerics<int64_t> {
   static inline __host__ __device__  int64_t mul(int64_t a, int64_t b) { return a * b; }
   static inline __host__ __device__  int64_t sub(int64_t a, int64_t b) { return a - b; }
   static inline __host__ __device__  int64_t div(int64_t a, int64_t b) { return a / b; };
+  static inline __host__ __device__  int64_t pow(int64_t a, int64_t b) { return powi<int64_t>(a, b); }
   static inline __host__ int64_t abs(int64_t a) { return std::abs(a); }
   static inline __device__ int64_t abs(int64_t a) { return a < 0 ? -a : a; }
 };
