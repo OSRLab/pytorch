@@ -57,7 +57,9 @@ __global__ void ClassNLLCriterion_updateOutput_no_reduce_kernel(
       output[index] = ScalarConvert<int, Dtype>::to(0);
       continue;
     }
+#if defined(__NVCC__)
     assert(cur_target  >= 0 && cur_target  < n_classes);
+#endif
     Dtype weight =
        weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1);
 #if defined(__HIP_PLATFORM_HCC__)
@@ -83,7 +85,9 @@ __global__ void ClassNLLCriterion_updateGradInput_no_reduce_kernel(
     if (cur_target == ignore_index) {
       continue;
     }
+#if defined(__NVCC__)
     assert(cur_target  >= 0 && cur_target  < n_classes);
+#endif
     Dtype weight =
        weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1);
 #if defined(__HIP_PLATFORM_HCC__)
