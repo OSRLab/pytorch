@@ -112,9 +112,6 @@ IS_WINDOWS = (platform.system() == 'Windows')
 IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
-if 'WITH_SCALARS' not in os.environ:
-    os.environ['WITH_SCALARS'] = '1'
-
 WITH_ROCM=True
 WITH_CUDA=False
 
@@ -181,7 +178,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen', #'THC', 'THCS', 'THCUNN',
+    'nccl', 'ATen',
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
@@ -272,9 +269,6 @@ class build_deps(Command):
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
-        if WITH_ROCM:
-            pass
-            #libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
@@ -684,7 +678,6 @@ if WITH_CUDA:
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
         "torch/csrc/cuda/Stream.cpp",
-        "torch/csrc/cuda/AutoGPU.cpp",
         "torch/csrc/cuda/utils.cpp",
         "torch/csrc/cuda/comm.cpp",
         "torch/csrc/cuda/python_comm.cpp",
@@ -694,10 +687,6 @@ if WITH_CUDA:
     main_sources += split_types("torch/csrc/cuda/Tensor.cpp", ninja_global)
 
 elif WITH_ROCM:
-    # rocm_include_path = os.path.join(ROCM_HOME, '/include')
-    # hcc_include_path = os.path.join(ROCM_HOME, '/hcc/include')
-    # hipblas_include_path = os.path.join(ROCM_HOME, '/hipblas/include')
-    # hipsparse_include_path = os.path.join(ROCM_HOME, '/hcsparse/include')
     rocm_include_path = '/opt/rocm/include'
     hcc_include_path = '/opt/rocm/hcc/include'
     hipblas_include_path = '/opt/rocm/hipblas/include'
@@ -706,7 +695,6 @@ elif WITH_ROCM:
     print(hcc_include_path)
     print(hipblas_include_path)
     print(hipsparse_include_path)
-    # hip_lib_path = os.path.join(ROCM_HOME, '/hip/lib')
     hip_lib_path = '/opt/rocm/hip/lib'
     hcc_lib_path = '/opt/rocm/hcc/lib'
     include_dirs.append(rocm_include_path)
@@ -716,23 +704,12 @@ elif WITH_ROCM:
     include_dirs.append(tmp_install_path + "/include/THCUNN")
     extra_link_args.append('-L' + hip_lib_path)
     extra_link_args.append('-Wl,-rpath,' + hip_lib_path)
-    #extra_link_args.append('-Wl,--whole-archive -lmcwamp -Wl,--no-whole-archive')
     extra_link_args.append('-shared')
     extra_compile_args += ['-DWITH_ROCM']
     extra_compile_args += ['-D__HIP_PLATFORM_HCC__']
 
     os.environ["LDSHARED"] = 'gcc'
 
-    # main_libraries += []
-    #lib_path = os.path.join(cwd, "aten", "src")
-    #TH_LIB = os.path.join(lib_path, 'libTH.so.1')
-    #THS_LIB = os.path.join(lib_path, 'libTHS.so.1')
-    #THNN_LIB = os.path.join(lib_path, 'libTHNN.so.1')
-    #THC_LIB = os.path.join(lib_path, 'libTHC.so.1')
-    #THCS_LIB = os.path.join(lib_path, 'libTHCS.so.1')
-    #THCUNN_LIB = os.path.join(lib_path, 'libTHCUNN.so.1')
-
-    #main_link_args += [THC_LIB, THCS_LIB, THCUNN_LIB]
     main_sources += [
         "torch/csrc/cuda/Module.cpp",
         "torch/csrc/cuda/Storage.cpp",
@@ -813,7 +790,6 @@ if not IS_WINDOWS:
     DL = Extension("torch._dl",
                    sources=["torch/csrc/dl.c"],
                    language='c',
-                   extra_link_args=["-shared"],
                    )
     extensions.append(DL)
 
