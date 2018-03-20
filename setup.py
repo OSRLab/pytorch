@@ -695,6 +695,7 @@ if WITH_CUDA:
         "torch/csrc/cuda/serialization.cpp",
         "torch/csrc/nn/THCUNN.cpp",
     ]
+
 elif WITH_ROCM:
     rocm_include_path = '/opt/rocm/include'
     hcc_include_path = '/opt/rocm/hcc/include'
