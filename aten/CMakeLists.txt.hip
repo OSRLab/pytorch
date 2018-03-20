@@ -41,8 +41,8 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindCUDA
   /usr/lib/x86_64-linux-gnu/
   ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/TH/cmake
+  ${HIP_PATH}/cmake
   ${CMAKE_MODULE_PATH})
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${HIP_PATH}/cmake")
 SET(CMAKE_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/ ${CMAKE_LIBRARY_PATH})
 project(ATen)
 
@@ -51,34 +51,6 @@ cmake_policy(SET CMP0012 NEW)
 ADD_DEFINITIONS(-D__HIP_PLATFORM_HCC__)
 
 FIND_PACKAGE(HIP 1.0 REQUIRED)
-
-# ---[ If running on Ubuntu, check system version and compiler version.
-if(EXISTS "/etc/os-release")
-  execute_process(COMMAND
-    "sed" "-ne" "s/^ID=\\([a-z]\\+\\)$/\\1/p" "/etc/os-release"
-    OUTPUT_VARIABLE OS_RELEASE_ID
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-  execute_process(COMMAND
-    "sed" "-ne" "s/^VERSION_ID=\"\\([0-9\\.]\\+\\)\"$/\\1/p" "/etc/os-release"
-    OUTPUT_VARIABLE OS_RELEASE_VERSION_ID
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-  if(OS_RELEASE_ID STREQUAL "ubuntu")
-    if(OS_RELEASE_VERSION_ID VERSION_GREATER "17.04")
-      if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0.0"
-          AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.0.0")
-            message(FATAL_ERROR
-              "Do not use GCC 5. GCC 5 has a known bug in Ubuntu 17.10"
-              " and higher, which won't be fixed. For more information, see: "
-              "https://github.com/pytorch/pytorch/issues/5229"
-              )
-        endif()
-      endif()
-    endif()
-  endif()
-endif()
 
 # RPATH stuff
 # see https://cmake.org/Wiki/CMake_RPATH_handling
@@ -100,6 +72,36 @@ IF(NOT MSVC)
   set(CMAKE_C_FLAGS "-fexceptions ${CMAKE_C_FLAGS}")
 ENDIF(NOT MSVC)
 
+INCLUDE(CheckCXXSourceCompiles)
+
+# windef.h will define max/min macros if NOMINMAX is not defined
+IF(MSVC)
+  add_definitions(/DNOMINMAX)
+ENDIF(MSVC)
+
+#Check if certain std functions are supported. Sometimes
+#_GLIBCXX_USE_C99 macro is not defined and some functions are missing.
+CHECK_CXX_SOURCE_COMPILES("
+#include <cmath>
+#include <string>
+
+int main() {
+  int a = std::isinf(3.0);
+  int b = std::isnan(0.0);
+  std::string s = std::to_string(1);
+
+  return 0;
+  }" SUPPORT_GLIBCXX_USE_C99)
+
+if(NOT SUPPORT_GLIBCXX_USE_C99)
+  message(FATAL_ERROR
+          "The C++ compiler does not support required functions. "
+          "This is very likely due to a known bug in GCC 5 "
+          "(and maybe other versions) on Ubuntu 17.10 and newer. "
+          "For more information, see: "
+          "https://github.com/pytorch/pytorch/issues/5229"
+         )
+endif()
 
 # Top-level build config
 ############################################
@@ -260,6 +262,26 @@ ENDIF(UNIX)
 
 INCLUDE (CheckIncludeFile)
 INCLUDE (CheckCSourceCompiles)
+INCLUDE (CheckCSourceRuns)
+
+# Check that our programs run.  This is different from the native CMake compiler
+# check, which just tests if the program compiles and links.  This is important
+# because with ASAN you might need to help the compiled library find some
+# dynamic libraries.
+CHECK_C_SOURCE_RUNS("
+int main() { return 0; }
+" COMPILER_WORKS)
+IF(NOT COMPILER_WORKS)
+  # Force cmake to retest next time around
+  unset(COMPILER_WORKS CACHE)
+  MESSAGE(FATAL_ERROR
+      "Could not run a simple program built with your compiler. "
+      "If you are trying to use -fsanitize=address, make sure "
+      "libasan is properly installed on your system (you can confirm "
+      "if the problem is this by attempting to build and run a "
+      "small program.)")
+ENDIF()
+
 CHECK_INCLUDE_FILE(cpuid.h HAVE_CPUID_H)
 # Check for a cpuid intrinsic
 IF(HAVE_CPUID_H)
@@ -303,6 +325,7 @@ ENDIF()
 IF(C_SSE3_FOUND)
   MESSAGE(STATUS "SSE3 Found")
   SET(CMAKE_C_FLAGS "${C_SSE3_FLAGS} -DUSE_SSE3 ${CMAKE_C_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "${C_SSE3_FLAGS} -DUSE_SSE3 ${CMAKE_CXX_FLAGS}")
 ENDIF(C_SSE3_FOUND)
 
 # we don't set -mavx and -mavx2 flags globally, but only for specific files
@@ -402,10 +425,13 @@ MACRO(Install_Required_Library ln)
 ENDMACRO(Install_Required_Library libname)
 
 FIND_PACKAGE(BLAS)
+SET(AT_MKL_ENABLED 0)
 IF(BLAS_FOUND)
   SET(USE_BLAS 1)
   IF(BLAS_INFO STREQUAL "mkl")
     ADD_DEFINITIONS(-DTH_BLAS_MKL)
+    INCLUDE_DIRECTORIES(${BLAS_INCLUDE_DIR})  # include MKL headers
+    SET(AT_MKL_ENABLED 1)
   ENDIF()
 ENDIF(BLAS_FOUND)
 
@@ -477,7 +503,7 @@ if(NO_NNPACK)
 else()
   find_package(NNPACK)
   if(NOT NNPACK_FOUND)
-    MESSAGE(STATUS "NNPACK not found. Compiling without nNPACK support")
+    MESSAGE(STATUS "NNPACK not found. Compiling without NNPACK support")
     set(AT_NNPACK_ENABLED 0)
   ELSE()
     INCLUDE_DIRECTORIES(${NNPACK_INCLUDE_DIRS})
@@ -500,15 +526,16 @@ ${CMAKE_CURRENT_SOURCE_DIR}/hip-src/THCUNN)
 add_subdirectory(hip-src/ATen)
 include_directories(
 ${CMAKE_CURRENT_SOURCE_DIR}/hip-src
+${CMAKE_CURRENT_SOURCE_DIR}/hip-src/ATen/utils/catch/single_include
 ${CMAKE_CURRENT_BINARY_DIR}/hip-src/ATen)
 if(NOT NO_CUDA AND NOT WITH_ROCM)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
-# add_subdirectory(hip-src/ATen/test)
+add_subdirectory(hip-src/ATen/test)
 
-# if(ATEN_NO_CONTRIB)
-#   message("disable contrib because ATEN_NO_CONTRIB is set")
-# else()
-#   add_subdirectory(contrib/data)
-#   add_subdirectory(contrib/meter)
-# endif()
+if(ATEN_NO_CONTRIB)
+  message("disable contrib because ATEN_NO_CONTRIB is set")
+else()
+  add_subdirectory(contrib/data)
+  add_subdirectory(contrib/meter)
+endif()
