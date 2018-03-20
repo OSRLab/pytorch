@@ -112,9 +112,6 @@ IS_WINDOWS = (platform.system() == 'Windows')
 IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
-if 'WITH_SCALARS' not in os.environ:
-    os.environ['WITH_SCALARS'] = '1'
-
 WITH_ROCM=True
 WITH_CUDA=False
 
@@ -181,7 +178,7 @@ for key, value in cfg_vars.items():
 ################################################################################
 
 dep_libs = [
-    'nccl', 'ATen', #'THC', 'THCS', 'THCUNN',
+    'nccl', 'ATen',
     'libshm', 'libshm_windows', 'gloo', 'THD', 'nanopb',
 ]
 
@@ -273,9 +270,6 @@ class build_deps(Command):
         if WITH_NCCL and not WITH_SYSTEM_NCCL:
             libs += ['nccl']
         libs += ['ATen', 'nanopb']
-        if WITH_ROCM:
-            pass
-            #libs += ['THC', 'THCS', 'THCUNN']
         if IS_WINDOWS:
             libs += ['libshm_windows']
         else:
@@ -701,8 +695,7 @@ if WITH_CUDA:
         "torch/csrc/cuda/serialization.cpp",
         "torch/csrc/nn/THCUNN.cpp",
     ]
-
-if WITH_ROCM:
+elif WITH_ROCM:
     rocm_include_path = '/opt/rocm/include'
     hcc_include_path = '/opt/rocm/hcc/include'
     hipblas_include_path = '/opt/rocm/hipblas/include'
@@ -806,7 +799,6 @@ if not IS_WINDOWS:
     DL = Extension("torch._dl",
                    sources=["torch/csrc/dl.c"],
                    language='c',
-                   extra_link_args=["-shared"],
                    )
     extensions.append(DL)
 
