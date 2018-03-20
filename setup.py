@@ -223,7 +223,6 @@ def build_libs(libs):
     if WITH_GLOO_IBVERBS:
         build_libs_cmd += ['--with-gloo-ibverbs']
 
-
     if subprocess.call(build_libs_cmd + libs, env=my_env) != 0:
         sys.exit(1)
 
@@ -278,7 +277,6 @@ class build_deps(Command):
             if sys.platform.startswith('linux'):
                 libs += ['gloo']
             libs += ['THD']
-
         build_libs(libs)
 
         # Copy headers necessary to compile C++ extensions.
