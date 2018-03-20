@@ -681,8 +681,8 @@ if WITH_CUDA:
         "torch/csrc/cuda/utils.cpp",
         "torch/csrc/cuda/comm.cpp",
         "torch/csrc/cuda/python_comm.cpp",
-        "torch/csrc/cuda/expand_utils.cpp",
         "torch/csrc/cuda/serialization.cpp",
+        "torch/csrc/nn/THCUNN.cpp",
     ]
     main_sources += split_types("torch/csrc/cuda/Tensor.cpp", ninja_global)
 
