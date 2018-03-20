@@ -16,7 +16,7 @@
 
 #include <cstdint>
 #include <utility>
-#ifndef(__HIP_PLATFORM_HCC__)
+#if !defined(__HIP_PLATFORM_HCC__)
 THCGenerator* THCRandom_getGenerator(THCState* state);
 
 namespace {
