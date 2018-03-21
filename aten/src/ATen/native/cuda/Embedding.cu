@@ -360,22 +360,13 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(self.type(), "embedding_backward", [&] {
     using cuda_scalar_t = cuda::type<scalar_t>;
     using accscalar_t = cuda::acc_type<cuda_scalar_t>;
-#if defined(__HIP_PLATFORM_HCC__)
-    hipLaunchKernelGGL(
-      renorm_kernel, grid, block, 128 * sizeof(accscalar_t), stream,
-        self.data<cuda_scalar_t>(), // might need to use scalar_t
-        unique_indices.data<int64_t>(),
-        scalar_cast<accscalar_t>(max_norm),
-        scalar_cast<accscalar_t>(norm_type),
-        scalar_cast<int>(dim));
-#else
+
     renorm_kernel<<<grid, block, 128 * sizeof(accscalar_t), stream>>>(
       self.data<cuda_scalar_t>(),
       unique_indices.data<int64_t>(),
       scalar_cast<accscalar_t>(max_norm),
       scalar_cast<accscalar_t>(norm_type),
       scalar_cast<int>(dim));
-#endif
   });
   THCudaCheck(cudaGetLastError());
 
