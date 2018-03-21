@@ -62,7 +62,7 @@ sed -i 's/curand_uniform_double/hiprng_uniform_double/g' THC/generic/THCTensorRa
 find ATen/cuda/ -name "*.prehip" -type f -delete
 find ATen/ -name "*.prehip" -type f -delete
 
-# Due to an issue in HCC, change filename of CuDNN batch norm 
+# Due to an issue in HCC, change filename of CuDNN batch norm
 mv ATen/native/cudnn/BatchNorm.cpp ATen/native/cudnn/BatchNormCuDNN.cpp
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
@@ -71,6 +71,53 @@ sed -i 's/_OPENMP/_OPENMP_STUBBED/g' TH/generic/THTensorMath.c
 # Fix the preprocessor directives for C++AMP
 sed -i 's/#if/#ifdef/g' ATen/*
 sed -i 's/#ifdef AT_CUDNN_ENABLED()/#ifdef AT_CUDNN_ENABLED/g' ATen/*
+
+# Sparse Hipify
+declare -a arr=("THC/THCGeneral.h.in" "THC/THCGeneral.cpp" "THC/generic/THCStorage.c")
+
+for i in "${arr[@]}"
+do
+  # Hipify the source file in place.
+  hipify-perl -i $i
+
+  sed -i 's/cusparseStatus_t/hipsparseStatus_t/g' $i
+  sed -i 's/cusparseHandle_t/hipsparseHandle_t/g' $i
+  sed -i 's/cusparseCreate/hipsparseCreate/g' $i
+
+  sed -i 's/CUSPARSE_STATUS_SUCCESS/HIPSPARSE_STATUS_SUCCESS/g' $i
+  sed -i 's/CUSPARSE_STATUS_NOT_INITIALIZED/HIPSPARSE_STATUS_NOT_INITIALIZED/g' $i
+  sed -i 's/CUSPARSE_STATUS_ALLOC_FAILED/HIPSPARSE_STATUS_ALLOC_FAILED/g' $i
+  sed -i 's/CUSPARSE_STATUS_INVALID_VALUE/HIPSPARSE_STATUS_INVALID_VALUE/g' $i
+  sed -i 's/CUSPARSE_STATUS_MAPPING_ERROR/HIPSPARSE_STATUS_MAPPING_ERROR/g' $i
+  sed -i 's/CUSPARSE_STATUS_EXECUTION_FAILED/HIPSPARSE_STATUS_EXECUTION_FAILED/g' $i
+  sed -i 's/CUSPARSE_STATUS_INTERNAL_ERROR/HIPSPARSE_STATUS_INTERNAL_ERROR/g' $i
+
+  # Blas Hipify
+  sed -i 's/cublasStatus_t/hipblasStatus_t/g' $i
+  sed -i 's/cublasHandle_t/hipblasHandle_t/g' $i
+  sed -i 's/cublasCreate/hipblasCreate/g' $i
+
+  sed -i 's/CUBLAS_STATUS_SUCCESS/HIPBLAS_STATUS_SUCCESS/g' $i
+  sed -i 's/CUBLAS_STATUS_NOT_INITIALIZED/HIPBLAS_STATUS_NOT_INITIALIZED/g' $i
+  sed -i 's/CUBLAS_STATUS_ALLOC_FAILED/HIPBLAS_STATUS_ALLOC_FAILED/g' $i
+  sed -i 's/CUBLAS_STATUS_INVALID_VALUE/HIPBLAS_STATUS_INVALID_VALUE/g' $i
+  sed -i 's/CUBLAS_STATUS_MAPPING_ERROR/HIPBLAS_STATUS_MAPPING_ERROR/g' $i
+  sed -i 's/CUBLAS_STATUS_EXECUTION_FAILED/HIPBLAS_STATUS_EXECUTION_FAILED/g' $i
+  sed -i 's/CUBLAS_STATUS_INTERNAL_ERROR/HIPBLAS_STATUS_INTERNAL_ERROR/g' $i
+
+  # Headers
+  sed -i 's/cusparse.h/hipsparse.h/g' $i
+  sed -i 's/cublas_v2.h/hipblas.h/g' $i
+  sed -i 's/#include "cuda.h"//g' $i
+
+  # Allocators
+  sed -i 's/cudaHostAllocator/hipHostAllocator/g' $i
+  sed -i 's/cudaUVAAllocator/hipUVAAllocator/g' $i
+  sed -i 's/cudaDeviceAllocator/hipDeviceAllocator/g' $i
+
+  sed -i 's/cublasDestroy/hipblasDestroy/g' $i
+  sed -i 's/cusparseDestroy/hipsparseDestroy/g' $i
+done
 
 # Make link directories
 mkdir -p HIP
@@ -109,4 +156,3 @@ sed -i 's/_cudart = _load_cudart()/# _cudart = _load_cudart()/g' torch/cuda/__in
 sed -i 's/_cudart.cudaGetErrorName.restype = ctypes.c_char_p/# _cudart.cudaGetErrorName.restype = ctypes.c_char_p/g' torch/cuda/__init__.py
 sed -i 's/_cudart.cudaGetErrorString.restype = ctypes.c_char_p/# _cudart.cudaGetErrorString.restype = ctypes.c_char_p/g' torch/cuda/__init__.py
 sed -i 's/_lazy_call(_check_capability)/# _lazy_call(_check_capability)/g' torch/cuda/__init__.py
-

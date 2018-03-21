@@ -758,11 +758,11 @@ void __THCublasCheck(cublasStatus_t status, const char *file, const int line)
       case CUBLAS_STATUS_INVALID_VALUE:
         errmsg = "an invalid numeric value was used as an argument";
         break;
-
+#ifdef CUDA
       case CUBLAS_STATUS_ARCH_MISMATCH:
         errmsg = "an absent device architectural feature is required";
         break;
-
+#endif
       case CUBLAS_STATUS_MAPPING_ERROR:
         errmsg = "an access to GPU memory space failed";
         break;
@@ -803,11 +803,11 @@ void __THCusparseCheck(cusparseStatus_t status, const char *file, const int line
       case CUSPARSE_STATUS_INVALID_VALUE:
         errmsg = "an invalid numeric value was used as an argument";
         break;
-
+#ifdef CUDA_PATH
       case CUSPARSE_STATUS_ARCH_MISMATCH:
         errmsg = "an absent device architectural feature is required";
         break;
-
+#endif
       case CUSPARSE_STATUS_MAPPING_ERROR:
         errmsg = "an access to GPU memory space failed";
         break;
@@ -819,11 +819,11 @@ void __THCusparseCheck(cusparseStatus_t status, const char *file, const int line
       case CUSPARSE_STATUS_INTERNAL_ERROR:
         errmsg = "an internal operation failed";
         break;
-
+#ifdef CUDA_PATH
       case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
         errmsg = "the matrix type is not supported by this function";
         break;
-
+#endif
       default:
         errmsg = "unknown error";
         break;
@@ -923,6 +923,7 @@ cudaError_t THCudaMemGetInfoCached(THCState *state,  size_t* freeBytes, size_t* 
 
 half THC_float2half(float f)
 {
+#ifdef CUDA_PATH
 #if CUDA_VERSION < 9000
   half h;
   TH_float2halfbits(&f, &h.x);
@@ -932,16 +933,22 @@ half THC_float2half(float f)
   TH_float2halfbits(&f, &h_raw.x);
   return half(h_raw);
 #endif
+#else
+  half h;
+  return h;
+#endif
 }
 
 float  THC_half2float(half h)
 {
   float f;
+#ifdef CUDA_PATH
 #if CUDA_VERSION < 9000
   TH_halfbits2float(&h.x, &f);
 #else
   __half_raw h_raw(h);
   TH_halfbits2float(&h_raw.x, &f);
+#endif
 #endif
   return f;
 }
