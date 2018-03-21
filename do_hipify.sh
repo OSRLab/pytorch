@@ -21,13 +21,10 @@ cp THC/CMakeLists.txt.hip THC/CMakeLists.txt
 cp THC/THCAllocator.c.hip THC/THCAllocator.c
 cp THC/THCApply.cuh.hip THC/THCApply.cuh
 cp THC/THCBlas.cu.hip THC/THCBlas.cu
-cp THC/THCGeneral.cpp.hip THC/THCGeneral.cpp
-cp THC/THCGeneral.h.in.hip THC/THCGeneral.h.in
 cp THC/THCNumerics.cuh.hip THC/THCNumerics.cuh
 cp THC/THCTensorRandom.cu.hip THC/THCTensorRandom.cu
 cp THC/THCTensorRandom.cuh.hip THC/THCTensorRandom.cuh
 cp THC/THCTensorRandom.h.hip THC/THCTensorRandom.h
-cp THC/generic/THCStorage.c.hip THC/generic/THCStorage.c
 cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 
 # Run hipify script in place
@@ -68,12 +65,8 @@ mv ATen/native/cudnn/BatchNorm.cpp ATen/native/cudnn/BatchNormCuDNN.cpp
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
 sed -i 's/_OPENMP/_OPENMP_STUBBED/g' TH/generic/THTensorMath.c
 
-# Fix the preprocessor directives for C++AMP
-sed -i 's/#if/#ifdef/g' ATen/*
-sed -i 's/#ifdef AT_CUDNN_ENABLED()/#ifdef AT_CUDNN_ENABLED/g' ATen/*
-
 # Sparse Hipify
-declare -a arr=("THC/THCGeneral.h.in" "THC/THCGeneral.cpp" "THC/generic/THCStorage.c")
+declare -a arr=("THC/THCGeneral.h.in" "THC/THCGeneral.cpp" "THC/generic/THCStorage.c" "THC/THCTensorRandom.cuh")
 
 for i in "${arr[@]}"
 do
@@ -117,6 +110,14 @@ do
 
   sed -i 's/cublasDestroy/hipblasDestroy/g' $i
   sed -i 's/cusparseDestroy/hipsparseDestroy/g' $i
+
+  # More Pairings
+  sed -i 's/curandStateMtgp32/hiprngStateMtgp32/g' $i
+  sed -i 's/#define MAX_NUM_BLOCKS 200/#define MAX_NUM_BLOCKS 64 /g' $i
+  sed -i 's/curand_log_normal_double/hiprng_log_normal_double/g' $i
+  sed -i 's/curand_log_normal/hiprng_log_normal/g' $i
+  sed -i 's/assert/\/\/assert/g' $i # Disable asserts on device code
+  sed -i 's/curand_uniform/hiprng_uniform /g' $i
 done
 
 # Make link directories

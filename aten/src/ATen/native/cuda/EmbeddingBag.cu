@@ -46,7 +46,9 @@ __global__ void EmbeddingBag_updateOutputKernel(
       scalar_t *weightFeat = weight + featureDim;
       int64_t begin = offsets[bag];
       int64_t end = (bag < numBags - 1) ? (offsets[bag + 1]) : numIndices;
+#if defined(__NVCC__)
       assert(end >= begin);
+#endif
       accscalar_t weightFeatSum = scalar_cast<accscalar_t>(0);
       int64_t bag_size_ = 0;
       for (int64_t emb = begin; emb < end; emb++) {
