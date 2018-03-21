@@ -416,7 +416,8 @@ bool THC_pointwiseApply2(THCState* state,
   // (or vice versa), the contiguous tensor can be collapsed to one
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
-#if defined(__HIP_PLATFORM_HCC__)                                       \
+#if defined(__HIP_PLATFORM_HCC__)
+#define HANDLE_CASE(TYPE, A, B)                                         \
   hipLaunchKernelGGL(                                                   \
    (kernelPointwiseApply2<Op,                                           \
                         typename TensorUtils<TensorTypeA>::DataType,    \
