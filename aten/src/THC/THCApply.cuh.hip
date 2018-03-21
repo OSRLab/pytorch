@@ -109,27 +109,22 @@ void rearrangeDims(TensorInfo<T1, IndexType>* aInfo,
 
 // Threads per block for our apply kernel
 // FIXME: use occupancy calculator instead
-#define THC_APPLY_THREADS_PER_BLOCK 32 * 16
+#define THC_APPLY_THREADS_PER_BLOCK (32 * 16)
 #define THC_APPLY_BLOCKS_PER_SM 4
 template <typename Op,
           typename Ta,
           typename IndexType,
           int ADims>
-#if __CUDA_ARCH__ >= 350
-__launch_bounds__(THC_APPLY_THREADS_PER_BLOCK, THC_APPLY_BLOCKS_PER_SM)
-#endif
 __global__ void
-kernelPointwiseApply1(TensorInfo<Ta, IndexType> a,
+kernelPointwiseApply1(const OffsetInfo<Ta, IndexType, ADims> a,
                       IndexType totalElements,
                       Op op) {
-  for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
+  // NOTE: The two typecasts below are essential when IndexType is 64-bit;
+  //       without them, results are silently truncated to 32 bits!
+  for (IndexType linearIndex = (IndexType) blockIdx.x * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex += gridDim.x * blockDim.x) {
-    // Convert `linearIndex` into an offset of `a`
-    const IndexType aOffset =
-      IndexToOffset<Ta, IndexType, ADims>::get(linearIndex, a);
-
-    op(&a.data[aOffset]);
+       linearIndex += (IndexType) gridDim.x * blockDim.x) {
+    op(a.get(linearIndex));
   }
 }
 
@@ -137,26 +132,15 @@ template <typename Op,
           typename Ta, typename Tb,
           typename IndexType,
           int ADims, int BDims>
-#if __CUDA_ARCH__ >= 350
-__launch_bounds__(THC_APPLY_THREADS_PER_BLOCK, THC_APPLY_BLOCKS_PER_SM)
-#endif
 __global__ void
-kernelPointwiseApply2(TensorInfo<Ta, IndexType> a,
-                      TensorInfo<Tb, IndexType> b,
+kernelPointwiseApply2(const OffsetInfo<Ta, IndexType, ADims> a,
+                      const OffsetInfo<Tb, IndexType, BDims> b,
                       IndexType totalElements,
                       Op op) {
-  for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
+  for (IndexType linearIndex = (IndexType) blockIdx.x * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex += gridDim.x * blockDim.x) {
-    // Convert `linearIndex` into an offset of `a`
-    const IndexType aOffset =
-      IndexToOffset<Ta, IndexType, ADims>::get(linearIndex, a);
-
-    // Convert `linearIndex` into an offset of `b`
-    const IndexType bOffset =
-      IndexToOffset<Tb, IndexType, BDims>::get(linearIndex, b);
-
-    op(&a.data[aOffset], &b.data[bOffset]);
+       linearIndex += (IndexType) gridDim.x * blockDim.x) {
+    op(a.get(linearIndex), b.get(linearIndex));
   }
 }
 
@@ -164,31 +148,16 @@ template <typename Op,
           typename Ta, typename Tb, typename Tc,
           typename IndexType,
           int ADims, int BDims, int CDims>
-#if __CUDA_ARCH__ >= 350
-__launch_bounds__(THC_APPLY_THREADS_PER_BLOCK, THC_APPLY_BLOCKS_PER_SM)
-#endif
 __global__ void
-kernelPointwiseApply3(TensorInfo<Ta, IndexType> a,
-                      TensorInfo<Tb, IndexType> b,
-                      TensorInfo<Tc, IndexType> c,
+kernelPointwiseApply3(const OffsetInfo<Ta, IndexType, ADims> a,
+                      const OffsetInfo<Tb, IndexType, BDims> b,
+                      const OffsetInfo<Tc, IndexType, CDims> c,
                       IndexType totalElements,
                       Op op) {
-  for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
+  for (IndexType linearIndex = (IndexType) blockIdx.x * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex += gridDim.x * blockDim.x) {
-    // Convert `linearIndex` into an offset of `a`
-    const IndexType aOffset =
-      IndexToOffset<Ta, IndexType, ADims>::get(linearIndex, a);
-
-    // Convert `linearIndex` into an offset of `b`
-    const IndexType bOffset =
-      IndexToOffset<Tb, IndexType, BDims>::get(linearIndex, b);
-
-    // Convert `linearIndex` into an offset of `c`
-    const IndexType cOffset =
-      IndexToOffset<Tc, IndexType, CDims>::get(linearIndex, c);
-
-    op(&a.data[aOffset], &b.data[bOffset], &c.data[cOffset]);
+       linearIndex += (IndexType) gridDim.x * blockDim.x) {
+    op(a.get(linearIndex), b.get(linearIndex), c.get(linearIndex));
   }
 }
 
@@ -196,23 +165,22 @@ inline dim3 getApplyBlock() {
   return dim3(THC_APPLY_THREADS_PER_BLOCK);
 }
 
-inline bool getApplyGrid(THCState* state, ptrdiff_t totalElements, dim3& grid) {
+inline bool getApplyGrid(THCState* state, uint64_t totalElements, dim3& grid) {
   int curDevice = -1;
   cudaGetDevice(&curDevice);
+  if (curDevice == -1) return false;
 
-  if (curDevice == -1) {
-    return false;
-  }
+  uint64_t numBlocks = THCCeilDiv(totalElements, static_cast<uint64_t>(THC_APPLY_THREADS_PER_BLOCK));
+  uint64_t maxGridX = THCState_getCurrentDeviceProperties(state)->maxGridSize[0];
+  if (numBlocks > maxGridX)
+      numBlocks = maxGridX;
 
-  // Assume a reasonable number of SMs if no state is available
-  int numSM =
-    state ? THCState_getCurrentDeviceProperties(state)->multiProcessorCount : 15;
+  // For 32-bit indices, make sure that gridDim.x * blockDim.x fits in 32 bits.
+  if (totalElements <= INT32_MAX &&
+      numBlocks > INT32_MAX / THC_APPLY_THREADS_PER_BLOCK)
+    numBlocks = INT32_MAX / THC_APPLY_THREADS_PER_BLOCK;
 
-  // 16 warps per block * 4 per SM gives 64 warps per SM at maximum,
-  // which seems to be a good sweetspot for latency hiding
-  grid = dim3(min((long long) THCCeilDiv(totalElements,
-                                         (ptrdiff_t) THC_APPLY_THREADS_PER_BLOCK),
-                  4LL * numSM));
+  grid = dim3(numBlocks);
   return true;
 }
 
@@ -267,22 +235,25 @@ bool THC_pointwiseApply1(THCState* state,
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
 #if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, A)                                            \
-    hipLaunchKernelGGL(                                                   \
-      (kernelPointwiseApply1<Op,                                          \
-                            typename TensorUtils<TensorTypeA>::DataType,  \
-                            TYPE, A>),                                    \
-         grid, block, 0, THCState_getCurrentStream(state),                \
-         aInfo, (TYPE) totalElements, op);
+#define HANDLE_CASE(TYPE, A)                                            \
+ hipLaunchKernelGGL(                                                    \
+  (kernelPointwiseApply1<Op,                                            \
+                        typename TensorUtils<TensorTypeA>::DataType,    \
+                        TYPE, A>),                                      \
+      grid, block, 0, THCState_getCurrentStream(state),                 \
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, TYPE, A>  \
+          (aInfo),                                                      \
+      (TYPE) totalElements, op);
 #else
-  #define HANDLE_CASE(TYPE, A)                                            \
-    kernelPointwiseApply1<Op,                                             \
-                          typename TensorUtils<TensorTypeA>::DataType,   \
-                          TYPE, A>                                        \
-      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-        aInfo, (TYPE) totalElements, op);
+#define HANDLE_CASE(TYPE, A)                                            \
+  kernelPointwiseApply1<Op,                                             \
+                        typename TensorUtils<TensorTypeA>::DataType,    \
+                        TYPE, A>                                        \
+    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, TYPE, A>  \
+          (aInfo),                                                      \
+      (TYPE) totalElements, op);
 #endif
-
 #define HANDLE_A_CASE(TYPE, A)                  \
   {                                             \
     if (aInfo.isContiguous()) {                 \
@@ -312,13 +283,13 @@ bool THC_pointwiseApply1(THCState* state,
     rearrangeDims(&aInfo);
     aInfo.collapseDims();
 #if CUDA_VERSION < 9000
-  if (!aInfo.isContiguous())
-    grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
+    if (!aInfo.isContiguous())
+        grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
     HANDLE_A_CASE(unsigned int, aInfo.dims);
   } else {
-    TensorInfo<typename TensorUtils<TensorTypeA>::DataType, unsigned long> aInfo =
-      getTensorInfo<TensorTypeA, unsigned long>(state, a);
+    TensorInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t> aInfo =
+      getTensorInfo<TensorTypeA, uint64_t>(state, a);
     rearrangeDims(&aInfo);
     aInfo.collapseDims();
 
@@ -326,37 +297,42 @@ bool THC_pointwiseApply1(THCState* state,
     // version and the completely generic version, to reduce
     // compilation time.
     if (aInfo.isContiguous()) {
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t, -2>
+        aOffset(aInfo);
 #if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply1<Op,
-                              typename TensorUtils<TensorTypeA>::DataType,
-                              unsigned long, -2>),
+    hipLaunchKernelGGL(
+      (kernelPointwiseApply1<Op,
+                            typename TensorUtils<TensorTypeA>::DataType,
+                            uint64_t, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, (unsigned long) totalElements, op);
+          aOffset, (uint64_t) totalElements, op);
 #else
       kernelPointwiseApply1<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
-                            unsigned long, -2>
+                            uint64_t, -2>
         <<<grid, block, 0, THCState_getCurrentStream(state)>>>(
-          aInfo, (unsigned long) totalElements, op);
+          aOffset, (uint64_t) totalElements, op);
 #endif
     } else {
+
 #if CUDA_VERSION < 9000
-  grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
+        grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t, -1>
+        aOffset(aInfo);
 #if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply1<Op,
-                              typename TensorUtils<TensorTypeA>::DataType,
-                              unsigned long, -1>),
+     hipLaunchKernelGGL(
+      (kernelPointwiseApply1<Op,
+                            typename TensorUtils<TensorTypeA>::DataType,
+                            uint64_t, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, (unsigned long) totalElements, op);
+          aOffset, (uint64_t) totalElements, op);
 #else
       kernelPointwiseApply1<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
-                            unsigned long, -1>
+                            uint64_t, -1>
         <<<grid, block, 0, THCState_getCurrentStream(state)>>>(
-          aInfo, (unsigned long) totalElements, op);
+          aOffset, (uint64_t) totalElements, op);
 #endif
     }
   }
@@ -440,26 +416,31 @@ bool THC_pointwiseApply2(THCState* state,
   // (or vice versa), the contiguous tensor can be collapsed to one
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
-#if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, A, B)                                         \
-   hipLaunchKernelGGL(                                                    \
-      (kernelPointwiseApply2<Op,                                          \
-                            typename TensorUtils<TensorTypeA>::DataType,  \
-                            typename TensorUtils<TensorTypeB>::DataType,  \
-                            TYPE, A, B>),                                 \
-        grid, block, 0, THCState_getCurrentStream(state),                 \
-        aInfo, bInfo,             \
-        (TYPE) totalElements, op);
+#if defined(__HIP_PLATFORM_HCC__)                                       \
+  hipLaunchKernelGGL(                                                   \
+   (kernelPointwiseApply2<Op,                                           \
+                        typename TensorUtils<TensorTypeA>::DataType,    \
+                        typename TensorUtils<TensorTypeB>::DataType,    \
+                        TYPE, A, B>),                                   \
+      grid, block, 0, THCState_getCurrentStream(state),                 \
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, TYPE, A>  \
+          (aInfo),                                                      \
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, TYPE, B>  \
+          (bInfo),                                                      \
+      (TYPE) totalElements, op);
 #else
-  #define HANDLE_CASE(TYPE, A, B)                                         \
-    kernelPointwiseApply2<Op,                                             \
-                          typename TensorUtils<TensorTypeA>::DataType,    \
-                          typename TensorUtils<TensorTypeB>::DataType,    \
-                          TYPE, A, B>                                     \
-      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-        aInfo, bInfo, (TYPE) totalElements, op);
+#define HANDLE_CASE(TYPE, A, B)                                         \
+  kernelPointwiseApply2<Op,                                             \
+                        typename TensorUtils<TensorTypeA>::DataType,    \
+                        typename TensorUtils<TensorTypeB>::DataType,    \
+                        TYPE, A, B>                                     \
+    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, TYPE, A>  \
+          (aInfo),                                                      \
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, TYPE, B>  \
+          (bInfo),                                                      \
+      (TYPE) totalElements, op);
 #endif
-
 #define HANDLE_B_CASE(TYPE, A, B)               \
   {                                             \
     if (bInfo.isContiguous()) {                 \
@@ -502,10 +483,10 @@ bool THC_pointwiseApply2(THCState* state,
       TensorUtils<TensorTypeB>::canUse32BitIndexMath(state, b)) {
     TensorInfo<typename TensorUtils<TensorTypeA>::DataType, unsigned int> aInfo =
       getTensorInfo<TensorTypeA, unsigned int>(state, a);
-    aInfo.collapseDims();
 
     TensorInfo<typename TensorUtils<TensorTypeB>::DataType, unsigned int> bInfo =
       getTensorInfo<TensorTypeB, unsigned int>(state, b);
+
     rearrangeDims(&aInfo, &bInfo);
     aInfo.collapseDims();
     bInfo.collapseDims();
@@ -513,14 +494,15 @@ bool THC_pointwiseApply2(THCState* state,
     if (!(aInfo.isContiguous() && bInfo.isContiguous()))
         grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
+
     HANDLE_A_CASE(unsigned int, aInfo.dims, bInfo.dims);
   } else {
-    TensorInfo<typename TensorUtils<TensorTypeA>::DataType, unsigned long> aInfo =
-      getTensorInfo<TensorTypeA, unsigned long>(state, a);
-    aInfo.collapseDims();
+    TensorInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t> aInfo =
+      getTensorInfo<TensorTypeA, uint64_t>(state, a);
 
-    TensorInfo<typename TensorUtils<TensorTypeB>::DataType, unsigned long> bInfo =
-      getTensorInfo<TensorTypeB, unsigned long>(state, b);
+    TensorInfo<typename TensorUtils<TensorTypeB>::DataType, uint64_t> bInfo =
+      getTensorInfo<TensorTypeB, uint64_t>(state, b);
+
     rearrangeDims(&aInfo, &bInfo);
     aInfo.collapseDims();
     bInfo.collapseDims();
@@ -529,43 +511,49 @@ bool THC_pointwiseApply2(THCState* state,
     // version and the completely generic version, to reduce
     // compilation time.
     if (aInfo.isContiguous() && bInfo.isContiguous()) {
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t, -2>
+        aOffset(aInfo);
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, uint64_t, -2>
+        bOffset(bInfo);
 #if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply2<Op,
-                              typename TensorUtils<TensorTypeA>::DataType,
-                              typename TensorUtils<TensorTypeB>::DataType,
-                              unsigned long, -2, -2>),
+  hipLaunchKernelGGL(
+      (kernelPointwiseApply2<Op,
+                            typename TensorUtils<TensorTypeA>::DataType,
+                            typename TensorUtils<TensorTypeB>::DataType,
+                            uint64_t, -2, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo,
-          (unsigned long) totalElements, op);
+          aOffset, bOffset, (uint64_t) totalElements, op);
 #else
       kernelPointwiseApply2<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
                             typename TensorUtils<TensorTypeB>::DataType,
-                            unsigned long, -2, -2>
+                            uint64_t, -2, -2>
         <<<grid, block, 0, THCState_getCurrentStream(state)>>>(
-          aInfo, bInfo, (unsigned long) totalElements, op);
+          aOffset, bOffset, (uint64_t) totalElements, op);
 #endif
     } else {
 #if CUDA_VERSION < 9000
-  grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
+      grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t, -1>
+        aOffset(aInfo);
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, uint64_t, -1>
+        bOffset(bInfo);
 #if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply2<Op,
-                              typename TensorUtils<TensorTypeA>::DataType,
-                              typename TensorUtils<TensorTypeB>::DataType,
-                              unsigned long, -1, -1>),
+  hipLaunchKernelGGL(
+      (kernelPointwiseApply2<Op,
+                            typename TensorUtils<TensorTypeA>::DataType,
+                            typename TensorUtils<TensorTypeB>::DataType,
+                            uint64_t, -1, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo,
-          (unsigned long) totalElements, op);
+          aOffset, bOffset, (uint64_t) totalElements, op);
 #else
       kernelPointwiseApply2<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
                             typename TensorUtils<TensorTypeB>::DataType,
-                            unsigned long, -1, -1>
+                            uint64_t, -1, -1>
         <<<grid, block, 0, THCState_getCurrentStream(state)>>>(
-          aInfo, bInfo, (unsigned long) totalElements, op);
+          aOffset, bOffset, (uint64_t) totalElements, op);
 #endif
     }
   }
@@ -662,27 +650,37 @@ bool THC_pointwiseApply3(THCState* state,
     oldC = c;
     c = TensorUtils<TensorTypeC>::newContiguous(state, c);
   }
-
 #if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, A, B, C)                                      \
-    hipLaunchKernelGGL(                                                   \
-      (kernelPointwiseApply3<Op,                                          \
-                            typename TensorUtils<TensorTypeA>::DataType,  \
-                            typename TensorUtils<TensorTypeB>::DataType,  \
-                            typename TensorUtils<TensorTypeC>::DataType,  \
-                            TYPE, A, B, C>),                              \
-        grid, block, 0, THCState_getCurrentStream(state),                 \
-        aInfo, bInfo,             \
-        cInfo, (TYPE) totalElements, op);
+#define HANDLE_CASE(TYPE, A, B, C)                                      \
+hipLaunchKernelGGL(                                                     \
+  (kernelPointwiseApply3<Op,                                            \
+                        typename TensorUtils<TensorTypeA>::DataType,    \
+                        typename TensorUtils<TensorTypeB>::DataType,    \
+                        typename TensorUtils<TensorTypeC>::DataType,    \
+                        TYPE, A, B, C>),                                \
+      grid, block, 0, THCState_getCurrentStream(state),                 \
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, TYPE, A>  \
+          (aInfo),                                                      \
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, TYPE, B>  \
+          (bInfo),                                                      \
+      OffsetInfo<typename TensorUtils<TensorTypeC>::DataType, TYPE, C>  \
+          (cInfo),                                                      \
+      (TYPE) totalElements, op);
 #else
-  #define HANDLE_CASE(TYPE, A, B, C)                                      \
-    kernelPointwiseApply3<Op,                                             \
-                          typename TensorUtils<TensorTypeA>::DataType,    \
-                          typename TensorUtils<TensorTypeB>::DataType,    \
-                          typename TensorUtils<TensorTypeC>::DataType,    \
-                          TYPE, A, B, C>                                  \
-      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-        aInfo, bInfo, cInfo, (TYPE) totalElements, op);
+#define HANDLE_CASE(TYPE, A, B, C)                                      \
+  kernelPointwiseApply3<Op,                                             \
+                        typename TensorUtils<TensorTypeA>::DataType,    \
+                        typename TensorUtils<TensorTypeB>::DataType,    \
+                        typename TensorUtils<TensorTypeC>::DataType,    \
+                        TYPE, A, B, C>                                  \
+    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, TYPE, A>  \
+          (aInfo),                                                      \
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, TYPE, B>  \
+          (bInfo),                                                      \
+      OffsetInfo<typename TensorUtils<TensorTypeC>::DataType, TYPE, C>  \
+          (cInfo),                                                      \
+      (TYPE) totalElements, op);
 #endif
 
 #define HANDLE_C_CASE(TYPE, A, B, C)            \
@@ -747,34 +745,33 @@ bool THC_pointwiseApply3(THCState* state,
       TensorUtils<TensorTypeC>::canUse32BitIndexMath(state, c)) {
     TensorInfo<typename TensorUtils<TensorTypeA>::DataType, unsigned int> aInfo =
       getTensorInfo<TensorTypeA, unsigned int>(state, a);
-    aInfo.collapseDims();
 
     TensorInfo<typename TensorUtils<TensorTypeB>::DataType, unsigned int> bInfo =
       getTensorInfo<TensorTypeB, unsigned int>(state, b);
-    bInfo.collapseDims();
 
     TensorInfo<typename TensorUtils<TensorTypeC>::DataType, unsigned int> cInfo =
       getTensorInfo<TensorTypeC, unsigned int>(state, c);
+
     rearrangeDims(&aInfo, &bInfo, &cInfo);
     aInfo.collapseDims();
     bInfo.collapseDims();
     cInfo.collapseDims();
+
 #if CUDA_VERSION < 9000
       if (!(aInfo.isContiguous() && bInfo.isContiguous() && cInfo.isContiguous()))
           grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
     HANDLE_A_CASE(unsigned int, aInfo.dims, bInfo.dims, cInfo.dims);
   } else {
-    TensorInfo<typename TensorUtils<TensorTypeA>::DataType, unsigned long> aInfo =
-      getTensorInfo<TensorTypeA, unsigned long>(state, a);
-    aInfo.collapseDims();
+    TensorInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t> aInfo =
+      getTensorInfo<TensorTypeA, uint64_t>(state, a);
 
-    TensorInfo<typename TensorUtils<TensorTypeB>::DataType, unsigned long> bInfo =
-      getTensorInfo<TensorTypeB, unsigned long>(state, b);
-    bInfo.collapseDims();
+    TensorInfo<typename TensorUtils<TensorTypeB>::DataType, uint64_t> bInfo =
+      getTensorInfo<TensorTypeB, uint64_t>(state, b);
 
-    TensorInfo<typename TensorUtils<TensorTypeC>::DataType, unsigned long> cInfo =
-      getTensorInfo<TensorTypeC, unsigned long>(state, c);
+    TensorInfo<typename TensorUtils<TensorTypeC>::DataType, uint64_t> cInfo =
+      getTensorInfo<TensorTypeC, uint64_t>(state, c);
+
     rearrangeDims(&aInfo, &bInfo, &cInfo);
     aInfo.collapseDims();
     bInfo.collapseDims();
@@ -784,47 +781,58 @@ bool THC_pointwiseApply3(THCState* state,
     // version and the completely generic version, to reduce
     // compilation time.
     if (aInfo.isContiguous() && bInfo.isContiguous() && cInfo.isContiguous()) {
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t, -2>
+        aOffset(aInfo);
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, uint64_t, -2>
+        bOffset(bInfo);
+      OffsetInfo<typename TensorUtils<TensorTypeC>::DataType, uint64_t, -2>
+        cOffset(cInfo);
 #if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply3<Op,
-                              typename TensorUtils<TensorTypeA>::DataType,
-                              typename TensorUtils<TensorTypeB>::DataType,
-                              typename TensorUtils<TensorTypeC>::DataType,
-                              unsigned long, -2, -2, -2>),
+hipLaunchKernelGGL(
+      (kernelPointwiseApply3<Op,
+                            typename TensorUtils<TensorTypeA>::DataType,
+                            typename TensorUtils<TensorTypeB>::DataType,
+                            typename TensorUtils<TensorTypeC>::DataType,
+                            uint64_t, -2, -2, -2>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo,
-          cInfo, (unsigned long) totalElements, op);
+          aOffset, bOffset, cOffset, (uint64_t) totalElements, op);
 #else
       kernelPointwiseApply3<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
                             typename TensorUtils<TensorTypeB>::DataType,
                             typename TensorUtils<TensorTypeC>::DataType,
-                            unsigned long, -2, -2, -2>
+                            uint64_t, -2, -2, -2>
         <<<grid, block, 0, THCState_getCurrentStream(state)>>>(
-          aInfo, bInfo, cInfo, (unsigned long) totalElements, op);
+          aOffset, bOffset, cOffset, (uint64_t) totalElements, op);
 #endif
     } else {
 #if CUDA_VERSION < 9000
-  grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
+      grid.x = min(THCState_getCurrentDeviceProperties(state)->multiProcessorCount * THC_APPLY_BLOCKS_PER_SM , grid.x);
 #endif
+
+      OffsetInfo<typename TensorUtils<TensorTypeA>::DataType, uint64_t, -1>
+        aOffset(aInfo);
+      OffsetInfo<typename TensorUtils<TensorTypeB>::DataType, uint64_t, -1>
+        bOffset(bInfo);
+      OffsetInfo<typename TensorUtils<TensorTypeC>::DataType, uint64_t, -1>
+        cOffset(cInfo);
 #if defined(__HIP_PLATFORM_HCC__)
-      hipLaunchKernelGGL(
-        (kernelPointwiseApply3<Op,
-                              typename TensorUtils<TensorTypeA>::DataType,
-                              typename TensorUtils<TensorTypeB>::DataType,
-                              typename TensorUtils<TensorTypeC>::DataType,
-                              unsigned long, -1, -1, -1>),
+hipLaunchKernelGGL(
+      (kernelPointwiseApply3<Op,
+                            typename TensorUtils<TensorTypeA>::DataType,
+                            typename TensorUtils<TensorTypeB>::DataType,
+                            typename TensorUtils<TensorTypeC>::DataType,
+                            uint64_t, -1, -1, -1>),
           grid, block, 0, THCState_getCurrentStream(state),
-          aInfo, bInfo,
-          cInfo, (unsigned long) totalElements, op);
+          aOffset, bOffset, cOffset, (uint64_t) totalElements, op);
 #else
       kernelPointwiseApply3<Op,
                             typename TensorUtils<TensorTypeA>::DataType,
                             typename TensorUtils<TensorTypeB>::DataType,
                             typename TensorUtils<TensorTypeC>::DataType,
-                            unsigned long, -1, -1, -1>
+                            uint64_t, -1, -1, -1>
         <<<grid, block, 0, THCState_getCurrentStream(state)>>>(
-          aInfo, bInfo, cInfo, (unsigned long) totalElements, op);
+          aOffset, bOffset, cOffset, (uint64_t) totalElements, op);
 #endif
     }
   }
