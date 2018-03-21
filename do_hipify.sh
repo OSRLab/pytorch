@@ -23,7 +23,6 @@ cp THC/THCApply.cuh.hip THC/THCApply.cuh
 cp THC/THCBlas.cu.hip THC/THCBlas.cu
 cp THC/THCNumerics.cuh.hip THC/THCNumerics.cuh
 cp THC/THCTensorRandom.cu.hip THC/THCTensorRandom.cu
-cp THC/THCTensorRandom.cuh.hip THC/THCTensorRandom.cuh
 cp THC/THCTensorRandom.h.hip THC/THCTensorRandom.h
 cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 
@@ -72,6 +71,13 @@ for i in "${arr[@]}"
 do
   # Hipify the source file in place.
   hipify-perl -i $i
+
+  sed -i 's/cudaHostAllocator/hipHostAllocator/g' $i
+  sed -i 's/cudaErrorInsufficientDriver/hipErrorInsufficientDriver/g' $i
+  sed -i 's/curand.h/hiprng.h/g' $i
+  sed -i 's/curand_kernel.h/hiprng_kernel.h/g' $i
+  sed -i 's/curand_uniform/hiprng_uniform/g' $i
+  sed -i 's/curand_uniform_double/hiprng_uniform_double/g' $i
 
   sed -i 's/cusparseStatus_t/hipsparseStatus_t/g' $i
   sed -i 's/cusparseHandle_t/hipsparseHandle_t/g' $i
