@@ -1,5 +1,7 @@
+if(WITH_ROCM)
 SET(CMAKE_C_COMPILER ${HIP_HIPCC_EXECUTABLE})
 SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
+endif()
 
 ADD_EXECUTABLE(scalar_test scalar_test.cpp)
 target_link_libraries(scalar_test ATen)
@@ -38,7 +40,11 @@ add_executable(tbb_init_test tbb_init_test.cpp)
 target_link_libraries(tbb_init_test ATen)
 
 if(NOT NO_CUDA)
+  if(WITH_ROCM)
+  hip_add_executable(integer_divider_test integer_divider_test.cu)
+  else()
   cuda_add_executable(integer_divider_test integer_divider_test.cu)
+  endif()
   target_link_libraries(integer_divider_test ATen)
 endif()
 

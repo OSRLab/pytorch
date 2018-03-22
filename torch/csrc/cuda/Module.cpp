@@ -23,6 +23,10 @@ using namespace torch;
 
 THCState *state;
 
+#if defined(__HIP_PLATFORM_HCC__)
+  typedef hipDeviceProp_t cudaDeviceProp;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // CUDA management methods
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,7 +377,9 @@ static void bindCudaDeviceProperties(PyObject* module) {
     .def_readonly("major", &cudaDeviceProp::major)
     .def_readonly("minor", &cudaDeviceProp::minor)
     .def_readonly("is_multi_gpu_board", &cudaDeviceProp::isMultiGpuBoard)
+#if defined(__NVCC__)
     .def_readonly("is_integrated", &cudaDeviceProp::integrated)
+#endif
     .def_readonly("multi_processor_count", &cudaDeviceProp::multiProcessorCount)
     .def_readonly("total_memory", &cudaDeviceProp::totalGlobalMem)
     .def("__repr__", [](const cudaDeviceProp &prop) {

@@ -19,6 +19,7 @@ void THPStorage_(writeFileRaw)(THStorage *self, io fd)
 #else
   THCudaCheck(cudaMemcpy(data, self->data, size * sizeof(real), cudaMemcpyDeviceToHost));
 #endif
+#endif
   ssize_t result = doWrite(fd, &size, sizeof(int64_t));
   if (result != sizeof(int64_t))
     throw std::system_error(result, std::system_category());
