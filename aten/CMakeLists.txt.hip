@@ -532,7 +532,7 @@ if(NOT NO_CUDA AND NOT WITH_ROCM)
   include_directories(${CUDA_INCLUDE_DIRS})
 endif()
 
-add_subdirectory(hip-src/ATen/test)
+#add_subdirectory(hip-src/ATen/test)
 
 if(ATEN_NO_CONTRIB)
   message("disable contrib because ATEN_NO_CONTRIB is set")
