@@ -59,20 +59,7 @@ THAllocator THStorageWeakRefAllocator = {
   free_wrapper<StorageWeakRefAllocator>,
 };
 
-<<<<<<< HEAD
-#ifdef WITH_CUDA
-=======
-#ifdef WITH_NUMPY
-// See Note [Numpy memory management]
-THAllocator THNumpyArrayAllocator = {
-  malloc_wrapper<NumpyArrayAllocator>,
-  realloc_wrapper<NumpyArrayAllocator>,
-  free_wrapper<NumpyArrayAllocator>,
-};
-#endif
-
 #if defined(WITH_CUDA) || defined(WITH_ROCM)
->>>>>>> Added WITH_ROCM prepreprocessor macro
 #if defined(__HIP_PLATFORM_HCC__)
 hipError_t CudaStorageWeakRefAllocator::malloc(void** ptr, size_t size, hipStream_t stream) {
   THError("CudaStorageWeakRefAllocator: malloc not supported");

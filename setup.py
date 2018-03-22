@@ -115,6 +115,10 @@ IS_LINUX = (platform.system() == 'Linux')
 WITH_ROCM=True
 WITH_CUDA=False
 
+# If using ROCM stack disable distributed for now
+if WITH_ROCM:
+  WITH_DISTRIBUTED=False
+
 NUM_JOBS = multiprocessing.cpu_count()
 max_jobs = os.getenv("MAX_JOBS")
 if max_jobs is not None:
