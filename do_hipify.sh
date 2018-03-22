@@ -9,7 +9,7 @@ sudo rm -rf aten/hip-src/
 mkdir -p aten/hip-src
 
 ### Copy over the files ###
-cp -r aten/src/* aten/hip-src/
+cp -R aten/src/ -T aten/hip-src/
 
 cd aten/hip-src/
 
