@@ -1,0 +1,3442 @@
+diff --git a/csrc/DynamicTypes.cpp b/csrc/DynamicTypes.cpp
+index f6e4056c8..0698c971a 100644
+--- a/csrc/DynamicTypes.cpp
++++ b/csrc/DynamicTypes.cpp
+@@ -7,7 +7,7 @@
+ #include <vector>
+ #include <unordered_map>
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ #include <THC/THC.h>
+ #include <THCS/THCS.h>
+ #endif
+diff --git a/csrc/Module.cpp b/csrc/Module.cpp
+index 8e9b185a9..23d15f140 100644
+--- a/csrc/Module.cpp
++++ b/csrc/Module.cpp
+@@ -360,7 +360,7 @@ bool THCPByteStorage_init(PyObject *module);
+ 
+ bool THCPStream_init(PyObject *module);
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ PyMethodDef* THCPModule_methods();
+ namespace torch { namespace cuda {
+ 
+@@ -419,7 +419,8 @@ static PyObject* initModule() {
+   THPUtils_addPyMethodDefs(methods, TorchMethods);
+   THPUtils_addPyMethodDefs(methods, DataLoaderMethods);
+   THPUtils_addPyMethodDefs(methods, torch::autograd::python_functions());
+-#ifdef WITH_CUDA
++
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+   THPUtils_addPyMethodDefs(methods, THCPModule_methods());
+ #endif
+ #ifdef WITH_CUDNN
+@@ -464,7 +465,7 @@ static PyObject* initModule() {
+   ASSERT_TRUE(THPCharStorage_init(module));
+   ASSERT_TRUE(THPByteStorage_init(module));
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+   // This will only initialise base classes and attach them to library namespace
+   // They won't be ready for real usage until importing cuda module, that will
+   // complete the process (but it defines Python classes before calling back into
+diff --git a/csrc/THP_API.h b/csrc/THP_API.h
+index fbb9ce06c..60cd84bfc 100644
+--- a/csrc/THP_API.h
++++ b/csrc/THP_API.h
+@@ -6,7 +6,7 @@
+     be defined only when compiling the core torch package.
+ #endif
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ #include "cuda/THCP.h"
+ #include "cuda/undef_macros.h"
+ #endif
+diff --git a/csrc/allocators.cpp b/csrc/allocators.cpp
+index 15e4f8712..86b34dc47 100644
+--- a/csrc/allocators.cpp
++++ b/csrc/allocators.cpp
+@@ -59,12 +59,30 @@ THAllocator THStorageWeakRefAllocator = {
+   free_wrapper<StorageWeakRefAllocator>,
+ };
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
++#if defined(__HIP_PLATFORM_HCC__)
++hipError_t CudaStorageWeakRefAllocator::malloc(void** ptr, size_t size, hipStream_t stream) {
++  THError("CudaStorageWeakRefAllocator: malloc not supported");
++  return hipSuccess;
++}
++#else
+ cudaError_t CudaStorageWeakRefAllocator::malloc(void** ptr, size_t size, cudaStream_t stream) {
+   THError("CudaStorageWeakRefAllocator: malloc not supported");
+   return cudaSuccess;
+ }
++#endif
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++hipError_t CudaStorageWeakRefAllocator::free(void* ptr) {
++  PyGILState_STATE gstate = PyGILState_Ensure();
++  PyObject_SetAttrString(object.get(), "cdata", Py_None);
++  object = nullptr;
++  PyGILState_Release(gstate);
++  hipError_t err = allocator->free(allocatorContext, ptr);
++  delete this;
++  return err;
++}
++#else
+ cudaError_t CudaStorageWeakRefAllocator::free(void* ptr) {
+   {
+     AutoGIL gil;
+@@ -75,14 +93,27 @@ cudaError_t CudaStorageWeakRefAllocator::free(void* ptr) {
+   delete this;
+   return err;
+ }
++#endif
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++static hipError_t cuda_malloc_wrapper(void *ctx, void** ptr, size_t size, hipStream_t stream) {
++  return ((CudaStorageWeakRefAllocator*)ctx)->malloc(ptr, size, stream);
++}
++#else
+ static cudaError_t cuda_malloc_wrapper(void *ctx, void** ptr, size_t size, cudaStream_t stream) {
+   return ((CudaStorageWeakRefAllocator*)ctx)->malloc(ptr, size, stream);
+ }
++#endif
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++static hipError_t cuda_free_wrapper(void *ctx, void *ptr) {
++  return ((CudaStorageWeakRefAllocator*)ctx)->free(ptr);
++}
++#else
+ static cudaError_t cuda_free_wrapper(void *ctx, void *ptr) {
+   return ((CudaStorageWeakRefAllocator*)ctx)->free(ptr);
+ }
++#endif
+ 
+ THCDeviceAllocator THCStorageWeakRefAllocator = {
+   cuda_malloc_wrapper,
+diff --git a/csrc/allocators.h b/csrc/allocators.h
+index 25b2ac986..af12093ba 100644
+--- a/csrc/allocators.h
++++ b/csrc/allocators.h
+@@ -5,7 +5,7 @@
+ #include <memory>
+ 
+ #include <TH/TH.h>
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ #include <THC/THC.h>
+ #endif
+ 
+@@ -41,7 +41,7 @@ public:
+   void free(void* ptr);
+ };
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ class CudaStorageWeakRefAllocator {
+ public:
+   CudaStorageWeakRefAllocator(PyObject *wrapped_object, THCDeviceAllocator *alloc, void *ctx) {
+@@ -51,9 +51,15 @@ public:
+     allocatorContext = ctx;
+   }
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++  hipError_t malloc(void** ptr, size_t size, hipStream_t stream);
++  hipError_t realloc(void** ptr, size_t old_size, size_t size, hipStream_t stream);
++  hipError_t free(void* ptr);
++#else
+   cudaError_t malloc(void** ptr, size_t size, cudaStream_t stream);
+   cudaError_t realloc(void** ptr, size_t old_size, size_t size, cudaStream_t stream);
+   cudaError_t free(void* ptr);
++#endif
+ 
+   THPObjectPtr object;
+   THCDeviceAllocator *allocator;
+@@ -63,6 +69,6 @@ public:
+ 
+ extern THAllocator THObjectPtrAllocator;
+ extern THAllocator THStorageWeakRefAllocator;
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ extern THCDeviceAllocator THCStorageWeakRefAllocator;
+ #endif
+diff --git a/csrc/autograd/engine.cpp b/csrc/autograd/engine.cpp
+index 7347bd090..49cf2e4e0 100644
+--- a/csrc/autograd/engine.cpp
++++ b/csrc/autograd/engine.cpp
+@@ -22,8 +22,12 @@
+ #include <queue>
+ #include <TH/TH.h>
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
++#if defined(__HIP_PLATFORM_HCC__)
++#include <hip/hip_runtime.h>
++#else
+ #include <cuda.h>
++#endif
+ #include <THC/THC.h>
+ #endif
+ 
+@@ -429,10 +433,15 @@ auto Engine::ready_queue(int device) -> ReadyQueue& {
+ 
+ auto Engine::start_threads() -> void {
+   int num_devices = 0;
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+   // check for case of compiled with CUDA but no available devices
++#if defined(__HIP_PLATFORM_HCC__)
++  if (hipGetDeviceCount(&num_devices) != hipSuccess) {
++    hipGetLastError();
++#else
+   if (cudaGetDeviceCount(&num_devices) != cudaSuccess) {
+     cudaGetLastError();
++#endif
+     num_devices = 0;
+   }
+ #endif
+diff --git a/csrc/autograd/functions/batch_normalization.cpp b/csrc/autograd/functions/batch_normalization.cpp
+new file mode 100644
+index 000000000..2923ede4d
+--- /dev/null
++++ b/csrc/autograd/functions/batch_normalization.cpp
+@@ -0,0 +1,254 @@
++#include "batch_normalization.h"
++
++#include "torch/csrc/autograd/python_function.h"
++#include "torch/csrc/autograd/python_variable.h"
++#include "torch/csrc/autograd/variable.h"
++#include "torch/csrc/autograd/functions/utils.h"
++#include "torch/csrc/autograd/functions/basic_ops.h"
++#include "torch/csrc/utils/auto_gil.h"
++#include "torch/csrc/utils/auto_gpu.h"
++#include "torch/csrc/DynamicTypes.h"
++#include "torch/csrc/Exceptions.h"
++#include <sstream>
++
++#ifdef WITH_CUDNN
++#include "torch/csrc/cudnn/BatchNorm.h"
++#include "torch/csrc/cudnn/Handles.h"
++#include "torch/csrc/cudnn/Types.h"
++extern THCState* state;
++#endif
++
++namespace {
++    void check_dims_match_num_input_features(const std::string& arg_name, long expected, long actual){
++      if (actual != expected){
++        std::stringstream ss;
++        ss << arg_name << " should contain " << expected << " elements not " << actual ;
++        throw std::runtime_error(ss.str());
++      }
++    }
++}
++
++namespace torch { namespace autograd {
++
++#ifndef CUDNN_BN_MIN_EPSILON
++#define CUDNN_BN_MIN_EPSILON 0
++#endif
++
++auto BatchNormForward::apply(const variable_list& inputs) -> variable_list {
++  check_input_variables("BatchNorm", inputs, 3, 1);
++
++  AutoGPU guard(inputs[0]);
++  auto& input = inputs[0];
++  auto& weight = inputs[1];
++  auto& bias = inputs[2];
++
++  auto num_features = input.sizes()[1];
++  check_dims_match_num_input_features("running_mean", num_features, running_mean.numel());
++  check_dims_match_num_input_features("running_var", num_features, running_var.numel());
++  if (weight.defined()) {
++    check_dims_match_num_input_features("weight", num_features, weight.numel());
++  }
++  if (bias.defined()) {
++    check_dims_match_num_input_features("bias", num_features, bias.numel());
++  }
++
++  bool use_cudnn = false;
++#ifdef WITH_CUDNN
++  use_cudnn = (input.type().isCuda()
++               && input.type().scalarType() != at::kHalf
++               && weight.defined() && bias.defined()
++               && input.size(0) <= 131070
++               && cudnn_enabled && CUDNN_VERSION >= 5110L);
++#endif
++
++  auto input_data = input.data();
++  Tensor output;
++  auto save_mean = running_mean.type().tensor(running_mean.sizes());
++  auto save_std = running_var.type().tensor(running_var.sizes());
++
++  if (use_cudnn && eps >= CUDNN_BN_MIN_EPSILON) {
++#ifdef WITH_CUDNN
++    output = input_data.type().tensor(input.sizes());
++    torch::cudnn::cudnn_batch_norm_forward(
++        state,
++        torch::cudnn::getCudnnHandle(),
++        torch::cudnn::getCudnnDataType(input),
++        (THVoidTensor*)input.unsafeGetTH(false),
++        (THVoidTensor*)output.unsafeGetTH(false),
++        (THVoidTensor*)weight.unsafeGetTH(false),
++        (THVoidTensor*)bias.unsafeGetTH(false),
++        (THVoidTensor*)running_mean.unsafeGetTH(false),
++        (THVoidTensor*)running_var.unsafeGetTH(false),
++        (THVoidTensor*)save_mean.unsafeGetTH(false),
++        (THVoidTensor*)save_std.unsafeGetTH(false),
++        training,
++        momentum,
++        eps);
++#endif
++  } else {
++    output = at::batch_norm_forward(
++        input_data, weight.opt_data(), bias.opt_data(),
++        running_mean, running_var, training, momentum, eps,
++        save_mean, save_std);
++  }
++
++  auto outputs = as_tensor_list(std::move(output));
++  return wrap_outputs(inputs, std::move(outputs), [&](FunctionFlags f) {
++    return std::make_shared<BatchNormBackward>(
++        f, *this, std::move(save_mean), std::move(save_std),
++        input, weight, bias);
++  });
++};
++
++auto BatchNormBackward::apply(const variable_list& grad_outputs) -> variable_list {
++  check_input_variables("BatchNormBackward", grad_outputs, 1);
++  auto input_var = this->input.unpack();
++  auto weight_var = this->weight.unpack();
++  auto bias_var = this->bias.unpack();
++
++  auto input = input_var.data();
++  auto weight = weight_var.opt_data();
++  auto bias = bias_var.opt_data();
++
++  AutoGPU guard(input);
++
++  bool use_cudnn = false;
++#ifdef WITH_CUDNN
++  use_cudnn = (input.type().backend() == at::kCUDA
++               && input.type().scalarType() != at::kHalf
++               && weight.defined() && bias.defined() && training
++               && input.size(0) <= 131070
++               && cudnn_enabled && CUDNN_VERSION >= 5110L);
++#endif
++
++  at::Tensor grad_input;
++  at::Tensor grad_weight;
++  at::Tensor grad_bias;
++
++  auto grad_output = grad_outputs[0].data().contiguous();
++
++  if (use_cudnn && eps >= CUDNN_BN_MIN_EPSILON) {
++#ifdef WITH_CUDNN
++    grad_input = input.type().tensor(input.sizes());
++    grad_weight = weight.type().tensor(weight.sizes());
++    grad_bias = bias.type().tensor(bias.sizes());
++    torch::cudnn::cudnn_batch_norm_backward(
++        state,
++        torch::cudnn::getCudnnHandle(),
++        torch::cudnn::getCudnnDataType(input),
++        (THVoidTensor*)input.unsafeGetTH(false),
++        (THVoidTensor*)grad_output.unsafeGetTH(false),
++        (THVoidTensor*)grad_input.unsafeGetTH(false),
++        (THVoidTensor*)grad_weight.unsafeGetTH(false),
++        (THVoidTensor*)grad_bias.unsafeGetTH(false),
++        (THVoidTensor*)weight.unsafeGetTH(false),
++        (THVoidTensor*)running_mean.unsafeGetTH(false),
++        (THVoidTensor*)running_var.unsafeGetTH(false),
++        (THVoidTensor*)save_mean.unsafeGetTH(false),
++        (THVoidTensor*)save_std.unsafeGetTH(false),
++        training,
++        eps);
++#endif
++  } else {
++    std::array<bool, 3> mask = {
++      should_compute_output(0),
++      should_compute_output(1),
++      should_compute_output(2),
++    };
++    std::tie(grad_input, grad_weight, grad_bias) = at::batch_norm_backward(
++        grad_output, input, weight, running_mean, running_var,
++        training, eps, save_mean, save_std,
++        mask);
++  }
++
++  // Add saved variables used out of the pure autograd to inputs
++  variable_list all_inputs(grad_outputs);
++  all_inputs.push_back(input_var);
++  if (weight.defined()) {
++    all_inputs.push_back(weight_var);
++  }
++  auto outputs =  as_tensor_list(std::move(grad_input),
++                                 std::move(grad_weight),
++                                 std::move(grad_bias));
++  return wrap_outputs(all_inputs, std::move(outputs), [&](FunctionFlags f) {
++    return std::make_shared<BatchNormBackwardBackward>(
++      f, *this, save_mean, save_std,
++      input_var, weight_var,
++      grad_outputs[0]);
++    });
++};
++
++auto BatchNormBackward::releaseVariables() -> void {
++  input.data.reset();
++  weight.data.reset();
++  bias.data.reset();
++}
++
++Variable getReturnTupleVar(PyObject *p, Py_ssize_t pos) {
++  PyObject *item = PyTuple_GET_ITEM(p, pos);
++  if (item != Py_None) {
++    return ((THPVariable*)item)->cdata;
++  }
++  return Variable();
++}
++
++auto BatchNormBackwardBackward::apply(const variable_list& grad_grad_inputs) -> variable_list {
++  check_input_variables("BatchNormBackwardBackward", grad_grad_inputs, 3, 0);
++  auto ggI = grad_grad_inputs[0];
++  auto ggW = grad_grad_inputs[1];
++  auto ggb = grad_grad_inputs[2];
++
++  auto input_var = input.unpack();
++  AutoGPU guard(input_var);
++
++  auto weight_var = weight.unpack();
++  auto gO_var = grad_output.unpack();
++
++  auto input = input_var.data();
++  AutoGIL gil;
++
++  THPObjectPtr input_pvar(THPVariable_Wrap(input_var));
++  THPObjectPtr weight_pvar(THPVariable_Wrap(weight_var));
++
++  THPObjectPtr ggi_pvar(THPVariable_Wrap(ggI));
++  THPObjectPtr ggW_pvar(THPVariable_Wrap(ggW));
++  THPObjectPtr ggb_pvar(THPVariable_Wrap(ggb));
++  THPObjectPtr gO_pvar(THPVariable_Wrap(gO_var));
++  THPObjectPtr eps_py(PyFloat_FromDouble(eps));
++  THPObjectPtr save_mean_py(createPyObject(save_mean));
++  THPObjectPtr save_std_py(createPyObject(save_std));
++  THPObjectPtr running_mean_py(createPyObject(running_mean));
++  THPObjectPtr running_var_py(createPyObject(running_var));
++  PyObject *training_pyo = training ? Py_True : Py_False;
++
++  THPObjectPtr args(PyTuple_Pack(12, input_pvar.get(), weight_pvar.get(),
++                                 ggi_pvar.get(), ggW_pvar.get(), ggb_pvar.get(),
++                                 gO_pvar.get(), eps_py.get(),
++                                 save_mean_py.get(), save_std_py.get(),
++                                 running_mean_py.get(), running_var_py.get(),
++                                 training_pyo));
++  THPObjectPtr r(PyObject_CallObject(THPBatchNormBackwardBackwardFunction, args.get()));
++  if (!r) throw python_error();
++  if (!PyTuple_Check(r.get())) {
++    throw std::runtime_error("expected PyTuple return from BatchNormBackwardBackward");
++  }
++
++  auto gI_var = getReturnTupleVar(r, 0);
++  auto gG_var = getReturnTupleVar(r, 1);
++  auto ggO_var = getReturnTupleVar(r, 2);
++
++  if (weight_var.defined()) {
++    return {ggO_var, gI_var, gG_var};
++  } else {
++    return {ggO_var, gI_var};
++  }
++};
++
++auto BatchNormBackwardBackward::releaseVariables() -> void {
++  input.data.reset();
++  weight.data.reset();
++  grad_output.data.reset();
++}
++
++
++}} // namespace torch::autograd
+diff --git a/csrc/autograd/utils/wrap_outputs.h b/csrc/autograd/utils/wrap_outputs.h
+index 5f087205a..1b5ac27df 100644
+--- a/csrc/autograd/utils/wrap_outputs.h
++++ b/csrc/autograd/utils/wrap_outputs.h
+@@ -14,6 +14,10 @@
+ namespace torch { namespace autograd { namespace utils {
+ 
+ inline PyObject* wrap(at::Tensor tensor) {
++  if (tensor.defined() && tensor.dim() == 0) {
++    // don't expose 0-dim tensors to Variable API.
++    Variable(tensor).data().as_strided_({1}, {1});
++  }
+   return THPVariable_Wrap(Variable(std::move(tensor)));
+ }
+ 
+diff --git a/csrc/cuda/Module.cpp b/csrc/cuda/Module.cpp
+index 0f5e96378..f433d6908 100644
+--- a/csrc/cuda/Module.cpp
++++ b/csrc/cuda/Module.cpp
+@@ -23,13 +23,21 @@ using namespace torch;
+ 
+ THCState *state;
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++  typedef hipDeviceProp_t cudaDeviceProp;
++#endif
++
+ ////////////////////////////////////////////////////////////////////////////////
+ // CUDA management methods
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ void THCPModule_setDevice(int device)
+ {
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipSetDevice(device));
++#else
+   THCudaCheck(cudaSetDevice(device));
++#endif
+ }
+ 
+ PyObject * THCPModule_setDevice_wrap(PyObject *self, PyObject *arg)
+@@ -48,7 +56,11 @@ PyObject * THCPModule_getDevice_wrap(PyObject *self)
+ {
+   HANDLE_TH_ERRORS
+   int device;
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipGetDevice(&device));
++#else
+   THCudaCheck(cudaGetDevice(&device));
++#endif
+   return PyLong_FromLong(device);
+   END_HANDLE_TH_ERRORS
+ }
+@@ -57,10 +69,17 @@ PyObject * THCPModule_getDeviceCount_wrap(PyObject *self)
+ {
+   HANDLE_TH_ERRORS
+   int ndevice;
++#if defined(__HIP_PLATFORM_HCC__)
++  if (hipGetDeviceCount(&ndevice) != hipSuccess) {
++    hipGetLastError();
++    ndevice = 0;
++  }
++#else
+   if (cudaGetDeviceCount(&ndevice) != cudaSuccess) {
+     cudaGetLastError();
+     ndevice = 0;
+   }
++#endif
+   return PyLong_FromLong(ndevice);
+   END_HANDLE_TH_ERRORS
+ }
+@@ -71,8 +90,13 @@ PyObject * THCPModule_getDeviceName_wrap(PyObject *self, PyObject *arg)
+   THPUtils_assert(THPUtils_checkLong(arg), "invalid argument to getDeviceName");
+   long device = THPUtils_unpackLong(arg);
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++  hipDeviceProp_t prop;
++  THCudaCheck(hipGetDeviceProperties(&prop, device));
++#else
+   cudaDeviceProp prop;
+   THCudaCheck(cudaGetDeviceProperties(&prop, device));
++#endif
+   return THPUtils_packString(prop.name);
+   END_HANDLE_TH_ERRORS
+ }
+@@ -83,8 +107,13 @@ PyObject * THCPModule_getDeviceCapability_wrap(PyObject *self, PyObject *arg)
+   THPUtils_assert(THPUtils_checkLong(arg), "invalid argument to getDeviceCapability");
+   long device = THPUtils_unpackLong(arg);
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++  hipDeviceProp_t prop;
++  THCudaCheck(hipGetDeviceProperties(&prop, device));
++#else
+   cudaDeviceProp prop;
+   THCudaCheck(cudaGetDeviceProperties(&prop, device));
++#endif
+   return Py_BuildValue("(ii)", prop.major, prop.minor);
+   END_HANDLE_TH_ERRORS
+ }
+@@ -111,16 +140,32 @@ PyObject * THCPModule_setStream_wrap(PyObject *self, PyObject *obj)
+ PyObject * THCPModule_isDriverSufficient(PyObject *self)
+ {
+   int count;
++#if defined(__HIP_PLATFORM_HCC__)
++  hipError_t err = hipGetDeviceCount(&count);
++  if (err == hipErrorInsufficientDriver) {
++    return PyBool_FromLong(0);
++  }
++#else
+   cudaError_t err = cudaGetDeviceCount(&count);
+   if (err == cudaErrorInsufficientDriver) {
+     return PyBool_FromLong(0);
+   }
++#endif
+   return PyBool_FromLong(1);
+ }
+ 
+ PyObject * THCPModule_getDriverVersion(PyObject *self)
+ {
+   int driverVersion = -1;
++#if defined(__HIP_PLATFORM_HCC__)
++  hipError_t err = hipDriverGetVersion(&driverVersion);
++  if (err != hipSuccess) {
++    PyErr_Format(PyExc_RuntimeError,
++                    "Error calling hipDriverGetVersion: %d %s",
++                    err, hipGetErrorString(err));
++    return NULL;
++  }
++#else
+   cudaError_t err = cudaDriverGetVersion(&driverVersion);
+   if (err != cudaSuccess) {
+     PyErr_Format(PyExc_RuntimeError,
+@@ -128,12 +173,17 @@ PyObject * THCPModule_getDriverVersion(PyObject *self)
+                     err, cudaGetErrorString(err));
+     return NULL;
+   }
++#endif
+   return PyLong_FromLong((int64_t) driverVersion);
+ }
+ 
+ PyObject * THCPModule_getCompiledVersion(PyObject *self)
+ {
++#if defined(__HIP_PLATFORM_HCC__)
++  return PyLong_FromLong((long) 0);
++#else
+   return PyLong_FromLong((long) CUDA_VERSION);
++#endif
+ }
+ 
+ PyObject * THCPModule_getRNGState(PyObject *_unused)
+@@ -212,7 +262,11 @@ PyObject * THCPModule_cudaHostAllocator(PyObject *_unused)
+ PyObject * THCPModule_cudaSynchronize(PyObject *_unused)
+ {
+   HANDLE_TH_ERRORS
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipDeviceSynchronize());
++#else
+   THCudaCheck(cudaDeviceSynchronize());
++#endif
+   Py_RETURN_NONE;
+   END_HANDLE_TH_ERRORS
+ }
+@@ -323,7 +377,9 @@ static void bindCudaDeviceProperties(PyObject* module) {
+     .def_readonly("major", &cudaDeviceProp::major)
+     .def_readonly("minor", &cudaDeviceProp::minor)
+     .def_readonly("is_multi_gpu_board", &cudaDeviceProp::isMultiGpuBoard)
++#if defined(__NVCC__)
+     .def_readonly("is_integrated", &cudaDeviceProp::integrated)
++#endif
+     .def_readonly("multi_processor_count", &cudaDeviceProp::multiProcessorCount)
+     .def_readonly("total_memory", &cudaDeviceProp::totalGlobalMem)
+     .def("__repr__", [](const cudaDeviceProp &prop) {
+@@ -403,7 +459,11 @@ void THCPModule_useNccl()
+ PyObject * THCPModule_getCurrentBlasHandle_wrap(PyObject *self)
+ {
+   HANDLE_TH_ERRORS
++#if defined(__HIP_PLATFORM_HCC__)
++  hipblasHandle_t handle = THCState_getCurrentBlasHandle(state);
++#else
+   cublasHandle_t handle = THCState_getCurrentBlasHandle(state);
++#endif
+   return PyLong_FromVoidPtr(handle);
+   END_HANDLE_TH_ERRORS
+ }
+diff --git a/csrc/cuda/Stream.cpp b/csrc/cuda/Stream.cpp
+index 325d9e299..ecfae49c8 100644
+--- a/csrc/cuda/Stream.cpp
++++ b/csrc/cuda/Stream.cpp
+@@ -4,8 +4,11 @@
+ #include "Module.h"
+ 
+ #include <structmember.h>
++#if defined(__HIP_PLATFORM_HCC__)
++#include <hip/hip_runtime_api.h>
++#else
+ #include <cuda_runtime_api.h>
+-
++#endif
+ PyObject *THCPStreamClass = NULL;
+ 
+ static PyObject * THCPStream_pynew(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+@@ -13,9 +16,13 @@ static PyObject * THCPStream_pynew(PyTypeObject *type, PyObject *args, PyObject
+   HANDLE_TH_ERRORS
+ 
+   int current_device;
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipGetDevice(&current_device));
++  int flags = hipStreamNonBlocking;
++#else
+   THCudaCheck(cudaGetDevice(&current_device));
+-
+   int flags = cudaStreamNonBlocking;
++#endif
+   int priority = 0;
+   unsigned long long cdata = 0;
+ 
+diff --git a/csrc/cuda/Stream.h b/csrc/cuda/Stream.h
+index dafc6de2c..66842db40 100644
+--- a/csrc/cuda/Stream.h
++++ b/csrc/cuda/Stream.h
+@@ -9,7 +9,11 @@ struct THCPStream {
+   PyObject_HEAD
+   THCStream *cdata;
+   int device;
++#if defined(__HIP_PLATFORM_HCC__)
++  hipStream_t cuda_stream;
++#else
+   cudaStream_t cuda_stream;
++#endif
+ };
+ extern PyObject *THCPStreamClass;
+ 
+diff --git a/csrc/cuda/THCP.h b/csrc/cuda/THCP.h
+index 2a58cfb79..f404b58e6 100644
+--- a/csrc/cuda/THCP.h
++++ b/csrc/cuda/THCP.h
+@@ -8,7 +8,6 @@
+ 
+ #include <THS/THS.h>
+ #include <THCS/THCS.h>
+-
+ #include "torch/csrc/THP.h"
+ #include "serialization.h"
+ #include "Module.h"
+diff --git a/csrc/cudnn/Conv.cpp b/csrc/cudnn/Conv.cpp
+new file mode 100644
+index 000000000..55d7484cb
+--- /dev/null
++++ b/csrc/cudnn/Conv.cpp
+@@ -0,0 +1,846 @@
++#include "Conv.h"
++
++#include "THC/THC.h"
++#include "Exceptions.h"
++#include "Types.h"
++
++#include "cudnn-wrapper.h"
++#include <functional>
++#include <iterator>
++#include <sstream>
++#include <algorithm>
++#include <memory>
++#include <mutex>
++#include <stdint.h>
++#include <unordered_map>
++
++namespace torch { namespace cudnn {
++
++namespace {
++
++void setTensorDescriptor(
++    TensorDescriptor& desc, cudnnDataType_t dataType, THVoidTensor* tensor,
++    int groups)
++{
++  CHECK_ARG(tensor->nDimension <= 5);
++  int inputSize[5];
++  int inputStride[5];
++  for (int i = 0; i < tensor->nDimension; ++i) {
++    inputSize[i] = (int) tensor->size[i];
++    inputStride[i] = (int) tensor->stride[i];
++  }
++#if CUDNN_VERSION < 7000
++  inputSize[1] /= groups;
++#endif
++  desc.set(dataType, tensor->nDimension, inputSize, inputStride);
++}
++
++void setWeightDescriptor(
++    FilterDescriptor& desc, cudnnDataType_t dataType, THVoidTensor* weight,
++    int groups)
++{
++  CHECK_ARG(weight->nDimension <= 5);
++  int weightSize[5];
++  THVoidTensor_assertContiguous(weight);
++  for (int i = 0; i < weight->nDimension; ++i) {
++    weightSize[i] = (int) weight->size[i];
++  }
++#if CUDNN_VERSION < 7000
++  weightSize[0] /= groups;
++#endif
++  desc.set(dataType, weight->nDimension, weightSize);
++}
++
++struct ParamsHash {
++  std::size_t operator()(const ConvolutionParams& params) const {
++    auto ptr = reinterpret_cast<const uint8_t*>(&params);
++    uint32_t value = 0x811C9DC5;
++    for (int i = 0; i < (int)sizeof(ConvolutionParams); ++i) {
++      value ^= ptr[i];
++      value *= 0x01000193;
++    }
++    return (size_t)value;
++  }
++};
++
++struct ParamsEqual {
++  bool operator()(const ConvolutionParams& a, const ConvolutionParams& b) const {
++    auto ptr1 = reinterpret_cast<const uint8_t*>(&a);
++    auto ptr2 = reinterpret_cast<const uint8_t*>(&b);
++    return memcmp(ptr1, ptr2, sizeof(ConvolutionParams)) == 0;
++  }
++};
++
++template <typename T>
++struct BenchmarkCache {
++  std::mutex mutex;
++  std::unordered_map<ConvolutionParams, T, ParamsHash, ParamsEqual> map;
++
++  bool find(const ConvolutionParams& params, T* results) {
++    std::lock_guard<std::mutex> guard(mutex);
++    auto it = map.find(params);
++    if (it == map.end()) {
++      return false;
++    }
++    *results = it->second;
++    return true;
++  }
++
++  void insert(const ConvolutionParams& params, const T& results) {
++    std::lock_guard<std::mutex> guard(mutex);
++    map[params] = results;
++  }
++};
++
++BenchmarkCache<cudnnConvolutionFwdAlgo_t> fwd_algos;
++BenchmarkCache<cudnnConvolutionBwdDataAlgo_t> bwd_data_algos;
++BenchmarkCache<cudnnConvolutionBwdFilterAlgo_t> bwd_filter_algos;
++
++struct Workspace {
++  Workspace(THCState* state, size_t size) : state(state), size(size), data(NULL) {
++    CUDA_CHECK(THCudaMalloc(state, &data, size));
++  }
++  Workspace(const Workspace&) = delete;
++  Workspace(Workspace&&) = default;
++  ~Workspace() {
++    if (data) {
++      THCudaFree(state, data);
++    }
++  }
++
++  THCState* state;
++  size_t size;
++  void* data;
++};
++
++template<typename algo_t>
++struct algorithm_search {
++};
++
++cudnnStatus_t getWorkspaceSize(
++    cudnnHandle_t handle, const Convolution& conv, cudnnConvolutionFwdAlgo_t algo, size_t* sz)
++{
++    return cudnnGetConvolutionForwardWorkspaceSize(
++        handle,
++        conv.idesc.desc,
++        conv.wdesc.desc,
++        conv.cdesc.desc,
++        conv.odesc.desc,
++        algo,
++        sz
++    );
++}
++cudnnStatus_t getWorkspaceSize(
++    cudnnHandle_t handle, const Convolution& conv,
++    cudnnConvolutionBwdDataAlgo_t algo, size_t* sz)
++{
++    return cudnnGetConvolutionBackwardDataWorkspaceSize(
++        handle,
++        conv.wdesc.desc,
++        conv.odesc.desc,
++        conv.cdesc.desc,
++        conv.idesc.desc,
++        algo,
++        sz);
++}
++cudnnStatus_t getWorkspaceSize(
++    cudnnHandle_t handle, const Convolution& conv,
++    cudnnConvolutionBwdFilterAlgo_t algo, size_t* sz)
++{
++    return cudnnGetConvolutionBackwardFilterWorkspaceSize(
++        handle,
++        conv.idesc.desc,
++        conv.odesc.desc,
++        conv.cdesc.desc,
++        conv.wdesc.desc,
++        algo,
++        sz);
++}
++
++template<typename algo_t>
++size_t getMaxWorkspaceSize(
++    cudnnHandle_t handle, const Convolution& conv, algo_t *algo, int n_algo,
++    THCState* state)
++{
++    size_t max_ws_size = 0;
++    size_t max_block_size = 0;
++    size_t total_gpu_mem = 0;
++    size_t free_gpu_mem = 0;
++
++    THCudaCheck(THCudaMemGetInfoCached(state, &free_gpu_mem, &total_gpu_mem, &max_block_size));
++
++    for(int i=0; i<n_algo; i++) {
++        cudnnStatus_t err;
++        size_t sz;
++        err = getWorkspaceSize(handle, conv, algo[i], &sz);
++        if(CUDNN_STATUS_SUCCESS != err || sz == 0 || sz < max_ws_size || sz > max_block_size) continue;
++        max_ws_size = sz;
++    }
++    return max_ws_size;
++}
++
++template<typename perf_t>
++perf_t getBestAlgorithm(perf_t *perfResults, bool deterministic, int n_algo) {
++  if (deterministic) {
++    // iterate over perf results of all algorithms and find the best deterministic algo
++    for (int i = 0; i < n_algo; i++) {
++      if (perfResults[i].status == CUDNN_STATUS_SUCCESS && perfResults[i].determinism == CUDNN_DETERMINISTIC) {
++        return perfResults[i];
++      }
++    }
++  }
++  return perfResults[0];
++}
++
++template<>
++struct algorithm_search<cudnnConvolutionFwdAlgo_t> {
++  static constexpr auto DEFAULT_ALGO = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
++  static BenchmarkCache<cudnnConvolutionFwdAlgo_t>& cache() {
++    return fwd_algos;
++  }
++
++  static cudnnConvolutionFwdAlgoPerf_t findAlgorithm(
++      THCState* state, cudnnHandle_t handle, const Convolution& conv,
++      void* in, void* out, void* wght, bool deterministic)
++  {
++    int algoCount;
++    cudnnConvolutionFwdAlgo_t algo[] = {
++         CUDNN_CONVOLUTION_FWD_ALGO_GEMM,
++         CUDNN_CONVOLUTION_FWD_ALGO_FFT,
++         CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING,
++         CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
++         CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
++         CUDNN_CONVOLUTION_FWD_ALGO_DIRECT,
++         CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD,
++         CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED,
++    };
++    int n_algo = sizeof(algo)/sizeof(algo[0]);
++    cudnnConvolutionFwdAlgoPerf_t perfResults[n_algo];
++    size_t max_ws_size = getMaxWorkspaceSize<cudnnConvolutionFwdAlgo_t>(
++        handle, conv, algo, n_algo, state);
++    Workspace ws(state, max_ws_size);
++    CHECK(cudnnFindConvolutionForwardAlgorithmEx(
++        handle,
++        conv.idesc.desc,
++        in,
++        conv.wdesc.desc,
++        wght,
++        conv.cdesc.desc,
++        conv.odesc.desc,
++        out,
++        n_algo,
++        &algoCount,
++        perfResults,
++        ws.data,
++        ws.size));
++    return getBestAlgorithm<cudnnConvolutionFwdAlgoPerf_t>(perfResults, deterministic, algoCount);
++  }
++
++  static void getAlgorithm(
++    cudnnHandle_t handle, const Convolution& conv, cudnnConvolutionFwdAlgo_t* algo)
++  {
++    cudnnConvolutionFwdPreference_t pref = CUDNN_CONVOLUTION_FWD_PREFER_FASTEST;
++    CHECK(cudnnGetConvolutionForwardAlgorithm(
++        handle,
++        conv.idesc.desc,
++        conv.wdesc.desc,
++        conv.cdesc.desc,
++        conv.odesc.desc,
++        pref,
++        0,
++        algo));
++  }
++
++  static void getWorkspaceSize(
++    cudnnHandle_t handle, const Convolution& conv,
++    cudnnConvolutionFwdAlgo_t algo, size_t* workspaceSize)
++  {
++    CHECK(cudnnGetConvolutionForwardWorkspaceSize(
++        handle,
++        conv.idesc.desc,
++        conv.wdesc.desc,
++        conv.cdesc.desc,
++        conv.odesc.desc,
++        algo,
++        workspaceSize));
++  }
++};
++
++template<>
++struct algorithm_search<cudnnConvolutionBwdDataAlgo_t> {
++  static constexpr auto DEFAULT_ALGO = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
++
++  static BenchmarkCache<cudnnConvolutionBwdDataAlgo_t>& cache()
++  {
++    return bwd_data_algos;
++  }
++
++  static cudnnConvolutionBwdDataAlgoPerf_t findAlgorithm(
++      THCState* state,cudnnHandle_t handle, const Convolution& conv, void* in,
++      void* out, void* wght, bool deterministic)
++  {
++    int algoCount;
++    cudnnConvolutionBwdDataAlgo_t algo[] = {
++        CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
++        CUDNN_CONVOLUTION_BWD_DATA_ALGO_1,
++        CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT,
++        CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING,
++        CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD,
++        CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED
++    };
++    int n_algo = sizeof(algo)/sizeof(algo[0]);
++    cudnnConvolutionBwdDataAlgoPerf_t perfResults[n_algo];
++    size_t max_ws_size = getMaxWorkspaceSize<cudnnConvolutionBwdDataAlgo_t>(
++        handle, conv, algo, n_algo, state);
++    Workspace ws(state, max_ws_size);
++    CHECK(cudnnFindConvolutionBackwardDataAlgorithmEx(
++        handle,
++        conv.wdesc.desc,
++        wght,
++        conv.odesc.desc,
++        out,
++        conv.cdesc.desc,
++        conv.idesc.desc,
++        in,
++        n_algo,
++        &algoCount,
++        perfResults,
++        ws.data,
++        ws.size));
++    return getBestAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>(perfResults, deterministic, algoCount);
++  }
++
++  static void getAlgorithm(cudnnHandle_t handle, const Convolution& conv, cudnnConvolutionBwdDataAlgo_t* algo) {
++    CHECK(cudnnGetConvolutionBackwardDataAlgorithm(
++        handle,
++        conv.wdesc.desc,
++        conv.odesc.desc,
++        conv.cdesc.desc,
++        conv.idesc.desc,
++        CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST,
++        0,
++        algo));
++  }
++
++  static void getWorkspaceSize(
++    cudnnHandle_t handle, const Convolution& conv,
++    cudnnConvolutionBwdDataAlgo_t algo, size_t* workspaceSize)
++  {
++    CHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(
++        handle,
++        conv.wdesc.desc,
++        conv.odesc.desc,
++        conv.cdesc.desc,
++        conv.idesc.desc,
++         algo,
++        workspaceSize));
++  }
++};
++
++template<>
++struct algorithm_search<cudnnConvolutionBwdFilterAlgo_t> {
++  static constexpr auto DEFAULT_ALGO = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
++
++  static BenchmarkCache<cudnnConvolutionBwdFilterAlgo_t>& cache()
++  {
++    return bwd_filter_algos;
++  }
++
++  static cudnnConvolutionBwdFilterAlgoPerf_t findAlgorithm(
++        THCState* state, cudnnHandle_t handle, const Convolution& conv,
++        void* in, void* out, void* wght, bool deterministic)
++  {
++    int algoCount;
++    cudnnConvolutionBwdFilterAlgo_t algo[] = {
++        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
++        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1,
++        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT,
++        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3,
++        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED,
++#if CUDNN_VERSION >= 6000
++        CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING,
++#endif
++    };
++    int n_algo = sizeof(algo)/sizeof(algo[0]);
++    cudnnConvolutionBwdFilterAlgoPerf_t perfResults[n_algo];
++    size_t max_ws_size = getMaxWorkspaceSize<cudnnConvolutionBwdFilterAlgo_t>(
++        handle, conv, algo, n_algo, state);
++    Workspace ws(state, max_ws_size);
++
++    CHECK(cudnnFindConvolutionBackwardFilterAlgorithmEx(
++        handle,
++        conv.idesc.desc,
++        in,
++        conv.odesc.desc,
++        out,
++        conv.cdesc.desc,
++        conv.wdesc.desc,
++        wght,
++        n_algo,
++        &algoCount,
++        perfResults,
++        ws.data,
++        ws.size));
++    return getBestAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>(perfResults, deterministic, algoCount);
++  }
++
++  static void getAlgorithm(
++      cudnnHandle_t handle, const Convolution& conv, cudnnConvolutionBwdFilterAlgo_t* algo)
++  {
++    CHECK(cudnnGetConvolutionBackwardFilterAlgorithm(
++        handle,
++        conv.idesc.desc,
++        conv.odesc.desc,
++        conv.cdesc.desc,
++        conv.wdesc.desc,
++        CUDNN_CONVOLUTION_BWD_FILTER_PREFER_FASTEST,
++        0,
++        algo)
++    );
++  }
++
++  static void getWorkspaceSize(
++      cudnnHandle_t handle, const Convolution& conv,
++      cudnnConvolutionBwdFilterAlgo_t algo, size_t* workspaceSize)
++  {
++    CHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(
++        handle,
++        conv.idesc.desc,
++        conv.odesc.desc,
++        conv.cdesc.desc,
++        conv.wdesc.desc,
++        algo,
++        workspaceSize));
++  }
++};
++
++template<typename algo_t>
++void findAlgorithm(
++    THCState* state, cudnnHandle_t handle, const Convolution& conv,
++    bool benchmark, bool deterministic, void* in, void* out, void* wght,
++    algo_t* algo)
++{
++  using search = algorithm_search<algo_t>;
++  auto& cache = search::cache();
++
++  if (cache.find(conv.params, algo)) {
++    return;
++  }
++
++  if (deterministic && !benchmark) {
++    *algo = search::DEFAULT_ALGO;
++    return;
++  }
++
++  if (!benchmark) {
++    search::getAlgorithm(handle, conv, algo);
++    return;
++  }
++
++  if (cache.find(conv.params, algo)) {
++    // re-check cache since another thread may have benchmarked the algorithm
++    return;
++  }
++
++  auto perfResults = search::findAlgorithm(state, handle, conv, in, out, wght, deterministic);
++  // for deterministic algo, look at all the perf results and return the best
++  // deterministic algo
++  if (perfResults.status == CUDNN_STATUS_SUCCESS && !(deterministic && perfResults.determinism != CUDNN_DETERMINISTIC)) {
++      *algo = perfResults.algo;
++  } else {
++      *algo = search::DEFAULT_ALGO;
++  }
++  cache.insert(conv.params, *algo);
++
++  THCDeviceAllocator* allocator = THCCachingAllocator_get();
++  CUDA_CHECK(allocator->emptyCache(allocator->state));
++}
++
++template<typename algo_t>
++Workspace chooseAlgorithm(
++    THCState* state, cudnnHandle_t handle, const Convolution& conv,
++    bool benchmark, bool deterministic, void* in, void* out, void* wght,
++    algo_t* algo)
++{
++  findAlgorithm(state, handle, conv, benchmark, deterministic, in, out, wght, algo);
++
++  using search = algorithm_search<algo_t>;
++  size_t workspace_size;
++  search::getWorkspaceSize(handle, conv, *algo, &workspace_size);
++  try {
++    return Workspace(state, workspace_size);
++  } catch (std::runtime_error& e) {
++    cudaGetLastError(); // clear OOM error
++
++    // switch to default algorithm and record it in the cache to prevent
++    // further OOM errors
++    *algo = search::DEFAULT_ALGO;
++    search::cache().insert(conv.params, *algo);
++
++    search::getWorkspaceSize(handle, conv, *algo, &workspace_size);
++    return Workspace(state, workspace_size);
++  }
++}
++
++void* tensorPointer(
++    cudnnDataType_t dataType, THVoidTensor* tensor, int groupIdx, int groups,
++    int dim)
++{
++  int elementSize = dataSize(dataType);
++  char* ptr = (char*) tensor->storage->data;
++  ptr += elementSize * tensor->storageOffset;
++#if CUDNN_VERSION < 7000
++  if (groupIdx > 0) {
++    long size = 1;
++    for (int i = dim; i < tensor->nDimension; ++i) {
++      size *= tensor->size[i];
++    }
++    ptr += elementSize * size * groupIdx / groups;
++  }
++#endif
++  return ptr;
++}
++
++}
++
++static void check_args(
++    const std::vector<int>& args, size_t expected_size,
++    const std::string& arg_name)
++{
++    if (args.size() > expected_size){
++      std::stringstream ss;
++      ss << "Too many " << arg_name << " values (" << args.size() << ") supplied, expecting " << expected_size;
++      throw std::runtime_error(ss.str());
++    }
++    else if (args.size() < expected_size){
++      std::stringstream ss;
++      ss << "Not enough " << arg_name << " values (" << args.size() << ") supplied, expecting " << expected_size;
++      throw std::runtime_error(ss.str());
++    }
++
++    auto num_negative_values = std::count_if(args.begin(), args.end(), [](int x){return x < 0;});
++    if (num_negative_values > 0){
++      std::stringstream ss;
++      ss << arg_name << " should be greater than zero but got (";
++      std::copy(args.begin(), args.end() - 1, std::ostream_iterator<int>(ss,", "));
++      ss << args.back() <<  ")";
++      throw std::runtime_error(ss.str());
++    }
++}
++
++static void check_input_size(THVoidTensor* input, THVoidTensor* weight, int groups)
++{
++  if (input->nDimension > 5){
++    throw std::runtime_error("input has more than 5 dimensions");
++  }
++
++  if (input->size[1]/groups != weight->size[1]){
++    std::stringstream ss;
++    ss << "Need input.size[1] == " << weight->size[1] * groups << " but got " << input->size[1] << " instead.";
++    throw std::runtime_error(ss.str());
++  }
++
++}
++
++static void check_bias_size(
++    THVoidTensor* bias, THVoidTensor* weight, int groups, bool transposed)
++{
++  if (bias != nullptr){
++    if (transposed){
++      if (bias->size[0]/groups != weight->size[1]){
++        std::stringstream ss;
++        ss << "Need bias.size[0] == " << weight->size[1]*groups << " but instead it is " << bias->size[0];
++        throw std::runtime_error(ss.str());
++      }
++    }
++    else if (bias->size[0] != weight->size[0]){
++      std::stringstream ss;
++      ss << "Need bias.size[0] == " << weight->size[0] << " but instead it is " << bias->size[0];
++      throw std::runtime_error(ss.str());
++    }
++  }
++}
++
++static void check_expected_output_size_is_valid(
++    THVoidTensor* input, THVoidTensor* output, THVoidTensor* weight,
++    const std::vector<int>& pad, const std::vector<int>& stride,
++    const std::vector<int>& dilation)
++{
++  std::vector<long> output_sizes(input->nDimension - 2);
++  bool invalid_dim_size = false;
++  int dim_idx = 0;
++
++  for (int i = 2; i != input->nDimension; ++i, ++dim_idx){
++    long output = (input->size[i] + 2*pad[dim_idx] - (dilation[dim_idx] * (weight->size[i] - 1) + 1)) / stride[dim_idx] + 1;
++    output_sizes[dim_idx] = output;
++    if (output < 1){
++      invalid_dim_size = true;
++    }
++  }
++
++  if (invalid_dim_size){
++    std::stringstream ss;
++    ss <<  "Given input size: (";
++    for (int i = 1; i != input->nDimension - 1; ++i){
++      ss << input->size[i] << ", ";
++    }
++    ss << input->size[input->nDimension - 1] << "). Calculated output size: (" << input->size[0] << ", ";
++    for (size_t i = 0; i != output_sizes.size() - 1; ++i){
++      ss << output_sizes[i] << ", ";
++    }
++    ss << output_sizes.back() << "). Output size is too small.";
++    throw std::runtime_error(ss.str());
++  }
++
++  if (input->nDimension != output->nDimension){
++    std::stringstream ss;
++    ss << "input (" << input->nDimension <<"D) and output ("<< output->nDimension;
++    ss << "D) do not have the same number of dimensions";
++    throw std::runtime_error(ss.str());
++  }
++}
++
++static void convolution_shape_check(
++    THVoidTensor* input, THVoidTensor* weight, THVoidTensor* bias,
++    THVoidTensor* output, const std::vector<int>& pad, const std::vector<int>& stride,
++    const std::vector<int>& dilation, int groups, bool transposed)
++{
++  check_args(pad, input->nDimension - 2, "padding");
++  check_args(stride, pad.size(), "stride");
++  check_args(dilation, pad.size(), "dilation");
++
++  check_input_size(input, weight, groups);
++  check_bias_size(bias, weight, groups, transposed);
++  check_expected_output_size_is_valid(input, output, weight, pad, stride, dilation);
++}
++
++
++static_assert(std::is_pod<ConvolutionParams>::value, "ConvolutionParams not POD");
++
++Convolution::Convolution(
++    cudnnDataType_t dataType, THVoidTensor* input, THVoidTensor* weight,
++    THVoidTensor* bias, THVoidTensor* output, std::vector<int> pad,
++    std::vector<int> stride, std::vector<int> dilation, int groups, bool transposed)
++  : idesc(), odesc(), odesc_bias(), bdesc(), wdesc(), cdesc(), groups(groups)
++  , transposed(transposed)
++{
++  convolution_shape_check(input, weight, bias, output, pad, stride, dilation, groups, transposed);
++  memset(&params, 0, sizeof(ConvolutionParams));
++  params.dataType = dataType;
++  for (int i = 0; i != input->nDimension; ++i) {
++    params.input_size[i] = (int) input->size[i];
++    params.input_stride[i] = (int) input->stride[i];
++    params.weight_size[i] = (int) weight->size[i];
++  }
++  for (size_t i = 0; i != pad.size(); ++i) {
++    params.pad[i] = pad[i];
++    params.stride[i] = stride[i];
++    params.dilation[i] = dilation[i];
++  }
++  params.groups = groups;
++
++  setTensorDescriptor(idesc, dataType, input, groups);
++  setTensorDescriptor(odesc, dataType, output, groups);
++  if (!transposed)
++    setTensorDescriptor(odesc_bias, dataType, output, 1);
++  else
++    setTensorDescriptor(odesc_bias, dataType, input, 1);
++  setWeightDescriptor(wdesc, dataType, weight, groups);
++  cdesc.set(dataType, pad.size(), pad.data(), stride.data(), dilation.data(), groups);
++}
++
++void cudnn_convolution_forward(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* input, THVoidTensor* weight, THVoidTensor* output,
++    Convolution* info, bool benchmark, bool deterministic)
++{
++  CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++  assertSameGPU(dataType, input, weight, output);
++  int groups = info->groups;
++
++  cudnnConvolutionFwdAlgo_t fwdAlg;
++  void* in   = tensorPointer(dataType, input, 0, groups, 1);
++  void* out  = tensorPointer(dataType, output, 0, groups, 1);
++  void* wght = tensorPointer(dataType, weight, 0, groups, 0);
++
++  Workspace workspace = chooseAlgorithm(
++      state, handle, *info, benchmark, deterministic, in, out, wght, &fwdAlg);
++
++  Constant one(dataType, 1);
++  Constant zero(dataType, 0);
++#if CUDNN_VERSION < 7000
++  for (int i = 0; i < groups; ++i) {
++#else
++    int i = 0;
++#endif
++    void* input_ptr = tensorPointer(dataType, input, i, groups, 1);
++    void* output_ptr = tensorPointer(dataType, output, i, groups, 1);
++    void* weight_ptr = tensorPointer(dataType, weight, i, groups, 0);
++
++    CHECK(cudnnConvolutionForward(
++      handle, &one, info->idesc.desc, input_ptr, info->wdesc.desc,
++              weight_ptr, info->cdesc.desc, fwdAlg, workspace.data,
++              workspace.size, &zero, info->odesc.desc, output_ptr));
++#if CUDNN_VERSION < 7000
++  }
++#endif
++}
++
++void cudnn_convolution_add_bias(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* bias, THVoidTensor* output,
++    Convolution* info)
++{
++  CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++  assertSameGPU(dataType, bias, output);
++  CHECK_ARG(output->nDimension <= 5);
++  TensorDescriptor& bdesc = info->bdesc;
++
++  int size[5] = { 1, (int)bias->size[0], 1, 1, 1 };
++  int stride[5] = { 1, (int)bias->stride[0], 1, 1, 1 };
++  bdesc.set(dataType, output->nDimension, size, stride);
++
++  void* bias_ptr = tensorPointer(dataType, bias, 0, 1, 0);
++  void* output_ptr = tensorPointer(dataType, output, 0, 1, 1);
++
++  Constant one(dataType, 1);
++  CHECK(cudnnAddTensor(handle, &one, bdesc.desc, bias_ptr, &one,
++      info->odesc_bias.desc, output_ptr));
++}
++
++void cudnn_convolution_backward_data(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* gradOutput, THVoidTensor* gradInput, THVoidTensor* weight,
++    Convolution* info, bool benchmark, bool deterministic)
++{
++  CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++  assertSameGPU(dataType, gradOutput, gradInput, weight);
++  int groups = info->params.groups;
++
++  cudnnConvolutionBwdDataAlgo_t bwdDataAlg;
++  void* in = tensorPointer(dataType, gradInput, 0, groups, 1);
++  void* out = tensorPointer(dataType, gradOutput, 0, groups, 1);
++  void* wght = tensorPointer(dataType, weight, 0, groups, 0);
++  Workspace workspace = chooseAlgorithm(
++      state, handle, *info, benchmark, deterministic, in, out, wght,
++      &bwdDataAlg);
++
++  Constant one(dataType, 1);
++  Constant zero(dataType, 0);
++#if CUDNN_VERSION < 7000
++  for (int i = 0; i < groups; ++i) {
++#else
++    int i = 0;
++#endif
++    void* gradInput_ptr = tensorPointer(dataType, gradInput, i, groups, 1);
++    void* gradOutput_ptr = tensorPointer(dataType, gradOutput, i, groups, 1);
++    void* weight_ptr = tensorPointer(dataType, weight, i, groups, 0);
++
++  CHECK(cudnnConvolutionBackwardData(
++      handle, &one, info->wdesc.desc, weight_ptr, info->odesc.desc, gradOutput_ptr,
++      info->cdesc.desc, bwdDataAlg, workspace.data, workspace.size, &zero,
++      info->idesc.desc, gradInput_ptr));
++#if CUDNN_VERSION < 7000
++  }
++#endif
++}
++
++void cudnn_convolution_backward_filter(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* gradOutput, THVoidTensor* input, THVoidTensor* gradWeight,
++    Convolution* info, bool benchmark, bool deterministic)
++{
++  CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++  assertSameGPU(dataType, gradOutput, input, gradWeight);
++  int groups = info->params.groups;
++
++  cudnnConvolutionBwdFilterAlgo_t bwdFilterAlg;
++  void* in = tensorPointer(dataType, input, 0, groups, 1);
++  void* out = tensorPointer(dataType, gradOutput, 0, groups, 1);
++  void* wght = tensorPointer(dataType, gradWeight, 0, groups, 0);
++  if (info->transposed) {
++     std::swap(in, out);
++  }
++  Workspace workspace = chooseAlgorithm(
++      state, handle, *info, benchmark, deterministic, in, out, wght,
++      &bwdFilterAlg);
++
++  Constant one(dataType, 1);
++  Constant zero(dataType, 0);
++#if CUDNN_VERSION < 7000
++  for (int i = 0; i < groups; ++i) {
++#else
++    int i = 0;
++#endif
++    void* input_ptr = tensorPointer(dataType, input, i, groups, 1);
++    void* gradOutput_ptr = tensorPointer(dataType, gradOutput, i, groups, 1);
++    void* gradWeight_ptr = tensorPointer(dataType, gradWeight, i, groups, 0);
++
++    if (info->transposed) {
++      std::swap(input_ptr, gradOutput_ptr);
++    }
++
++    CHECK(cudnnConvolutionBackwardFilter(
++      handle, &one, info->idesc.desc, input_ptr, info->odesc.desc, gradOutput_ptr,
++      info->cdesc.desc, bwdFilterAlg, workspace.data, workspace.size, &zero,
++      info->wdesc.desc, gradWeight_ptr));
++#if CUDNN_VERSION < 7000
++  }
++#endif
++}
++
++void cudnn_convolution_backward_bias(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* gradOutput, THVoidTensor* gradBias, Convolution* info)
++{
++  CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++  assertSameGPU(dataType, gradOutput, gradBias);
++  Constant one(dataType, 1);
++  Constant zero(dataType, 0);
++  void* gradOutput_ptr = tensorPointer(dataType, gradOutput, 0, 1, 0);
++  void* gradBias_ptr = tensorPointer(dataType, gradBias, 0, 1, 0);
++
++  CHECK(cudnnConvolutionBackwardBias(
++      handle, &one, info->odesc_bias.desc, gradOutput_ptr, &zero,
++      info->bdesc.desc, gradBias_ptr));
++}
++
++Convolution* cudnn_convolution_full_forward(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* input, THVoidTensor* weight, THVoidTensor* bias,
++    THVoidTensor* output, std::vector<int> pad, std::vector<int> stride,
++    std::vector<int> dilation, int groups, bool benchmark, bool deterministic)
++{
++    CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++    std::unique_ptr<Convolution> info(new Convolution(
++        dataType, input, weight, bias, output, pad, stride, dilation, groups, false));
++    cudnn_convolution_forward(
++        state, handle, dataType, input, weight, output, info.get(), benchmark,
++        deterministic);
++    if (bias) {
++        cudnn_convolution_add_bias(
++            state, handle, dataType, bias, output, info.get());
++    }
++    return info.release();
++}
++
++Convolution* cudnn_convolution_transpose_full_forward(
++    THCState* state, cudnnHandle_t handle, cudnnDataType_t dataType,
++    THVoidTensor* input, THVoidTensor* weight, THVoidTensor* bias, THVoidTensor* output,
++    std::vector<int> pad, std::vector<int> stride, std::vector<int> dilation,
++    int groups, bool benchmark, bool deterministic)
++{
++    CHECK(cudnnSetStream(handle, THCState_getCurrentStream(state)));
++    std::unique_ptr<Convolution> info(new Convolution(
++        dataType, output, weight, bias, input, pad, stride, dilation, groups, true));
++    cudnn_convolution_backward_data(
++        state, handle, dataType, input, output, weight, info.get(), benchmark,
++        deterministic);
++    if (bias) {
++        cudnn_convolution_add_bias(
++            state, handle, dataType, bias, output, info.get());
++    }
++    return info.release();
++}
++
++}}  // namespace
+diff --git a/csrc/generic/StorageMethods.cpp b/csrc/generic/StorageMethods.cpp
+index 00c8c063c..d64cb8d02 100644
+--- a/csrc/generic/StorageMethods.cpp
++++ b/csrc/generic/StorageMethods.cpp
+@@ -1,5 +1,8 @@
+ #ifdef WITH_CUDA
+ #include <cuda_runtime.h>
++#elif defined(__HIP_PLATFORM_HCC__)
++#include <hip/hip_runtime.h>
++#else
+ #endif
+ 
+ static PyObject * THPStorage_(size)(THPStorage *self)
+@@ -37,6 +40,14 @@ static PyObject * THPStorage_(isPinned)(THPStorage *self)
+     Py_RETURN_FALSE;
+   }
+   return PyBool_FromLong(attr.memoryType == cudaMemoryTypeHost);
++#elif defined(__HIP_PLATFORM_HCC__)
++  hipPointerAttribute_t attr;
++  hipError_t err = hipPointerGetAttributes(&attr, self->cdata->data);
++  if (err != hipSuccess) {
++    hipGetLastError();
++    Py_RETURN_FALSE;
++  }
++  return PyBool_FromLong(attr.memoryType == hipMemoryTypeHost);
+ #else
+   Py_RETURN_FALSE;
+ #endif
+diff --git a/csrc/generic/StorageSharing.cpp b/csrc/generic/StorageSharing.cpp
+index 5de9e7e4d..726c8a1e8 100644
+--- a/csrc/generic/StorageSharing.cpp
++++ b/csrc/generic/StorageSharing.cpp
+@@ -1,8 +1,17 @@
+ #ifdef WITH_CUDA
+ #include <cuda.h>
+ #include <cuda_runtime.h>
++#elif defined(__HIP_PLATFORM_HCC__)
++#include <hip/hip_runtime.h>
++#else
+ #endif
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++  #undef PyBytes_AS_STRING(op)
++  #undef PyBytes_GET_SIZE(op)
++  #define PyBytes_AS_STRING(op) (((PyBytesObject *)(op))->ob_sval)
++  #define PyBytes_GET_SIZE(op)  Py_SIZE(op)
++#endif
+ 
+ static PyObject * THPStorage_(sharedDecref)(THPStorage *self)
+ {
+@@ -249,10 +258,15 @@ static PyObject * THPStorage_(shareCuda)(THPStorage *self)
+     void *base_ptr = THCCachingAllocator_getBaseAllocation(storage->data, &base_size);
+     ptrdiff_t offset = (char*)storage->data - (char*)base_ptr;
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++    hipIpcMemHandle_t handle;
++    THCudaCheck(hipIpcGetMemHandle(&handle, base_ptr));
++    _handle = PyBytes_FromStringAndSize((char *)&handle, HIP_IPC_HANDLE_SIZE);
++#else
+     cudaIpcMemHandle_t handle;
+     THCudaCheck(cudaIpcGetMemHandle(&handle, base_ptr));
+-
+     _handle = PyBytes_FromStringAndSize((char *)&handle, CUDA_IPC_HANDLE_SIZE);
++#endif
+     _offset = PyLong_FromSsize_t((Py_ssize_t)offset);
+     size = PyLong_FromSize_t(base_size / sizeof(real));
+   }
+@@ -297,11 +311,19 @@ static PyObject * THPStorage_(newSharedCuda)(PyObject *_unused, PyObject *args)
+   if (PyBytes_AsStringAndSize(_handle, &buffer, &handle_size) == -1) {
+     return NULL;
+   }
++#if defined(__HIP_PLATFORM_HCC__)
++  THPUtils_assert(handle_size == HIP_IPC_HANDLE_SIZE, "incorrect handle size");
++  hipIpcMemHandle_t handle = *(hipIpcMemHandle_t*)buffer;
++#else
+   THPUtils_assert(handle_size == CUDA_IPC_HANDLE_SIZE, "incorrect handle size");
+   cudaIpcMemHandle_t handle = *(cudaIpcMemHandle_t*)buffer;
+-
++#endif
+   void *devPtr = NULL;
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipIpcOpenMemHandle(&devPtr, handle, hipIpcMemLazyEnablePeerAccess));
++#else
+   THCudaCheck(cudaIpcOpenMemHandle(&devPtr, handle, cudaIpcMemLazyEnablePeerAccess));
++#endif
+ 
+   THStoragePtr base(THStorage_(newWithDataAndAllocator)(
+       LIBRARY_STATE (real*)devPtr, storage_size, &THCIpcAllocator, (void*)device));
+diff --git a/csrc/generic/serialization.cpp b/csrc/generic/serialization.cpp
+index b73953371..1632cfccc 100644
+--- a/csrc/generic/serialization.cpp
++++ b/csrc/generic/serialization.cpp
+@@ -14,8 +14,12 @@ void THPStorage_(writeFileRaw)(THStorage *self, io fd)
+ #else
+   std::unique_ptr<char[]> cpu_data(new char[size * sizeof(real)]);
+   data = (real*)cpu_data.get();
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipMemcpy(data, self->data, size * sizeof(real), hipMemcpyDeviceToHost));
++#else
+   THCudaCheck(cudaMemcpy(data, self->data, size * sizeof(real), cudaMemcpyDeviceToHost));
+ #endif
++#endif
+   ssize_t result = doWrite(fd, &size, sizeof(int64_t));
+   if (result != sizeof(int64_t))
+     throw std::system_error(result, std::system_category());
+@@ -134,8 +138,12 @@ THStorage * THPStorage_(readFileRaw)(io file, THStorage *_storage)
+   }
+ 
+ #ifdef THC_GENERIC_FILE
++#if defined(__HIP_PLATFORM_HCC__)
++  THCudaCheck(hipMemcpy(storage->data, data, size * sizeof(real), hipMemcpyHostToDevice));
++#else
+   THCudaCheck(cudaMemcpy(storage->data, data, size * sizeof(real), cudaMemcpyHostToDevice));
+ #endif
++#endif
+   return storage.release();
+ }
+ 
+diff --git a/csrc/nn/type_checks.h b/csrc/nn/type_checks.h
+index b0463c309..33432e176 100644
+--- a/csrc/nn/type_checks.h
++++ b/csrc/nn/type_checks.h
+@@ -68,7 +68,7 @@ static inline THIntTensor* THNN_IntTensor_Unpack(PyObject* obj) {
+   return torch::nn::unpack<THIntTensor>(obj);
+ }
+ 
+-#ifdef WITH_CUDA
++#if defined(WITH_CUDA) || defined(WITH_ROCM)
+ 
+ static inline bool THNN_CudaHalfTensor_Check(PyObject* obj) {
+   return torch::nn::check_type(obj, at::TypeID::CUDAHalf);
+diff --git a/csrc/utils/auto_gpu.h b/csrc/utils/auto_gpu.h
+index 093709745..022166842 100644
+--- a/csrc/utils/auto_gpu.h
++++ b/csrc/utils/auto_gpu.h
+@@ -8,8 +8,10 @@
+ #include <ATen/ATen.h>
+ 
+ #ifdef WITH_CUDA
+-#include <cuda.h>
+-#include <cuda_runtime.h>
++  #include <cuda.h>
++  #include <cuda_runtime.h>
++#elif defined(__HIP_PLATFORM_HCC__)
++  #include <hip/hip_runtime.h>
+ #endif
+ 
+ struct AutoGPU {
+@@ -29,27 +31,44 @@ struct AutoGPU {
+   }
+ 
+   ~AutoGPU() {
+-#ifdef WITH_CUDA
+     if (original_device != -1) {
++#ifdef WITH_CUDA
+       cudaSetDevice(original_device);
+-    }
++#elif defined(__HIP_PLATFORM_HCC__)
++      hipSetDevice(original_device);
++#else
+ #endif
++    }
+   }
+ 
+   inline void setDevice(int device) {
+-#ifdef WITH_CUDA
+     if (device == -1) {
+       return;
+     }
++
+     if (original_device == -1) {
++#ifdef WITH_CUDA
+       cudaCheck(cudaGetDevice(&original_device));
++#elif defined(__HIP_PLATFORM_HCC__)
++      cudaCheck(hipGetDevice(&original_device));
++#else
++#endif
+       if (device != original_device) {
++#ifdef WITH_CUDA
+         cudaCheck(cudaSetDevice(device));
++#elif defined(__HIP_PLATFORM_HCC__)
++        cudaCheck(hipSetDevice(device));
++#else
++#endif
+       }
+     } else {
++#ifdef WITH_CUDA
+       cudaCheck(cudaSetDevice(device));
+-    }
++#elif defined(__HIP_PLATFORM_HCC__)
++      cudaCheck(hipSetDevice(device));
++#else
+ #endif
++    }
+   }
+ 
+   int original_device = -1;
+@@ -65,5 +84,16 @@ private:
+       throw std::runtime_error(msg);
+     }
+   }
++#elif defined(__HIP_PLATFORM_HCC__)
++  static void cudaCheck(hipError_t err) {
++    if (err != hipSuccess) {
++      std::string msg = "CUDA error (";
++      msg += std::to_string(err);
++      msg += "): ";
++      msg += hipGetErrorString(err);
++      throw std::runtime_error(msg);
++    }
++  }
++#else
+ #endif
+ };
+diff --git a/csrc/utils/python_strings.h b/csrc/utils/python_strings.h
+index 36dce84e0..55737944d 100644
+--- a/csrc/utils/python_strings.h
++++ b/csrc/utils/python_strings.h
+@@ -5,6 +5,13 @@
+ #include <string>
+ #include "object_ptr.h"
+ 
++#if defined(__HIP_PLATFORM_HCC__)
++  #undef PyBytes_AS_STRING(op)
++  #undef PyBytes_GET_SIZE(op)
++  #define PyBytes_AS_STRING(op) (((PyBytesObject *)(op))->ob_sval)
++  #define PyBytes_GET_SIZE(op)  Py_SIZE(op)
++#endif
++
+ // Utilities for handling Python strings. Note that PyString, when defined, is
+ // the same as PyBytes.
+ 
+diff --git a/lib/ATen/ExpandUtils.h b/lib/ATen/ExpandUtils.h
+new file mode 100644
+index 000000000..bc31d1d3e
+--- /dev/null
++++ b/lib/ATen/ExpandUtils.h
+@@ -0,0 +1,117 @@
++#pragma once
++
++#include "ATen/Tensor.h"
++#include <functional>
++#include <sstream>
++
++namespace at {
++
++// avoid copy-construction of Tensor by using a reference_wrapper.
++inline void check_defined(std::initializer_list<std::reference_wrapper<const Tensor>> tensors, const char *api_name) {
++  for (auto& t : tensors) {
++    if (!t.get().defined()) {
++      runtime_error("%s(...) called with an undefined Tensor", api_name);
++    }
++  }
++}
++
++inline std::tuple<Tensor> expand_inplace(const Tensor &tensor, const Tensor &to_expand) {
++  if (tensor.sizes().equals(to_expand.sizes())) {
++    return std::make_tuple(to_expand);
++  }
++
++  return std::make_tuple(to_expand.expand(tensor.sizes()));
++}
++
++inline std::tuple<Tensor> expand_inplace(const Tensor &tensor, const Tensor &to_expand, const char *api_name) {
++  check_defined({tensor, to_expand}, api_name);
++  return expand_inplace(tensor, to_expand);
++}
++
++inline std::tuple<Tensor, Tensor> expand_inplace(const Tensor &tensor, const Tensor &to_expand1, const Tensor &to_expand2) {
++  if (tensor.sizes().equals(to_expand1.sizes()) && tensor.sizes().equals((to_expand2.sizes()))) {
++    return std::make_tuple(to_expand1, to_expand2);
++  }
++
++  return std::make_tuple(to_expand1.expand(tensor.sizes()), to_expand2.expand(tensor.sizes()));
++}
++
++inline std::tuple<Tensor, Tensor> expand_inplace(const Tensor &tensor, const Tensor &to_expand1, const Tensor &to_expand2,
++                                                 const char *api_name) {
++  check_defined({tensor, to_expand1, to_expand2}, api_name);
++  return expand_inplace(tensor, to_expand1, to_expand2);
++}
++
++inline std::vector<int64_t> infer_size2(IntList a, IntList b) {
++  auto dimsA = a.size();
++  auto dimsB = b.size();
++  ptrdiff_t ndim = dimsA > dimsB ? dimsA : dimsB;
++  std::vector<int64_t> expandedSizes(ndim);
++
++  for (long i = ndim - 1; i >= 0; --i) {
++    long offset = ndim - 1 - i;
++    long dimA = dimsA - 1 - offset;
++    long dimB = dimsB - 1 - offset;
++    long sizeA = (dimA >= 0) ? a[dimA] : 1;
++    long sizeB = (dimB >= 0) ? b[dimB] : 1;
++    if (sizeA == sizeB || sizeA == 1 || sizeB == 1) {
++      expandedSizes[i] = std::max(sizeA, sizeB);
++    } else {
++      std::ostringstream oss;
++      oss << "The size of tensor a (" << sizeA << ") must match the size of tensor b ("
++          << sizeB << ") at non-singleton dimension " << i;
++      throw std::runtime_error(oss.str());
++    }
++  }
++
++  return expandedSizes;
++}
++
++inline std::tuple<Tensor, Tensor> expand_outplace(const Tensor &to_expand1, const Tensor &to_expand2) {
++  if (to_expand1.sizes().equals(to_expand2.sizes())) {
++    return std::make_tuple(to_expand1, to_expand2);
++  }
++
++  auto expanded_size = infer_size2(to_expand1.sizes(), to_expand2.sizes());
++  return std::make_tuple(to_expand1.expand(expanded_size), to_expand2.expand(expanded_size));
++}
++
++inline std::tuple<Tensor, Tensor> expand_outplace(const Tensor &to_expand1, const Tensor &to_expand2, const char *api_name) {
++  check_defined({to_expand1, to_expand2}, api_name);
++  return expand_outplace(to_expand1, to_expand2);
++}
++
++inline std::tuple<Tensor, Tensor, Tensor> expand_outplace(const Tensor &to_expand1,
++                                                          const Tensor &to_expand2,
++                                                          const Tensor &to_expand3) {
++  if (to_expand1.sizes().equals(to_expand2.sizes()) && to_expand1.sizes().equals(to_expand3.sizes())) {
++    return std::make_tuple(to_expand1, to_expand2, to_expand3);
++  }
++
++  auto expanded_size12 = infer_size2(to_expand1.sizes(), to_expand2.sizes());
++  auto expanded_size = infer_size2(expanded_size12, to_expand3.sizes());
++  return std::make_tuple(to_expand1.expand(expanded_size), to_expand2.expand(expanded_size), to_expand3.expand(expanded_size));
++}
++
++inline std::tuple<Tensor, Tensor, Tensor> expand_outplace(const Tensor &to_expand1,
++                                                          const Tensor &to_expand2,
++                                                          const Tensor &to_expand3,
++                                                          const char *api_name) {
++  check_defined({to_expand1, to_expand2, to_expand3}, api_name);
++  return expand_outplace(to_expand1, to_expand2, to_expand3);
++}
++
++inline std::tuple<Tensor> expand_size(const Tensor &to_expand, IntList sizes) {
++  if(to_expand.sizes().equals(sizes)) {
++    return std::make_tuple(to_expand);
++  }
++
++  return std::make_tuple(to_expand.expand(sizes));
++}
++
++inline std::tuple<Tensor> expand_size(const Tensor &to_expand, IntList sizes, const char *api_name) {
++  check_defined({to_expand}, api_name);
++  return expand_size(to_expand, sizes);
++}
++
++}
+diff --git a/lib/ATen/Local.cwrap b/lib/ATen/Local.cwrap
+new file mode 100644
+index 000000000..046788c33
+--- /dev/null
++++ b/lib/ATen/Local.cwrap
+@@ -0,0 +1,172 @@
++[[
++  name: size
++  return: int64_t
++  cpu_half: True
++  arguments:
++    - THTensor* self
++    - arg: int64_t dim
++      wrap_dim: self
++]]
++
++[[
++  name: stride
++  return: int64_t
++  cpu_half: True
++  arguments:
++    - THTensor* self
++    - arg: int64_t dim
++      wrap_dim: self
++]]
++
++
++[[
++  name: tensor
++  return: THTensor*
++  cpu_half: True
++  variants: [function]
++  options:
++    - cname: new
++      arguments: []
++    - cname: newWithSize
++      arguments:
++        - THSize* size
++        - CONSTANT NULL
++    - cname: newWithSize
++      arguments:
++        - THSize* size
++        - arg: THStride* stride
++    - cname: newWithStorage
++      arguments:
++        - THStorage* storage
++        - int64_t storageOffset
++        - THSize* size
++        - arg: THStride* stride
++          default: NULL
++]]
++
++# In theory, this could be a part of the above declaration. But in
++# practice this leads to all sorts of problems with ambiguous overloads.
++# So we add it here with a separate name.
++[[
++  name: alias
++  return: THTensor*
++  cpu_half: True
++  variants: [function]
++  options:
++    - cname: newWithTensor
++      arguments: 
++        - THTensor* tensor
++]]
++
++[[
++  name: select
++  cpu_half: True
++  variants: [method,function]
++  return: argument 0
++  arguments:
++    - arg: THTensor* result
++      output: True
++    - THTensor* self
++    - arg: int64_t dim
++      wrap_dim: self
++    - int64_t sliceIndex
++  aten_custom_call: |
++    int64_t ndim = self.dim();
++    AT_ASSERT(ndim > 0, "select() cannot be applied to a 0-dim tensor.");
++    if(ndim == 1) {
++      ${THTensor}_narrow(${state,}result_->tensor, self_->tensor, dim, sliceIndex,1);
++      result_->setScalar(true);
++    } else {
++      ${THTensor}_select(${state,}result_->tensor, self_->tensor, dim, sliceIndex);
++    }
++]]
++
++[[
++  name: _unnarrow
++  variants: [method,function]
++  return: argument 0
++  arguments:
++    - arg: THTensor* result
++      output: True
++    - THTensor* self
++    - arg: int64_t dimension
++      wrap_dim: self
++    - int64_t offset
++    - int64_t dimSize
++  aten_custom_call: |
++    int64_t ndim = self.dim();
++    AT_ASSERT(ndim > 0, "unnarrow() cannot be applied to a 0-dim tensor.");
++    std::vector<int64_t> self_sizes = self.sizes();
++    self_sizes[dimension] = dimSize;
++    auto self_sizes_ = THLongStorageView::make(self_sizes, true);
++    ${THTensor}_zeros(${state,}result_->tensor, self_sizes_);
++    auto narrowed_result = result.narrow(dimension, offset, self.size(dimension));
++    narrowed_result.copy_(self);
++]]
++
++[[
++  name: assign_
++  cname: copy
++  cpu_half: True
++  return: self
++  arguments:
++    - THTensor* self
++    - THTensor* src
++]]
++
++[[
++  name: as_strided
++  variants: [method,function]
++  return: argument 0
++  arguments:
++    - arg: THTensor* result
++      output: True
++    - THTensor* self
++    - THSize* size
++    - THStride* stride
++  aten_custom_call: |
++    ${THTensor}_setStorage(${state,}result_->tensor, self_->tensor->storage, self_->tensor->storageOffset, size_, stride_);
++]]
++
++[[
++  name: as_strided_
++  variants: [method,function]
++  return: argument 0
++  arguments:
++    - THTensor* self
++    - THSize* size
++    - THStride* stride
++    - arg: int64_t storage_offset
++      default: -1
++  aten_custom_call: |
++    if (storage_offset == -1) {
++      storage_offset = self_->tensor->storageOffset;
++    }
++    ${THTensor}_setStorage(${state,}self_->tensor, self_->tensor->storage, storage_offset, size_, stride_);
++    self_->maybeScalar(size.size() == 0);
++]]
++
++[[
++  name: cat
++  cname: catArray
++  variants: [function]
++  return: self
++  arguments:
++    - arg: THTensor* self
++      output: True
++    - TensorList tensors
++    - arg: int64_t dim
++      wrap_dim: tensors
++      default: 0
++]]
++
++[[
++  name: reshape_
++  cname: resize
++  cpu_half: True
++  return: self
++  arguments:
++    - THTensor* self
++    - arg: THSize* size
++    - arg: THStride* stride
++]]
+diff --git a/lib/ATen/UndefinedTensor.cpp b/lib/ATen/UndefinedTensor.cpp
+new file mode 100644
+index 000000000..e4afd59ad
+--- /dev/null
++++ b/lib/ATen/UndefinedTensor.cpp
+@@ -0,0 +1,42 @@
++#include "ATen/UndefinedTensor.h"
++#include "ATen/Context.h"
++
++namespace at {
++
++// should this use the globalContext?  Can it get a context passed in somehow?
++UndefinedTensor::UndefinedTensor()
++: TensorImpl(&(globalContext().getType(Backend::Undefined,ScalarType::Undefined))) {
++}
++
++const char * UndefinedTensor::toString() const {
++  return "UndefinedTensor";
++}
++
++IntList UndefinedTensor::sizes() const {
++  runtime_error("sizes() called on undefined Tensor");
++}
++
++int64_t UndefinedTensor::dim() const {
++  runtime_error("dim() called on undefined Tensor");
++}
++
++const char * UndefinedTensor::typeString() {
++  return "UndefinedType";
++}
++void * UndefinedTensor::unsafeGetTH(bool retain) {
++  runtime_error("unsafeGetTH(bool retain) called on undefined Tensor");
++}
++
++IntList UndefinedTensor::strides() const {
++  runtime_error("strides() called on undefined Tensor");
++}
++Scalar UndefinedTensor::localScalar() {
++  runtime_error("localScalar() called on undefined Tensor");
++}
++void UndefinedTensor::assign_(Scalar s) {
++  runtime_error("assign_() called on undefined Tensor");
++}
++
++UndefinedTensor UndefinedTensor::_singleton;
++
++}
+diff --git a/lib/ATen/UndefinedTensor.h b/lib/ATen/UndefinedTensor.h
+new file mode 100644
+index 000000000..941571791
+--- /dev/null
++++ b/lib/ATen/UndefinedTensor.h
+@@ -0,0 +1,28 @@
++#pragma once
++
++#include "ATen/TensorImpl.h"
++
++namespace at {
++
++struct UndefinedTensor final : public TensorImpl {
++public:
++  static inline UndefinedTensor * singleton() {
++    return &_singleton;
++  }
++  virtual ~UndefinedTensor() {}
++  virtual const char * toString() const override;
++  virtual IntList sizes() const override;
++  virtual IntList strides() const override;
++  virtual int64_t dim() const override;
++  virtual Scalar localScalar() override;
++  virtual void assign_(Scalar s) override;
++  virtual void * unsafeGetTH(bool retain) override;
++  static const char * typeString();
++private:
++  UndefinedTensor();
++  static UndefinedTensor _singleton;
++public:
++  friend struct UndefinedType;
++};
++
++} // namespace at
+diff --git a/lib/ATen/UndefinedType.cpp b/lib/ATen/UndefinedType.cpp
+new file mode 100644
+index 000000000..2f98b5124
+--- /dev/null
++++ b/lib/ATen/UndefinedType.cpp
+@@ -0,0 +1,65 @@
++#include "ATen/UndefinedType.h"
++
++namespace at {
++
++UndefinedType::UndefinedType(Context* context)
++: Type(context) {}
++ScalarType UndefinedType::scalarType() const {
++  return ScalarType::Undefined;
++}
++Backend UndefinedType::backend() const {
++  return Backend::Undefined;
++}
++bool UndefinedType::isCuda() const { return false; }
++bool UndefinedType::isSparse() const { return false; }
++bool UndefinedType::isDistributed() const { return false; }
++
++std::unique_ptr<Storage> UndefinedType::storage() const {
++  runtime_error("storage not defined for UndefinedType");
++}
++std::unique_ptr<Storage> UndefinedType::storage(size_t size) const {
++  runtime_error("storage(size_t) not defined for UndefinedType");
++}
++std::unique_ptr<Storage> UndefinedType::storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const {
++  runtime_error("storageFromBlob not defined for UndefinedType");
++}
++Tensor UndefinedType::unsafeTensorFromTH(void * th_pointer, bool retain) const {
++  runtime_error("unsafeTensorFromTH not defined for UndefinedType");
++}
++std::unique_ptr<Generator> UndefinedType::generator() const {
++  runtime_error("generator not defined for UndefinedType");
++}
++
++const char * UndefinedType::toString() const {
++  return UndefinedType::typeString();
++}
++TypeID UndefinedType::ID() const {
++  return TypeID::Undefined;
++}
++
++std::size_t UndefinedType::elementSizeInBytes() const {
++  runtime_error("elementSizeInBytes not defined for UndefinedType");
++}
++
++Type & UndefinedType::toBackend(Backend b) const {
++  if (b == Backend::Undefined) {
++    return Type::toBackend(b);
++  }
++  runtime_error("toBackend not implemented for UndefinedType to non-UndefinedType");
++}
++Type & UndefinedType::toScalarType(ScalarType s) const {
++  if (s == ScalarType::Undefined) {
++    return Type::toScalarType(s);
++  }
++  runtime_error("toScalarType not implemented for UndefinedType to non-UndefinedType");
++}
++
++const char * UndefinedType::typeString() {
++  return "UndefinedType";
++}
++
++void UndefinedType::s_copy(const Tensor & src, Tensor & dst) const {
++  runtime_error("s_copy not defined for UndefinedType");
++}
++
++}
+diff --git a/lib/ATen/UndefinedType.h b/lib/ATen/UndefinedType.h
+new file mode 100644
+index 000000000..928ba4b9a
+--- /dev/null
++++ b/lib/ATen/UndefinedType.h
+@@ -0,0 +1,37 @@
++#pragma once
++
++#include "ATen/Type.h"
++#include "ATen/Context.h"
++#include "ATen/CheckGenerator.h"
++
++#ifdef _MSC_VER
++#ifdef Type
++#undef Type
++#endif
++#endif
++
++namespace at {
++
++struct UndefinedType final : public Type {
++  explicit UndefinedType(Context* context);
++  virtual ScalarType scalarType() const override;
++  virtual Backend backend() const override;
++  virtual bool isCuda() const override;
++  virtual bool isSparse() const override;
++  virtual bool isDistributed() const override;
++  virtual std::unique_ptr<Storage> storage() const override;
++  virtual std::unique_ptr<Storage> storage(size_t size) const override;
++  virtual std::unique_ptr<Storage> storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const override;
++  virtual std::unique_ptr<Generator> generator() const override;
++  virtual const char * toString() const override;
++  virtual std::size_t elementSizeInBytes() const override;
++  virtual Type & toBackend(Backend b) const;
++  virtual Type & toScalarType(ScalarType s) const;
++  virtual TypeID ID() const override;
++  static const char * typeString();
++  Tensor unsafeTensorFromTH(void * th_pointer, bool retain) const override;
++
++  virtual void s_copy(const Tensor & src, Tensor & dst) const override;
++};
++
++} // namespace at
+diff --git a/lib/ATen/copy_wrapper.py b/lib/ATen/copy_wrapper.py
+new file mode 100644
+index 000000000..35a1ccee7
+--- /dev/null
++++ b/lib/ATen/copy_wrapper.py
+@@ -0,0 +1,75 @@
++from code_template import CodeTemplate
++
++FILE = CodeTemplate("""\
++#include "TH/TH.h"
++#ifdef AT_CUDA_ENABLED
++#undef THNN_
++#include "THC/THC.h"
++#endif
++#include "ATen/Utils.h"
++${copy_includes}
++
++namespace at {
++
++${copy_functions}
++
++}
++""")
++
++CASE = CodeTemplate("""\
++case ${src_id}:
++    ${THTensor}_copy${cuda}${src_scalar_name}(${state,}dst_->tensor,static_cast<${src_tensor}*>(src.pImpl)->tensor);
++    break;
++""")
++
++FUNCTION = CodeTemplate("""\
++void ${Type}::s_copy(const Tensor & src, Tensor & dst) const {
++  // code generated by function_wrapper
++  auto dst_ = checked_cast_tensor<${Tensor}>(dst.pImpl,"dst",0,false);
++  (void) dst_; //silence unused warning
++  switch(src.type().ID()) {
++    ${copy_body}
++    default:
++      runtime_error("copy does not support %s to %s copy.",src.type().toString(),toString());
++      break;
++  }
++  dst.pImpl->setScalar(src.pImpl->isScalar());
++}
++""")
++
++
++def create_one(env, all_types):
++    copy_body = []
++    for src_type in all_types:
++        if env['Density'] == 'Sparse' or src_type['Density'] == 'Sparse':
++            # skip sparse copies, which are not yet implemented
++            continue
++        state = []
++        cuda = ''
++        if src_type['Backend'] == 'CUDA':
++            cuda = 'Cuda'
++        if env['Backend'] == 'CUDA' or src_type['Backend'] == 'CUDA':
++            state.append('context->thc_state')
++        copy_body.append(CASE.substitute(env,
++                                         src_scalar_name=src_type['ScalarName'],
++                                         src_id=src_type['TypeID'],
++                                         src_tensor=src_type['Tensor'],
++                                         cuda=cuda,
++                                         state=state,
++                                         ))
++    return FUNCTION.substitute(env, copy_body=copy_body)
++
++
++def create(all_types):
++
++    top_env = {
++        'copy_includes': [],
++        'copy_functions': [],
++    }
++    for dst_type in all_types:
++        top_env['copy_includes'].append(
++            '#include "ATen/{}.h"'.format(dst_type['Type']))
++        top_env['copy_includes'].append(
++            '#include "ATen/{}.h"'.format(dst_type['Tensor']))
++        top_env['copy_functions'].append(create_one(dst_type, all_types))
++    return FILE.substitute(top_env)
+diff --git a/lib/ATen/nn.yaml b/lib/ATen/nn.yaml
+new file mode 100644
+index 000000000..9c6bc38ec
+--- /dev/null
++++ b/lib/ATen/nn.yaml
+@@ -0,0 +1,159 @@
++# Loss functions
++
++- name: binary_cross_entropy(Tensor input, Tensor target, Tensor weight={}, bool size_average=true)
++  cname: BCECriterion
++
++- name: kl_div(Tensor input, Tensor target, bool size_average=true, bool reduce=true)
++  cname: DistKLDivCriterion
++
++- name: l1_loss(Tensor input, Tensor target, bool size_average=true, bool reduce=True)
++  cname: AbsCriterion
++
++- name: mse_loss(Tensor input, Tensor target, bool size_average=true, bool reduce=true)
++  cname: MSECriterion
++
++- name: multi_margin_loss(Tensor input, LongTensor target, Scalar p=1, Scalar margin=1, Tensor weight={}, bool size_average=true)
++  cname: MultiMarginCriterion
++
++- name: multilabel_margin_loss(Tensor input, LongTensor target, bool size_average=true)
++  cname: MultiLabelMarginCriterion
++  buffers: [is_target]
++
++- name: nll_loss(Tensor input, LongTensor target, Tensor weight={}, bool size_average=true, int64_t ignore_index=-100, bool reduce=True)
++  cname: ClassNLLCriterion
++  buffers: [total_weight]
++
++- name: nll_loss2d(Tensor input, LongTensor target, Tensor weight={}, bool size_average=true, int64_t ignore_index=-100, bool reduce=True)
++  cname: SpatialClassNLLCriterion
++  buffers: [total_weight]
++
++- name: smooth_l1_loss(Tensor input, Tensor target, bool size_average=true, bool reduce=true)
++  cname: SmoothL1Criterion
++
++- name: soft_margin_loss(Tensor input, Tensor target, bool size_average=true)
++  cname: SoftMarginCriterion
++
++# Activation functions
++
++- name: elu(Tensor input, Scalar alpha=1, bool inplace=false)
++  cname: ELU
++
++- name: glu(Tensor input, int64_t dim=-1)
++  cname: GatedLinear
++  wrap_dim:
++    dim: input
++
++- name: hardshrink(Tensor input, Scalar lambd=0.5)
++  cname: HardShrink
++
++- name: hardtanh(Tensor input, Scalar min_val=-1, Scalar max_val=1, bool inplace=false)
++  cname: HardTanh
++
++- name: leaky_relu(Tensor input, Scalar negative_slope=0.01, bool inplace=false)
++  cname: LeakyReLU
++
++- name: log_sigmoid(Tensor input)
++  cname: LogSigmoid
++  buffers: [buffer]
++
++- name: log_softmax(Tensor input, int64_t dim)
++  cname: LogSoftMax
++  wrap_dim:
++    dim: input
++
++- name: prelu(Tensor input, Tensor weight)
++  cname: PReLU
++
++- name: rrelu(Tensor input, Scalar lower=0.125, Scalar upper=0.3333333333333333, bool training=false, bool inplace=false, Generator* generator=nullptr)
++  cname: RReLU
++  buffers: [noise]
++
++- name: softmax(Tensor input, int64_t dim)
++  cname: SoftMax
++  wrap_dim:
++    dim: input
++
++- name: softplus(Tensor input, Scalar beta=1, Scalar threshold=20)
++  cname: SoftPlus
++
++- name: softshrink(Tensor input, Scalar lambd=0.5)
++  cname: SoftShrink
++
++- name: threshold(Tensor input, Scalar threshold, Scalar value, bool inplace=false)
++  cname: Threshold
++
++# Pooling
++
++- name: adaptive_max_pool2d(Tensor input, IntList[2] output_size)
++  cname: SpatialAdaptiveMaxPooling
++
++- name: avg_pool2d(Tensor input, IntList[2] kernel_size, IntList[2] stride={}, IntList[2] padding=0, bool ceil_mode=false, bool count_include_pad=false)
++  cname: SpatialAveragePooling
++  default_init:
++    stride: kernel_size
++
++- name: avg_pool3d(Tensor input, IntList[3] kernel_size, IntList[3] stride={}, IntList[3] padding=0, bool ceil_mode=false, bool count_include_pad=false)
++  cname: VolumetricAveragePooling
++  default_init:
++    stride: kernel_size
++
++- name: max_pool2d(Tensor input, IntList[2] kernel_size, IntList[2] stride={}, IntList[2] padding=0, IntList[2] dilation=1, bool ceil_mode=false)
++  cname: SpatialDilatedMaxPooling
++  default_init:
++    stride: kernel_size
++
++- name: max_pool3d(Tensor input, IntList[3] kernel_size, IntList[3] stride={}, IntList[3] padding=0, IntList[2] dilation=1, bool ceil_mode=false)
++  cname: VolumetricDilatedMaxPooling
++  default_init:
++    stride: kernel_size
++
++- name: max_unpool2d(Tensor input, LongTensor indices, IntList[2] output_size)
++  cname: SpatialMaxUnpooling
++
++- name: max_unpool3d(Tensor input, LongTensor indices, IntList[3] output_size, IntList[3] stride, IntList[3] padding)
++  cname: VolumetricMaxUnpooling
++
++# Private functions. These also exist in TH, but we want the backwards functions
++# to implement derivatives.
++
++- name: _sigmoid(Tensor input)
++  cname: Sigmoid
++
++- name: _tanh(Tensor input)
++  cname: Tanh
++
++# Batch normalization
++
++- name: batch_norm(Tensor input, Tensor weight, Tensor bias, Tensor running_mean, Tensor running_var, bool training, double momentum, double eps)
++  cname: BatchNormalization
++  buffers: [save_mean, save_std]
++
++# Convolutions
++
++- name: conv_transpose2d(Tensor input, Tensor weight, IntList[2] kernel_size, Tensor bias={}, IntList[2] stride=1, IntList[2] padding=0, IntList[2] output_padding=0, IntList[2] dilation=1)
++  cname: SpatialFullDilatedConvolution
++  buffers: [columns, ones]
++
++- name: conv_transpose3d(Tensor input, Tensor weight, Tensor bias={}, IntList[3] stride=1, IntList[3] padding=0, IntList[3] output_padding=0, IntList[3] dilation=1)
++  cname: VolumetricFullDilatedConvolution
++  buffers: [finput, fgrad_input]
++
++- name: conv2d(Tensor input, Tensor weight, IntList[2] kernel_size, Tensor bias={}, IntList[2] stride=1, IntList[2] padding=0)
++  cname: SpatialConvolutionMM
++  buffers: [finput, fgrad_input]
++
++- name: conv_depthwise2d(Tensor input, Tensor weight, IntList[2] kernel_size, Tensor bias={}, IntList[2] stride=1, IntList[2] padding=0, IntList[2] dilation=1)
++  cname: SpatialDepthwiseConvolution
++  buffers: []
++
++- name: conv3d(Tensor input, Tensor weight, IntList[3] kernel_size, Tensor bias={}, IntList[3] stride=1, IntList[3] padding=0)
++  cname: VolumetricConvolutionMM
++  buffers: [finput, fgrad_input]
++
++- name: conv_dilated2d(Tensor input, Tensor weight, IntList[2] kernel_size, Tensor bias={}, IntList[2] stride=1, IntList[2] padding=0, IntList[2] dilation=1)
++  cname: SpatialDilatedConvolution
++  buffers: [columns, ones]
++
++- name: conv_dilated3d(Tensor input, Tensor weight, IntList[3] kernel_size, Tensor bias={}, IntList[3] stride=1, IntList[3] padding=0, IntList[3] dilation=1)
++  cname: VolumetricDilatedConvolution
++  buffers: [columns, ones]
+diff --git a/lib/ATen/templates/Type.cpp b/lib/ATen/templates/Type.cpp
+new file mode 100644
+index 000000000..4583410d1
+--- /dev/null
++++ b/lib/ATen/templates/Type.cpp
+@@ -0,0 +1,75 @@
++#include "ATen/Type.h"
++#include "ATen/Tensor.h"
++#include "ATen/Storage.h"
++#include "ATen/Scalar.h"
++#include "ATen/SparseTensorRef.h"
++#include "ATen/ExpandUtils.h"
++#include "ATen/NativeFunctions.h"
++#include "ATen/UndefinedType.h"
++
++#include <iostream>
++${type_headers}
++
++namespace at {
++
++void Type::registerAll(Context * context) {
++  ${type_registrations}
++  context->type_registry[static_cast<int>(Backend::Undefined)][static_cast<int>(ScalarType::Undefined)].reset(new UndefinedType(context));
++}
++
++void Type::copy(const Tensor & src, Tensor & dst) const {
++  Tensor b_src;
++  std::tie(b_src) = expand_inplace(dst, src, "copy");
++  s_copy(b_src, dst);
++}
++
++Tensor Type::copy(const Tensor & src) const {
++  AT_ASSERT(src.defined(), "attempt to copy an undefined tensor");
++  Tensor r = this->tensor(src.sizes());
++  r.copy_(src);
++  return r;
++}
++
++Type & Type::toBackend(Backend b) const {
++  return context->getType(b,scalarType());
++}
++Type & Type::toScalarType(ScalarType s) const {
++  return context->getType(backend(),s);
++}
++
++Tensor Type::tensorFromBlob(void * data, IntList sizes, const std::function<void(void*)> & deleter) {
++  std::vector<int64_t> strides(sizes.size());
++  int64_t stride = 1;
++  for(size_t i = sizes.size(); i > 0; --i) {
++    strides[i-1] = stride;
++    stride *= sizes[i-1];
++  }
++  return tensorFromBlob(data, sizes, strides, deleter);
++}
++Tensor Type::tensorFromBlob(void * data, IntList sizes, IntList strides, const std::function<void(void*)> & deleter) {
++  // size of the underlying storage is 1 bigger than the offset
++  // of the last element according to stride
++  int64_t size = 1;
++  for(size_t i = 0; i < sizes.size(); i++) {
++    if(sizes[i] == 0) {
++      size = 0;
++      break;
++    }
++    size += strides[i]*(sizes[i]-1);
++  }
++  auto storage = storageFromBlob(data,size,deleter);
++  return tensor(*storage, 0, sizes, strides);
++}
++Tensor Type::scalarTensor(Scalar s) const {
++  if(s.isBackedByTensor())
++    return Tensor(s.t).toType(*this);
++  return tensor({}).fill_(s);
++}
++
++bool Type::operator==(const Type& other) const {
++  return this == &other;
++}
++
++${type_method_definitions}
++
++}
+diff --git a/lib/ATen/test/undefined_tensor_test.cpp b/lib/ATen/test/undefined_tensor_test.cpp
+new file mode 100644
+index 000000000..0f5831559
+--- /dev/null
++++ b/lib/ATen/test/undefined_tensor_test.cpp
+@@ -0,0 +1,60 @@
++#include "ATen/ATen.h"
++#include "ATen/UndefinedTensor.h"
++#include <string>
++#include "test_assert.h"
++
++
++using namespace at;
++
++#define ASSERT_THROWS(fn, message)                                  \
++try {                                                               \
++  fn;                                                               \
++  ASSERT(false);                                                    \
++} catch(std::runtime_error &e) {                                    \
++  ASSERT(std::string(e.what()).find(message) != std::string::npos); \
++}
++
++
++int main() {
++  // mainly test ops on undefined tensors don't segfault and give a reasonable errror message.
++  Tensor und;
++  Tensor ft = CPU(kFloat).ones({1});
++
++  std::cout << und << std::endl;
++  ASSERT(!und.defined());
++  ASSERT(std::string("UndefinedTensor") == und.toString());
++
++  ASSERT_THROWS(und.strides(), "strides");
++  ASSERT_THROWS(und.dim(), "dim");
++  ASSERT_THROWS(und.assign_(Scalar(5)), "assign");
++  ASSERT_THROWS(und.unsafeGetTH(true), "unsafeGetTH");
++  ASSERT_THROWS(und.add(und), "add");
++  ASSERT_THROWS(und.add(ft), "add");
++  ASSERT_THROWS(ft.add(und), "add");
++  ASSERT_THROWS(und.add(5), "add");
++  ASSERT_THROWS(und.mm(und), "mm");
++
++  und.toType(und.type());
++  ASSERT_THROWS(und.toType(ft.type()), "attempt to copy an undefined tensor");
++  ASSERT_THROWS(ft.toType(und.type()), "UndefinedType");
++  und.toType(ScalarType::Undefined);
++  ASSERT_THROWS(und.toType(ScalarType::Float), "toScalarType");
++  ASSERT_THROWS(ft.toType(ScalarType::Undefined), "UndefinedType");
++
++  // copy_
++  ASSERT_THROWS(und.copy_(und), "copy");
++  ASSERT_THROWS(und.copy_(ft), "copy");
++  ASSERT_THROWS(ft.copy_(und), "copy");
++
++  und.toBackend(Backend::Undefined);
++  ASSERT_THROWS(und.toBackend(Backend::CPU), "toBackend");
++  ASSERT_THROWS(ft.toBackend(Backend::Undefined), "UndefinedType");
++
++  Tensor to_move = CPU(kFloat).ones({1});
++  Tensor m(std::move(to_move));
++  ASSERT(!to_move.defined());
++  ASSERT(to_move.get() == UndefinedTensor::singleton());
++
++  return 0;
++}
++
+diff --git a/lib/THNN/generic/SpatialGridSamplerBilinear.c b/lib/THNN/generic/SpatialGridSamplerBilinear.c
+new file mode 100644
+index 000000000..e9307cfc9
+--- /dev/null
++++ b/lib/THNN/generic/SpatialGridSamplerBilinear.c
+@@ -0,0 +1,252 @@
++#ifndef TH_GENERIC_FILE
++#define TH_GENERIC_FILE "generic/SpatialGridSamplerBilinear.c"
++#else
++
++#undef MIN
++#define MIN(a,b) ( ((a)<(b)) ? (a) : (b) )
++#undef MAX
++#define MAX(a,b) ( ((a)>(b)) ? (a) : (b) )
++
++#undef MODE_BORDER
++#define MODE_BORDER 1
++
++static inline void THNN_(SpatialGridSamplerBilinear_shapeCheck)
++     (THTensor *input, THTensor *grid, THTensor *gradOutput) {
++  THNN_ARGCHECK(input->nDimension == 4, 2, input,
++    "4D input tensor expected but got: %s");
++  THNN_ARGCHECK(grid->nDimension == 4, 2, grid,
++    "4D grid tensor expected but got: %s");
++
++  int nbatch   = THTensor_(size)(input, 0);
++  int channels = THTensor_(size)(input, 1);
++  int iheight   = THTensor_(size)(input, 2);
++  int iwidth    = THTensor_(size)(input, 3);
++  int oheight   = THTensor_(size)(grid, 1);
++  int owidth    = THTensor_(size)(grid, 2);
++
++  THNN_CHECK_DIM_SIZE(grid, 4, 0, nbatch);
++  THNN_CHECK_DIM_SIZE(grid, 4, 3, 2);
++  
++  if (gradOutput != NULL) {
++    THNN_CHECK_DIM_SIZE(gradOutput, 4, 0, nbatch);
++    THNN_CHECK_DIM_SIZE(gradOutput, 4, 1, channels);
++    THNN_CHECK_DIM_SIZE(gradOutput, 4, 2, oheight);
++    THNN_CHECK_DIM_SIZE(gradOutput, 4, 3, owidth);
++  }
++}
++
++#define SAFE_GET(input, x, y, n, c, H, W) x >= 0 && x < W && y >=0 \
++    && y < H ? THTensor_fastGet4d(input, n, c, y, x) : 0
++
++#define CLIP_COORDINATES(in, out, clip_limit) out = MIN((clip_limit-1), MAX(in, 0))
++
++TH_API void THNN_(SpatialGridSamplerBilinear_updateOutput)(
++    THNNState *state,
++    THTensor *input,
++    THTensor *grid,
++    THTensor *output,
++    int padding_mode) {
++
++  THNN_(SpatialGridSamplerBilinear_shapeCheck)(input, grid, NULL);
++  int N = THTensor_(size)(input, 0);
++  int C = THTensor_(size)(input, 1);
++  int IH = THTensor_(size)(input, 2);
++  int IW = THTensor_(size)(input, 3);
++  int H = THTensor_(size)(grid, 1);
++  int W = THTensor_(size)(grid, 2);
++
++  // resize output to the same shape as input
++  THTensor_(resize4d)(output, N, C, H, W);
++
++  // loop over each output pixel
++  int n, h, w, c;
++#pragma omp parallel for private(n, h, w, c)
++  for (n = 0; n < N; ++n) {
++    for (h = 0; h < H; ++h) {
++      for (w = 0; w < W; ++w) {
++        // get the corresponding input x, y co-ordinates from grid
++        real ix = THTensor_fastGet4d(grid, n, h, w, 0);
++        real iy = THTensor_fastGet4d(grid, n, h, w, 1);
++
++        // normalize ix, iy from [-1, 1] to [0, IH-1] & [0, IW-1]
++        ix = ((ix + 1) / 2) * (IW-1);
++        iy = ((iy + 1) / 2) * (IH-1);
++
++        // get NE, NW, SE, SW pixel values from (x, y)
++        int ix_nw = floor(ix);
++        int iy_nw = floor(iy);
++        int ix_ne = ix_nw + 1;
++        int iy_ne = iy_nw;
++        int ix_sw = ix_nw;
++        int iy_sw = iy_nw + 1;
++        int ix_se = ix_nw + 1;
++        int iy_se = iy_nw + 1;
++
++        // get surfaces to each neighbor:
++        real nw = (ix_se - ix)    * (iy_se - iy);
++        real ne = (ix    - ix_sw) * (iy_sw - iy);
++        real sw = (ix_ne - ix)    * (iy    - iy_ne);
++        real se = (ix    - ix_nw) * (iy    - iy_nw);
++
++        if (padding_mode==MODE_BORDER){
++          // clip coordinates to image borders
++          CLIP_COORDINATES(ix_nw, ix_nw, IW);
++          CLIP_COORDINATES(iy_nw, iy_nw, IH);
++          CLIP_COORDINATES(ix_ne, ix_ne, IW);
++          CLIP_COORDINATES(iy_ne, iy_ne, IH);
++          CLIP_COORDINATES(ix_sw, ix_sw, IW);
++          CLIP_COORDINATES(iy_sw, iy_sw, IH);
++          CLIP_COORDINATES(ix_se, ix_se, IW);
++          CLIP_COORDINATES(iy_se, iy_se, IH);
++        }
++
++        // calculate bilinear weighted pixel value and set output pixel
++        for (c = 0; c < C; ++c) {
++          //   (c, iy_nw, ix_nw) * nw + (c, iy_ne, ix_ne) * ne
++          // + (c, iy_sw, ix_sw) * sw + (c, iy_se, ix_se) * se
++          real nw_val = SAFE_GET(input, ix_nw, iy_nw, n, c, IH, IW);
++          real ne_val = SAFE_GET(input, ix_ne, iy_ne, n, c, IH, IW);
++          real sw_val = SAFE_GET(input, ix_sw, iy_sw, n, c, IH, IW);
++          real se_val = SAFE_GET(input, ix_se, iy_se, n, c, IH, IW);
++          real out_val = nw_val * nw + ne_val * ne + sw_val * sw + se_val * se;
++          THTensor_fastSet4d(output, n, c, h, w, out_val);
++        }
++      }
++    }
++  }
++}
++
++#define SAFE_ADD(input, x, y, n, c, H, W, value)    \
++  do {                \
++    if (x >= 0 && x < W && y >=0 && y < H) {      \
++      real old_value = THTensor_fastGet4d(input, n, c, y, x); \
++      THTensor_fastSet4d(input, n, c, y, x, value + old_value); \
++    }               \
++  } while(0)
++
++TH_API void THNN_(SpatialGridSamplerBilinear_updateGradInput)(
++    THNNState *state,
++    THTensor *input, THTensor *gradInput,
++    THTensor *grid, THTensor *gradGrid,
++    THTensor *gradOutput,
++    int padding_mode) {
++
++  THNN_(SpatialGridSamplerBilinear_shapeCheck)(input, grid, gradOutput);
++  int N = THTensor_(size)(input, 0);
++  int C = THTensor_(size)(input, 1);
++  int IH = THTensor_(size)(input, 2);
++  int IW = THTensor_(size)(input, 3);
++  int H = THTensor_(size)(grid, 1);
++  int W = THTensor_(size)(grid, 2);
++
++  THTensor_(resize4d)(gradInput, N, C, IH, IW);
++  THTensor_(resize4d)(gradGrid, N, H, W, 2);
++  THTensor_(zero)(gradInput);
++  THTensor_(zero)(gradGrid);
++
++  // loop over each output pixel
++  int n, h, w;
++#pragma omp parallel for private(n, h, w)
++  for (n = 0; n < N; ++n) {
++    for (h = 0; h < H; ++h) {
++      for (w = 0; w < W; ++w) {
++        // get the corresponding input x, y co-ordinates from grid
++        real ix = THTensor_fastGet4d(grid, n, h, w, 0);
++        real iy = THTensor_fastGet4d(grid, n, h, w, 1);
++
++        real gix = 0;
++        real giy = 0;
++
++        // normalize ix, iy from [-1, 1] to [0, H-1] & [0, W-1]
++        ix = ((ix + 1) / 2) * (IW-1);
++        iy = ((iy + 1) / 2) * (IH-1);
++
++        // get NE, NW, SE, SW pixel values from (x, y)
++        int ix_nw = floor(ix);
++        int iy_nw = floor(iy);
++        int ix_ne = ix_nw + 1;
++        int iy_ne = iy_nw;
++        int ix_sw = ix_nw;
++        int iy_sw = iy_nw + 1;
++        int ix_se = ix_nw + 1;
++        int iy_se = iy_nw + 1;
++
++        // get surfaces to each neighbor:
++        real nw = (ix_se - ix)    * (iy_se - iy);
++        real ne = (ix    - ix_sw) * (iy_sw - iy);
++        real sw = (ix_ne - ix)    * (iy    - iy_ne);
++        real se = (ix    - ix_nw) * (iy    - iy_nw);
++
++        int ix_nw_cl, iy_nw_cl, ix_ne_cl, iy_ne_cl, ix_sw_cl, iy_sw_cl, ix_se_cl, iy_se_cl;
++
++        if (padding_mode==MODE_BORDER){
++          // get clipped NE, NW, SE, SW pixel values from (x, y)
++          CLIP_COORDINATES(ix_nw, ix_nw_cl, IW);
++          CLIP_COORDINATES(iy_nw, iy_nw_cl, IH);
++          CLIP_COORDINATES(ix_ne, ix_ne_cl, IW);
++          CLIP_COORDINATES(iy_ne, iy_ne_cl, IH);
++          CLIP_COORDINATES(ix_sw, ix_sw_cl, IW);
++          CLIP_COORDINATES(iy_sw, iy_sw_cl, IH);
++          CLIP_COORDINATES(ix_se, ix_se_cl, IW);
++          CLIP_COORDINATES(iy_se, iy_se_cl, IH);
++        }
++        else {
++          ix_nw_cl = ix_nw;
++          iy_nw_cl = iy_nw;
++          ix_ne_cl = ix_ne;
++          iy_ne_cl = iy_ne;
++          ix_sw_cl = ix_sw;
++          iy_sw_cl = iy_sw;
++          ix_se_cl = ix_se;
++          iy_se_cl = iy_se;
++        }
++
++        for (int c = 0; c < C; ++c) {
++          real gradout = THTensor_fastGet4d(gradOutput, n, c, h, w);
++
++          // calculate and set gradInput
++          SAFE_ADD(gradInput, ix_nw_cl, iy_nw_cl, n, c, IH, IW, nw * gradout);
++          SAFE_ADD(gradInput, ix_ne_cl, iy_ne_cl, n, c, IH, IW, ne * gradout);
++          SAFE_ADD(gradInput, ix_sw_cl, iy_sw_cl, n, c, IH, IW, sw * gradout);
++          SAFE_ADD(gradInput, ix_se_cl, iy_se_cl, n, c, IH, IW, se * gradout);
++
++          // calculate gradGrid
++          real nw_val = SAFE_GET(input, ix_nw_cl, iy_nw_cl, n, c, IH, IW);
++          real ne_val = SAFE_GET(input, ix_ne_cl, iy_ne_cl, n, c, IH, IW);
++          real sw_val = SAFE_GET(input, ix_sw_cl, iy_sw_cl, n, c, IH, IW);
++          real se_val = SAFE_GET(input, ix_se_cl, iy_se_cl, n, c, IH, IW);
++
++          gix -= nw_val * (iy_se - iy) * gradout;
++          gix += ne_val * (iy_sw - iy) * gradout;
++          gix -= sw_val * (iy - iy_ne) * gradout;
++          gix += se_val * (iy - iy_nw) * gradout;
++
++          giy -= nw_val * (ix_se - ix) * gradout;
++          giy -= ne_val * (ix - ix_sw) * gradout;
++          giy += sw_val * (ix_ne - ix) * gradout;
++          giy += se_val * (ix - ix_nw) * gradout;
++        }
++
++        // un-normalize gradGrid values back to [-1, 1] constraints
++        gix = gix * (IW - 1) / 2;
++        giy = giy * (IH - 1) / 2;
++
++        real gix_old = THTensor_fastGet4d(gradGrid, n, h, w, 0);
++        real giy_old = THTensor_fastGet4d(gradGrid, n, h, w, 1);
++
++        THTensor_fastSet4d(gradGrid, n, h, w, 0, gix_old + gix);
++        THTensor_fastSet4d(gradGrid, n, h, w, 1, giy_old + giy);
++      }
++    }
++  }
++}
++
++
++#undef MIN
++#undef MAX
++#undef SAFE_GET
++#undef CLIP_COORDINATES
++#undef SAFE_ADD
++#undef MODE_BORDER
++
++#endif
+diff --git a/lib/build_libs.sh b/lib/build_libs.sh
+index 4ebeaaefd..668a347b8 100755
+--- a/lib/build_libs.sh
++++ b/lib/build_libs.sh
+@@ -10,9 +10,13 @@ set -ex
+ 
+ # Options for building only a subset of the libraries
+ WITH_CUDA=0
++WITH_ROCM=0
+ if [[ "$1" == "--with-cuda" ]]; then
+   WITH_CUDA=1
+   shift
++elif [[ "$1" == "--with-rocm" ]]; then
++  WITH_ROCM=1
++  shift
+ fi
+ 
+ WITH_NNPACK=0
+@@ -62,13 +66,13 @@ C_FLAGS="${C_FLAGS} -DOMPI_SKIP_MPICXX=1"
+ LDFLAGS="-L\"$INSTALL_DIR/lib\" "
+ LD_POSTFIX=".so.1"
+ LD_POSTFIX_UNVERSIONED=".so"
+-if [[ $(uname) == 'Darwin' ]]; then
+-    LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
+-    LD_POSTFIX=".1.dylib"
+-    LD_POSTFIX_UNVERSIONED=".dylib"
+-else
+-    LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
+-fi
++# if [[ $(uname) == 'Darwin' ]]; then
++#     LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
++#     LD_POSTFIX=".1.dylib"
++#     LD_POSTFIX_UNVERSIONED=".dylib"
++# else
++#     LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
++# fi
+ CPP_FLAGS=" -std=c++11 "
+ GLOO_FLAGS=""
+ THD_FLAGS=""
+@@ -158,6 +162,26 @@ function build() {
+   fi
+ }
+ 
++function build_rocm_aten() {
++  mkdir -p build/aten
++  cd  build/aten
++  ${CMAKE_VERSION} ../../../../aten \
++  ${CMAKE_GENERATOR} \
++  -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
++  -DNO_CUDA=0 \
++  -DNO_NNPACK=$((1-$WITH_NNPACK)) \
++  -DCUDNN_INCLUDE_DIR=$CUDNN_INCLUDE_DIR \
++  -DCUDNN_LIB_DIR=$CUDNN_LIB_DIR \
++  -DCUDNN_LIBRARY=$CUDNN_LIBRARY \
++  -DATEN_NO_CONTRIB=1 \
++  -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++  -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
++  -DWITH_ROCM=1
++  # purpusefully not passing C_FLAGS for the same reason as above
++  ${CMAKE_INSTALL} -j$(getconf _NPROCESSORS_ONLN)
++  cd ../..
++}
++
+ function build_nccl() {
+    mkdir -p build/nccl
+    cd build/nccl
+@@ -213,19 +237,48 @@ function build_aten() {
+ # In the torch/lib directory, create an installation directory
+ mkdir -p tmp_install
+ 
++# Link folders if ROCm
++if [[ $WITH_ROCM -eq 1 ]]; then
++    mkdir -p HIP
++    cd HIP
++    if [ ! -L "THC" ]; then
++        ln -s ../THC/hip THC
++    fi
++    if [ ! -L "THCUNN" ]; then
++        ln -s ../THCUNN/hip THCUNN
++    fi
++    if [ ! -L "THD" ]; then
++        ln -s ../THD THD
++    fi
++    if [ ! -L "THPP" ]; then
++        ln -s ../THPP THPP
++    fi
++    if [ ! -L "THS" ]; then
++        ln -s ../THS THS
++    fi
++    if [ ! -L "ATen" ]; then
++        ln -s ../ATen ATen
++    fi
++    cd ..
++fi
++
+ # Build
+ for arg in "$@"; do
+-    if [[ "$arg" == "nccl" ]]; then
+-        build_nccl
+-    elif [[ "$arg" == "gloo" ]]; then
+-        build gloo $GLOO_FLAGS
+-    elif [[ "$arg" == "ATen" ]]; then
+-        build_aten
+-    elif [[ "$arg" == "THD" ]]; then
+-        build THD $THD_FLAGS
++  if [[ "$arg" == "nccl" ]]; then
++      build_nccl
++  elif [[ "$arg" == "gloo" ]]; then
++      build gloo $GLOO_FLAGS
++  elif [[ "$arg" == "ATen" ]]; then
++    if [[ $WITH_ROCM -eq 1 ]]; then
++      build_rocm_aten
+     else
+-        build $arg
++      build_aten
+     fi
++  elif [[ "$arg" == "THD" ]]; then
++      build THD $THD_FLAGS
++  else
++      build $arg
++  fi
+ done
+ 
+ # If all the builds succeed we copy the libraries, headers,
+diff --git a/lib/dothc.sh b/lib/dothc.sh
+new file mode 100755
+index 000000000..674dffab4
+--- /dev/null
++++ b/lib/dothc.sh
+@@ -0,0 +1,133 @@
++cd "$(dirname "$0")/../.."
++BASE_DIR=$(pwd)
++cd torch/lib
++INSTALL_DIR="$(pwd)/tmp_install"
++C_FLAGS=" -DTH_INDEX_BASE=0 -I$INSTALL_DIR/include \
++  -I$INSTALL_DIR/include/TH -I$INSTALL_DIR/include/THC \
++  -I$INSTALL_DIR/include/THS -I$INSTALL_DIR/include/THCS \
++  -I$INSTALL_DIR/include/THPP -I$INSTALL_DIR/include/THNN \
++  -I$INSTALL_DIR/include/THCUNN"
++LDFLAGS="-L$INSTALL_DIR/lib "
++LD_POSTFIX=".so.1"
++LD_POSTFIX_UNVERSIONED=".so"
++if [[ $(uname) == 'Darwin' ]]; then
++    LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
++    LD_POSTFIX=".1.dylib"
++    LD_POSTFIX_UNVERSIONED=".dylib"
++else
++    LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
++fi
++
++echo $INSTALL_DIR
++echo $C_FLAGS
++
++#!/bin/bash
++mkdir -p THC/hip
++mkdir -p THC/hip/generic
++cp THC/*.h THC/hip/
++cp THC/*.c THC/hip/
++cp THC/*.cpp THC/hip/
++cp THC/*.cu THC/hip/
++cp THC/*.cuh THC/hip/
++cp THC/generic/*.h THC/hip/generic/
++cp THC/generic/*.c THC/hip/generic/
++cp THC/generic/*.cu THC/hip/generic/
++cp THC/CMakeLists.txt.hip THC/hip/CMakeLists.txt
++cp THC/THCGeneral.h.in.hip THC/hip/THCGeneral.h.in
++cp THC/THCBlas.cu.hip THC/hip/THCBlas.cu
++cp THC/THCApply.cuh.hip THC/hip/THCApply.cuh
++cp THC/THCTensorRandom.cu.hip THC/hip/THCTensorRandom.cu
++cp THC/THCTensorRandom.cuh.hip THC/hip/THCTensorRandom.cuh
++cp THC/THCTensorRandom.h.hip THC/hip/THCTensorRandom.h
++cp THC/THCNumerics.cuh.hip THC/hip/THCNumerics.cuh
++cp THC/generic/THCTensorRandom.cu.hip THC/hip/generic/THCTensorRandom.cu
++cp THC/THCGeneral.cc.hip THC/hip/THCGeneral.cc
++cp THC/THCAllocator.cc.hip THC/hip/THCAllocator.cc
++cp THC/generic/THCStorage.c.hip THC/hip/generic/THCStorage.c
++/root/wst_HIP/bin/hipconvertinplace-perl.sh THC/hip/
++/root/wst_HIP/bin/hipify-perl THC/hip/THCGeneral.h.in
++find THC/hip -name "*.prehip" -type f -delete
++
++# Used to build an individual library, e.g. build TH
++# function build() {
++  # We create a build directory for the library, which will
++  # contain the cmake output
++  # mkdir -p build/$1
++  mkdir -p build/THC
++  cd build/THC
++  BUILD_C_FLAGS=''
++  # case $1 in
++  case THC in
++      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
++      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
++  esac
++  # cmake ../../$1 -DCMAKE_MODULE_PATH="$BASE_DIR/cmake/FindCUDA" \
++  # cmake ../../THC/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
++  #             -DTorch_FOUND="1" \
++  #             -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++  #             -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
++  #             -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
++  #             -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
++  #             -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
++  #             -DCUDA_NVCC_FLAGS="$C_FLAGS" \
++  #             -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
++  #             -DTH_LIB_PATH="$INSTALL_DIR/lib" \
++  #             -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
++  #             -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
++  #             -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
++  #             -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
++  #             -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
++  #             -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
++  #             -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
++  #             -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
++  #             -DTH_SO_VERSION=1 \
++  #             -DTHC_SO_VERSION=1 \
++  #             -DTHNN_SO_VERSION=1 \
++  #             -DTHCUNN_SO_VERSION=1 \
++  #             -DTHD_SO_VERSION=1 \
++  #             -DNO_CUDA=$((1-$WITH_CUDA)) \
++  #             -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
++  cmake ../../THC/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
++               -DTorch_FOUND="1" \
++               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
++               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
++               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
++               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
++               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
++               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
++               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
++               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
++               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
++               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
++               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
++               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
++               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
++               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
++               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
++               -DTH_SO_VERSION=1 \
++               -DTHC_SO_VERSION=1 \
++               -DTHNN_SO_VERSION=1 \
++               -DTHCUNN_SO_VERSION=1 \
++               -DTHD_SO_VERSION=1 \
++               -DNO_CUDA=0 \
++               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
++  make install -j$(getconf _NPROCESSORS_ONLN)
++  cd ../..
++
++  # local lib_prefix=$INSTALL_DIR/lib/lib$1
++  local lib_prefix=$INSTALL_DIR/lib/libTHC
++  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
++    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
++  fi
++
++  if [[ $(uname) == 'Darwin' ]]; then
++    cd tmp_install/lib
++    for lib in *.dylib; do
++      echo "Updating install_name for $lib"
++      install_name_tool -id @rpath/$lib $lib
++    done
++    cd ../..
++  fi
++# }
++
+diff --git a/lib/dothcs.sh b/lib/dothcs.sh
+new file mode 100755
+index 000000000..b9d6196c6
+--- /dev/null
++++ b/lib/dothcs.sh
+@@ -0,0 +1,93 @@
++cd "$(dirname "$0")/../.."
++BASE_DIR=$(pwd)
++cd torch/lib
++INSTALL_DIR="$(pwd)/tmp_install"
++C_FLAGS=" -DTH_INDEX_BASE=0 -I$INSTALL_DIR/include \
++  -I$INSTALL_DIR/include/TH -I$INSTALL_DIR/include/THC \
++  -I$INSTALL_DIR/include/THS -I$INSTALL_DIR/include/THCS \
++  -I$INSTALL_DIR/include/THPP -I$INSTALL_DIR/include/THNN \
++  -I$INSTALL_DIR/include/THCUNN"
++LDFLAGS="-L$INSTALL_DIR/lib "
++LD_POSTFIX=".so.1"
++LD_POSTFIX_UNVERSIONED=".so"
++if [[ $(uname) == 'Darwin' ]]; then
++    LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
++    LD_POSTFIX=".1.dylib"
++    LD_POSTFIX_UNVERSIONED=".dylib"
++else
++    LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
++fi
++
++echo $INSTALL_DIR
++echo $C_FLAGS
++
++#!/bin/bash
++mkdir -p THCS/hip
++mkdir -p THCS/hip/generic
++cp THCS/*.h THCS/hip/
++cp THCS/*.c THCS/hip/
++cp THCS/*.cu THCS/hip/
++cp THCS/generic/*.h THCS/hip/generic/
++cp THCS/generic/*.c THCS/hip/generic/
++cp THCS/generic/*.cu THCS/hip/generic/
++cp THCS/CMakeLists.txt.hip THCS/hip/CMakeLists.txt
++/root/wst_HIP/bin/hipconvertinplace-perl.sh THCS/hip/
++find THCS/hip -name "*.prehip" -type f -delete
++
++# Used to build an individual library, e.g. build TH
++# function build() {
++  # We create a build directory for the library, which will
++  # contain the cmake output
++  # mkdir -p build/$1
++  mkdir -p build/THCS
++  cd build/THCS
++  BUILD_C_FLAGS=''
++  # case $1 in
++  case THCS in
++      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
++      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
++  esac
++  cmake ../../THCS/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
++               -DTorch_FOUND="1" \
++               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
++               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
++               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
++               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
++               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
++               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
++               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
++               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
++               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
++               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
++               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
++               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
++               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
++               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
++               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
++               -DTH_SO_VERSION=1 \
++               -DTHC_SO_VERSION=1 \
++               -DTHNN_SO_VERSION=1 \
++               -DTHCUNN_SO_VERSION=1 \
++               -DTHD_SO_VERSION=1 \
++               -DNO_CUDA=0 \
++               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
++  make install -j$(getconf _NPROCESSORS_ONLN)
++  cd ../..
++
++  # local lib_prefix=$INSTALL_DIR/lib/lib$1
++  local lib_prefix=$INSTALL_DIR/lib/libTHC
++  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
++    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
++  fi
++
++  if [[ $(uname) == 'Darwin' ]]; then
++    cd tmp_install/lib
++    for lib in *.dylib; do
++      echo "Updating install_name for $lib"
++      install_name_tool -id @rpath/$lib $lib
++    done
++    cd ../..
++  fi
++# }
++
+diff --git a/lib/dothcunn.sh b/lib/dothcunn.sh
+new file mode 100755
+index 000000000..bac27a432
+--- /dev/null
++++ b/lib/dothcunn.sh
+@@ -0,0 +1,122 @@
++cd "$(dirname "$0")/../.."
++BASE_DIR=$(pwd)
++cd torch/lib
++INSTALL_DIR="$(pwd)/tmp_install"
++C_FLAGS=" -DTH_INDEX_BASE=0 -I$INSTALL_DIR/include \
++  -I$INSTALL_DIR/include/TH -I$INSTALL_DIR/include/THC \
++  -I$INSTALL_DIR/include/THS -I$INSTALL_DIR/include/THCS \
++  -I$INSTALL_DIR/include/THPP -I$INSTALL_DIR/include/THNN \
++  -I$INSTALL_DIR/include/THCUNN"
++LDFLAGS="-L$INSTALL_DIR/lib "
++LD_POSTFIX=".so.1"
++LD_POSTFIX_UNVERSIONED=".so"
++if [[ $(uname) == 'Darwin' ]]; then
++    LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path"
++    LD_POSTFIX=".1.dylib"
++    LD_POSTFIX_UNVERSIONED=".dylib"
++else
++    LDFLAGS="$LDFLAGS -Wl,-rpath,\$ORIGIN"
++fi
++
++echo $INSTALL_DIR
++echo $C_FLAGS
++
++#!/bin/bash
++mkdir -p THCUNN/hip
++mkdir -p THCUNN/hip/generic
++cp THCUNN/*.h THCUNN/hip/
++cp THCUNN/*.c THCUNN/hip/
++cp THCUNN/*.cpp THCUNN/hip/
++cp THCUNN/*.cu THCUNN/hip/
++cp THCUNN/*.cuh THCUNN/hip/
++cp THCUNN/generic/*.h THCUNN/hip/generic/
++cp THCUNN/generic/*.c THCUNN/hip/generic/
++cp THCUNN/generic/*.cu THCUNN/hip/generic/
++cp THCUNN/CMakeLists.txt.hip THCUNN/hip/CMakeLists.txt
++/root/wst_HIP/bin/hipconvertinplace-perl.sh THCUNN/hip/
++/root/wst_HIP/bin/hipify-perl THCUNN/hip/THCUNNGeneral.h.in
++find THCUNN/hip -name "*.prehip" -type f -delete
++
++# Used to build an individual library, e.g. build TH
++# function build() {
++  # We create a build directory for the library, which will
++  # contain the cmake output
++  # mkdir -p build/$1
++  mkdir -p build/THCUNN
++  cd build/THCUNN
++  BUILD_C_FLAGS=''
++  # case $1 in
++  case THCUNN in
++      THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
++      *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
++  esac
++  # cmake ../../$1 -DCMAKE_MODULE_PATH="$BASE_DIR/cmake/FindCUDA" \
++  # cmake ../../THC/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
++  #             -DTorch_FOUND="1" \
++  #             -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++  #             -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
++  #             -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
++  #             -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
++  #             -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
++  #             -DCUDA_NVCC_FLAGS="$C_FLAGS" \
++  #             -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
++  #             -DTH_LIB_PATH="$INSTALL_DIR/lib" \
++  #             -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
++  #             -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
++  #             -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
++  #             -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
++  #             -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
++  #             -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
++  #             -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
++  #             -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
++  #             -DTH_SO_VERSION=1 \
++  #             -DTHC_SO_VERSION=1 \
++  #             -DTHNN_SO_VERSION=1 \
++  #             -DTHCUNN_SO_VERSION=1 \
++  #             -DTHD_SO_VERSION=1 \
++  #             -DNO_CUDA=$((1-$WITH_CUDA)) \
++  #             -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
++  cmake ../../THCUNN/hip -DCMAKE_MODULE_PATH="/opt/rocm/hip/cmake" \
++               -DTorch_FOUND="1" \
++               -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++               -DCMAKE_C_FLAGS="$BUILD_C_FLAGS" \
++               -DCMAKE_CXX_FLAGS="$BUILD_C_FLAGS $CPP_FLAGS" \
++               -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS" \
++               -DCMAKE_SHARED_LINKER_FLAGS="$LDFLAGS" \
++               -DCUDA_NVCC_FLAGS="$C_FLAGS" \
++               -DTH_INCLUDE_PATH="$INSTALL_DIR/include" \
++               -DTH_LIB_PATH="$INSTALL_DIR/lib" \
++               -DTH_LIBRARIES="$INSTALL_DIR/lib/libTH$LD_POSTFIX" \
++               -DTHPP_LIBRARIES="$INSTALL_DIR/lib/libTHPP$LD_POSTFIX" \
++               -DATEN_LIBRARIES="$INSTALL_DIR/lib/libATen$LD_POSTFIX" \
++               -DTHNN_LIBRARIES="$INSTALL_DIR/lib/libTHNN$LD_POSTFIX" \
++               -DTHCUNN_LIBRARIES="$INSTALL_DIR/lib/libTHCUNN$LD_POSTFIX" \
++               -DTHS_LIBRARIES="$INSTALL_DIR/lib/libTHS$LD_POSTFIX" \
++               -DTHC_LIBRARIES="$INSTALL_DIR/lib/libTHC$LD_POSTFIX" \
++               -DTHCS_LIBRARIES="$INSTALL_DIR/lib/libTHCS$LD_POSTFIX" \
++               -DTH_SO_VERSION=1 \
++               -DTHC_SO_VERSION=1 \
++               -DTHNN_SO_VERSION=1 \
++               -DTHCUNN_SO_VERSION=1 \
++               -DTHD_SO_VERSION=1 \
++               -DNO_CUDA=0 \
++               -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release)
++  make install -j$(getconf _NPROCESSORS_ONLN)
++  cd ../..
++
++  # local lib_prefix=$INSTALL_DIR/lib/lib$1
++  local lib_prefix=$INSTALL_DIR/lib/libTHC
++  if [ -f "$lib_prefix$LD_POSTFIX" ]; then
++    rm -rf -- "$lib_prefix$LD_POSTFIX_UNVERSIONED"
++  fi
++
++  if [[ $(uname) == 'Darwin' ]]; then
++    cd tmp_install/lib
++    for lib in *.dylib; do
++      echo "Updating install_name for $lib"
++      install_name_tool -id @rpath/$lib $lib
++    done
++    cd ../..
++  fi
++# }
++
+diff --git a/nn/_functions/dropout.py b/nn/_functions/dropout.py
+index 1013ce4f2..727f3ab32 100644
+--- a/nn/_functions/dropout.py
++++ b/nn/_functions/dropout.py
+@@ -50,7 +50,7 @@ class Dropout(InplaceFunction):
+             return grad_output * ctx.noise, None, None, None
+         else:
+             return grad_output, None, None, None
+-
++ 
+ 
+ class FeatureDropout(Dropout):
+ 
