@@ -3,7 +3,7 @@ SET(CMAKE_C_COMPILER ${HIP_HIPCC_EXECUTABLE})
 SET(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
 endif()
 
-ADD_EXECUTABLE(scalar_test scalar_test.cpp)
+ADD_EXECUTABLE(scalar_test scalar_test.cpp)-
 target_link_libraries(scalar_test ATen)
 
 ADD_EXECUTABLE(basic basic.cpp)
