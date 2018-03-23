@@ -1,4 +1,8 @@
 #pragma once
+#if defined(__HIP_PLATFORM_HCC__)
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime_api.h"
+#endif
 
 #include "ATen/ATenGeneral.h"
 #include "ATen/CPUGeneral.h"
@@ -15,7 +19,3 @@
 #include "ATen/TensorOperators.h"
 #include "ATen/TensorMethods.h"
 #include "ATen/Dispatch.h"
-#if defined(__HIP_PLATFORM_HCC__)
-#include "hip/hip_runtime.h"
-#include "hip/hip_runtime_api.h"
-#endif
