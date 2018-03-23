@@ -126,6 +126,9 @@ do
   sed -i 's/curand_uniform/hiprng_uniform /g' $i
 done
 
+# Swap the math functions from std::pow to powf
+sed -i '/s/std::pow/powf/g' ATen/native/cuda/Embedding.cu
+
 # Make link directories
 mkdir -p HIP
 cd HIP

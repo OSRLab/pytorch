@@ -1,7 +1,7 @@
 #pragma once
-#if defined(__HIP_PLATFORM_HCC__)
+
+#if defined(__HCC__)
 #include "hip/hip_runtime.h"
-#include "hip/hip_runtime_api.h"
 #endif
 
 #include "ATen/ATenGeneral.h"
