@@ -166,6 +166,7 @@ INSTALL(FILES
           THCGenerateFloatTypes.h
           THCGenerateDoubleType.h
           THCHalf.h
+          THCIntegerDivider.cuh
           THCNumerics.cuh
           THCTensorSort.cuh
           THCTensorInfo.cuh
