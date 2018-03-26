@@ -7,7 +7,7 @@
 
 #include <ATen/ATen.h>
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
   #include <cuda.h>
   #include <cuda_runtime.h>
 #elif defined(__HIP_PLATFORM_HCC__)
@@ -32,7 +32,7 @@ struct AutoGPU {
 
   ~AutoGPU() {
     if (original_device != -1) {
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
       cudaSetDevice(original_device);
 #elif defined(__HIP_PLATFORM_HCC__)
       hipSetDevice(original_device);
@@ -47,14 +47,14 @@ struct AutoGPU {
     }
 
     if (original_device == -1) {
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
       cudaCheck(cudaGetDevice(&original_device));
 #elif defined(__HIP_PLATFORM_HCC__)
       cudaCheck(hipGetDevice(&original_device));
 #else
 #endif
       if (device != original_device) {
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
         cudaCheck(cudaSetDevice(device));
 #elif defined(__HIP_PLATFORM_HCC__)
         cudaCheck(hipSetDevice(device));
@@ -62,7 +62,7 @@ struct AutoGPU {
 #endif
       }
     } else {
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
       cudaCheck(cudaSetDevice(device));
 #elif defined(__HIP_PLATFORM_HCC__)
       cudaCheck(hipSetDevice(device));
@@ -74,7 +74,7 @@ struct AutoGPU {
   int original_device = -1;
 
 private:
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
   static void cudaCheck(cudaError_t err) {
     if (err != cudaSuccess) {
       std::string msg = "CUDA error (";

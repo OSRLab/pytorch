@@ -14,7 +14,7 @@ void RecordFunction::pushFunctionRange(Function* fn) {
   pushRange(fn->name());
 }
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
 static void onEachDevice(std::function<void(int)> op) {
   AutoGPU gpu_guard;
   int count;
@@ -37,7 +37,7 @@ void enableProfiler(ProfilerState new_state) {
   }
   state = new_state;
 
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
   if(state == ProfilerState::CUDA) {
     // event recording appears to have some startup overhead, so we need to
     // to generate some dummy events first before recording syncrhonization events
