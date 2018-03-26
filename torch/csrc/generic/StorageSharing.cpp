@@ -1,4 +1,4 @@
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#if defined(WITH_CUDA)
 #include <cuda.h>
 #include <cuda_runtime.h>
 #elif defined(__HIP_PLATFORM_HCC__)
