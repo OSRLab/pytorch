@@ -388,7 +388,7 @@ void initModule(PyObject *module);
 namespace torch { namespace nn {
 
 void init__THNN(PyObject*);
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
 void init__THCUNN(PyObject*);
 #endif
 
@@ -537,7 +537,7 @@ static PyObject* initModule() {
 #endif
 
   torch::nn::init__THNN(module);
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA) || defined(WITH_ROCM)
   torch::nn::init__THCUNN(module);
 #endif
 

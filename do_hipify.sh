@@ -3,7 +3,7 @@
 set -e
 
 ### Clear the directory before running hipify, or else the old .prehip files will be used ###
-sudo rm -rf aten/hip-src/
+sudo rm -r aten/hip-src
 
 #### Create HIP aten folder ####
 mkdir -p aten/hip-src
@@ -17,7 +17,6 @@ cd aten/hip-src/
 cp ../CMakeLists.txt.hip ../CMakeLists.txt
 
 # Extract the THC (.hip) files.
-cp THC/CMakeLists.txt.hip THC/CMakeLists.txt
 cp THC/THCAllocator.c.hip THC/THCAllocator.c
 cp THC/THCApply.cuh.hip THC/THCApply.cuh
 cp THC/THCBlas.cu.hip THC/THCBlas.cu
@@ -32,12 +31,10 @@ cp THC/generic/THCTensorRandom.cu.hip THC/generic/THCTensorRandom.cu
 find THC/ -name "*.prehip" -type f -delete
 
 # Extract the THCUNN (.hip) files.
-cp THCUNN/CMakeLists.txt.hip THCUNN/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCUNN/
 find THCUNN/ -name "*.prehip" -type f -delete
 
 # Extract the THCS (.hip) files.
-cp THCS/CMakeLists.txt.hip THCS/CMakeLists.txt
 /opt/rocm/hip/bin/hipconvertinplace-perl.sh THCS/
 find THCS/ -name "*.prehip" -type f -delete
 
@@ -63,6 +60,9 @@ mv ATen/native/cudnn/BatchNorm.cpp ATen/native/cudnn/BatchNormCuDNN.cpp
 
 # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
 sed -i 's/_OPENMP/_OPENMP_STUBBED/g' TH/generic/THTensorMath.c
+
+# VolumetricGridSamplerBilinear
+sed -i -r 's/input\[(.+)\]\[(.+)\]\[(.+)\]\[(.+)\]\[(.+)\] \* (.+)/\(input[\1][\2][\3][\4][\5]\).template as\<Dtype\>\(\) * \6/g' THCUNN/VolumetricGridSamplerBilinear.cu
 
 # Sparse Hipify
 declare -a arr=("THC/THCGeneral.h.in" "THC/THCGeneral.cpp" "THC/generic/THCStorage.c" "THC/THCTensorRandom.cuh")
@@ -126,8 +126,9 @@ do
   sed -i 's/curand_uniform/hiprng_uniform /g' $i
 done
 
-# Swap the math functions from std::pow to powf
+# Swap the math functions from std:: to hcc device functions.
 sed -i 's/std::pow/powf/g' ATen/native/cuda/Embedding.cu
+sed -i 's/std::abs/fabs/g' ATen/native/cuda/Embedding.cu
 
 # Make link directories
 mkdir -p HIP
