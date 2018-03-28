@@ -383,37 +383,6 @@ __global__ void
     break;                                      \
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  #define LSTM_FORWARD(ITYPE, DIM)                                \
-    hipLaunchKernelGGL(                                           \
-    (THNN_(LSTMForward) <real, ITYPE, DIM>),                      \
-     grid, block, 0, THCState_getCurrentStream(state),            \
-     inputI, hiddenI,                                             \
-     bias1I, bias2I, cxI, hyI, cyI,                               \
-     hid_size, totalElements);
-
-  #define LSTM_BACKWARD(ITYPE, DIM)                               \
-    hipLaunchKernelGGL(                                           \
-    (THNN_(LSTMBackward) <real, ITYPE, DIM>),                     \
-     grid, block, 0, THCState_getCurrentStream(state),            \
-     storageI, gradingatesI, cxI, cyI,                            \
-     gradoutI, gradoutcI, gradincxI,                              \
-     hid_size, totalElements);
-
-  #define GRU_FORWARD(ITYPE, DIM)                                    \
-    hipLaunchKernelGGL(                                              \
-    (THNN_(GRUForward)<real, ITYPE, DIM>),                           \
-     grid, block, 0, THCState_getCurrentStream(state),               \
-     inputI, hiddenI, bias1I, bias2I, hxI, hyI, storageI,            \
-     hid_size, totalElements);
-
-  #define GRU_BACKWARD(ITYPE, DIM)                                   \
-    hipLaunchKernelGGL(                                              \
-    (THNN_(GRUBackward) <real, ITYPE, DIM>),                         \
-     grid, block, 0, THCState_getCurrentStream(state),               \
-     gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,     \
-     hid_size, totalElements);
-#else
   #define LSTM_FORWARD(ITYPE, DIM) THNN_(LSTMForward)             \
     <real, ITYPE, DIM>                                            \
     <<<grid, block, 0, THCState_getCurrentStream(state)>>>        \
@@ -438,7 +407,6 @@ __global__ void
     <<<grid, block, 0, THCState_getCurrentStream(state)>>>                \
     (gradininputI, gradinhiddenI, gradoutI, gradinhxI, storageI,          \
      hid_size, totalElements);
-#endif
 // ************ END Create actual function calls ************ //
 
 template<typename INDTYPE>

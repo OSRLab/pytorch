@@ -16,6 +16,8 @@
 template <typename Dtype, typename Acctype>
 struct mse_functor
 {
+  mse_functor() {}
+
   __host__ __device__ Acctype operator()(const Dtype &x, const Dtype &y) const
   {
     Acctype z = ScalarConvert<Dtype, Acctype>::to(x)-y;
@@ -30,8 +32,8 @@ struct mse_updateOutput_functor
   mse_updateOutput_functor() {}
 
   __device__ void operator()(
-      const Dtype *input, 
-      const Dtype *target, 
+      const Dtype *input,
+      const Dtype *target,
       Dtype *output)
   {
     Dtype diff = THCNumerics<Dtype>::sub(*input, *target);

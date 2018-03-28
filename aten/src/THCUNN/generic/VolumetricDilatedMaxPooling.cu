@@ -2,16 +2,6 @@
 #define THC_GENERIC_FILE "generic/VolumetricDilatedMaxPooling.cu"
 #else
 
-#if defined(__HIP_PLATFORM_HCC__)
-#define UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW:                         \
-  hipLaunchKernelGGL(                                                   \
-  (cuda_VolumetricDilatedMaxPooling_updateOutput<KW>), grid, block,     \
-    0, THCState_getCurrentStream(state),                             \
-    inputData, inputTime, inputHeight, inputWidth, \
-    cudaIndices, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW,\
-    dilationT, dilationH, dilationW, offsetZ); \
-    break
-#else
 #define UPDATE_OUTPUT_KERNEL_WIDTH(KW) case KW:                         \
   cuda_VolumetricDilatedMaxPooling_updateOutput<KW><<<grid, block,             \
     0, THCState_getCurrentStream(state)>>>(                             \
@@ -19,7 +9,6 @@
     cudaIndices, cudaOutput, kT, kH, dT, dH, dW, padT, padH, padW,\
     dilationT, dilationH, dilationW, offsetZ); \
     break
-#endif
 
 static inline void THNN_(VolumetricDilatedMaxPooling_shapeCheck)(
                          THCState *state,
@@ -177,7 +166,7 @@ void THNN_(VolumetricDilatedMaxPooling_updateOutput)(
     inputHeight = THCTensor_(size)(state, input, 2);
     inputWidth  = THCTensor_(size)(state, input, 3);
   }
-  else if(fiveDimensionalInput)
+  else if (fiveDimensionalInput)
   {
     /* sizes */
     batchSize   = THCTensor_(size)(state, input, 0);
@@ -185,6 +174,9 @@ void THNN_(VolumetricDilatedMaxPooling_updateOutput)(
     inputTime   = THCTensor_(size)(state, input, 2);
     inputHeight = THCTensor_(size)(state, input, 3);
     inputWidth  = THCTensor_(size)(state, input, 4);
+  }
+  else{
+    THArgError(2, "4D or 5D tensor expected, got %d", THCTensor_(nDimension)(state, input));
   }
 
   if (ceilMode)

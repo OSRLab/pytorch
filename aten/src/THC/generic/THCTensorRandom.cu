@@ -338,7 +338,7 @@ THC_API void THCTensor_(multinomialAliasSetup)(THCState *state, THCTensor *_prob
                 inputsize,
                 THCudaLongTensor_data(state, smaller_short),
                 THCudaLongTensor_data(state, larger_short),
-                static_cast<int>(inputsize - h_large_c), h_large_c
+                inputsize - h_large_c, h_large_c
                 );
   real q_max = THCTensor_(maxall)(state, _q);
   condDiv<<<
@@ -443,7 +443,7 @@ THC_API void THCTensor_(NAME)(THCState* state,                                 \
   THArgCheck(size == prob_size, 3, "inconsistent tensor size");                \
                                                                                \
   generate_bernoulli_tensor<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>( \
-      gen->gen_states, static_cast<int>(size), result_data, probs_data);       \
+      gen->gen_states, size, result_data, probs_data);       \
                                                                                \
   PROB_TYPE##_free(state, probs);                                              \
   THCTensor_(freeCopyTo)(state, self, self_);                                  \

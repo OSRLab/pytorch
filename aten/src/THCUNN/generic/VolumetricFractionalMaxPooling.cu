@@ -78,18 +78,10 @@ void THNN_(VolumetricFractionalMaxPooling_updateOutput)(
             devInput.getSize(0));
   dim3 block(outputPlaneSize > 128 ? 128 : outputPlaneSize);
 
-#if defined(__HIP_PLATFORM_HCC__)
-  #define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
-    hipLaunchKernelGGL(                                                   \
-    (VolumetricFractionalMaxPooling_updateOutput<POOL_W, real, accreal>), \
-        grid, block, 0, THCState_getCurrentStream(state),                 \
-        devInput, devOutput, devIndices, devSamples, poolSizeT, poolSizeW, poolSizeH);
-#else
   #define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
     VolumetricFractionalMaxPooling_updateOutput<POOL_W, real, accreal>       \
       <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
         devInput, devOutput, devIndices, devSamples, poolSizeT, poolSizeW, poolSizeH);
-#endif
 
 #define SFMP_UPDATE_OUTPUT_CASE(POOL_W)                 \
   case POOL_W: SFMP_UPDATE_OUTPUT(POOL_W); break

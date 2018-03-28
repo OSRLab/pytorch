@@ -37,17 +37,10 @@ void row2col(cudaStream_t stream, const Dtype *data_row, const int channels,
       (width + 2 * pad_w - (dilation_w * (ksize_w - 1) + 1)) / stride_w + 1;
   int num_kernels = channels * width_col;
   // Launch
-#if defined(__HIP_PLATFORM_HCC__)
-  hipLaunchKernelGGL((row2col_kernel), dim3(GET_BLOCKS(num_kernels)), dim3(CUDA_NUM_THREADS), 0, stream,
-      num_kernels, data_row, width, ksize_w, pad_w, stride_w, 1, width_col,
-      data_col);
-  THCudaCheck(hipGetLastError());
-#else
   row2col_kernel<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
       num_kernels, data_row, width, ksize_w, pad_w, stride_w, 1, width_col,
       data_col);
   THCudaCheck(cudaGetLastError());
-#endif
 }
 
 template <typename Dtype, typename Acctype>
@@ -87,19 +80,10 @@ void col2row(cudaStream_t stream, const Dtype *data_col, const int channels,
   int num_kernels = channels * width;
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
-#if defined(__HIP_PLATFORM_HCC__)
-  hipLaunchKernelGGL((col2row_kernel<
-      Dtype, Acctype>), GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream,
-      num_kernels, data_col, width, channels, patch_w, pad_w, stride_w,
-      dilation_w, width_col, data_row);
-
-  THCudaCheck(hipGetLastError());
-#else
   col2row_kernel<
       Dtype, Acctype><<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
       num_kernels, data_col, width, channels, patch_w, pad_w, stride_w,
       dilation_w, width_col, data_row);
   THCudaCheck(cudaGetLastError());
-#endif
 }
 #endif
