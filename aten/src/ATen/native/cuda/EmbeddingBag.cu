@@ -172,7 +172,6 @@ embedding_bag_cuda(const Tensor &weight, const Tensor &indices,
 
   dim3 block = dim3(32, 8);
   int grid = 1024;
-
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(weight.type(), "embedding_bag_cuda", [&] {
     using cuda_scalar_t = cuda::type<scalar_t>;
     EmbeddingBag_updateOutputKernel<cuda_scalar_t><<<grid, block, 0, stream>>>(

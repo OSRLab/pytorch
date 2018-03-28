@@ -7,8 +7,10 @@
 
 #include <ATen/ATen.h>
 
+#ifdef WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
 
 struct AutoGPU {
   explicit AutoGPU(int device=-1) {
@@ -27,16 +29,18 @@ struct AutoGPU {
   }
 
   ~AutoGPU() {
+#ifdef WITH_CUDA
     if (original_device != -1) {
       cudaSetDevice(original_device);
     }
+#endif
   }
 
   inline void setDevice(int device) {
+#ifdef WITH_CUDA
     if (device == -1) {
       return;
     }
-
     if (original_device == -1) {
       cudaCheck(cudaGetDevice(&original_device));
       if (device != original_device) {
@@ -45,11 +49,13 @@ struct AutoGPU {
     } else {
       cudaCheck(cudaSetDevice(device));
     }
+#endif
   }
 
   int original_device = -1;
 
 private:
+#ifdef WITH_CUDA
   static void cudaCheck(cudaError_t err) {
     if (err != cudaSuccess) {
       std::string msg = "CUDA error (";
@@ -59,4 +65,5 @@ private:
       throw std::runtime_error(msg);
     }
   }
+#endif
 };

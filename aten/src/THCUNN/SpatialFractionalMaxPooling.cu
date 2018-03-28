@@ -99,12 +99,9 @@ __global__ void SpatialFractionalMaxPooling_updateGradInput(
     int outputH = ourOutputPoint / gradOutput.getSize(3);
 
     int index = indices[batch][plane][outputH][outputW] - TH_INDEX_BASE;
-
     assert(index >= 0);
-
     int inputW = index % gradInput.getSize(3);
     int inputH = index / gradInput.getSize(3);
-
     assert(inputH < gradInput.getSize(2));
 
     atomicAdd(gradInput[batch][plane][inputH][inputW].data(),

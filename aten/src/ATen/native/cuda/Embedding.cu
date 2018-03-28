@@ -221,6 +221,7 @@ Tensor embedding_backward_cuda(const Tensor & grad_, const Tensor & indices,
        stride,
        padding_idx);
    });
+
    THCudaCheck(cudaGetLastError());
    return grad_weight;
   }
@@ -336,7 +337,6 @@ Tensor & embedding_renorm_cuda_(Tensor & self, const Tensor & indices,
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(self.type(), "embedding_backward", [&] {
     using cuda_scalar_t = cuda::type<scalar_t>;
     using accscalar_t = cuda::acc_type<cuda_scalar_t>;
-
     renorm_kernel<<<grid, block, 128 * sizeof(accscalar_t), stream>>>(
       self.data<cuda_scalar_t>(),
       unique_indices.data<int64_t>(),

@@ -14,7 +14,6 @@
 #include "THCTensorSort.cuh"
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
-#include <thrust/execution_policy.h>
 #include <algorithm> // for std::min
 
 // We prefer this kernel to avoid reloading index points if the number
@@ -40,7 +39,6 @@ __global__ void indexCopySmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-
     assert(dstIndex < dstCopyDimSize);
 
     // We stride over the output ignoring the indexed dimension
@@ -96,7 +94,6 @@ __global__ void indexCopyLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-
     assert(dstIndex < dstCopyDimSize);
 
     IndexType dstOffset =
@@ -134,7 +131,6 @@ __global__ void indexAddSmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-
     assert(dstIndex < dstAddDimSize);
 
     // We stride over the output ignoring the indexed dimension
@@ -189,7 +185,6 @@ __global__ void indexAddLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-
     assert(dstIndex < dstAddDimSize);
 
     IndexType dstOffset =
@@ -226,8 +221,7 @@ __global__ void indexFillSmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex_ =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-
-    assert(dstIndex < dstFillDimSize);
+    assert(dstIndex_ < dstFillDimSize);
 
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
@@ -276,7 +270,6 @@ __global__ void indexFillLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex_ =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-
     assert(dstIndex_ < dstFillDimSize);
 
     IndexType dstOffset =
@@ -310,7 +303,6 @@ __global__ void indexSelectSmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType srcIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-
     assert(srcIndex < srcSelectDimSize);
 
     // We stride over the output ignoring the indexed dimension
@@ -365,7 +357,6 @@ __global__ void indexSelectLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType srcIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-
     assert(srcIndex < srcSelectDimSize);
 
     IndexType dstOffset =
@@ -424,7 +415,6 @@ __device__ __forceinline__ int64_t calculateOffset(
     }
 
     assert(indexAtDim < data.baseSizes[dim]);
-
     offset += indexAtDim * strideAtDim;
     index = nextIndex;
   }
@@ -454,9 +444,7 @@ __device__ __forceinline__ IndexType indexToOffset(
     IndexType size)
 {
   IndexType linearIndex = static_cast<IndexType>(index);
-
   assert(linearIndex < size && linearIndex >= -size);
-
   if (linearIndex < 0) {
     linearIndex += size;
   }
@@ -468,9 +456,7 @@ struct WrapIndexOp {
 
   __device__ __forceinline__ void operator()(int64_t* out, int64_t* in) {
     auto idx = *in;
-
     assert(idx < size && idx >= -size);
-
     *out = idx < 0 ? idx + size : idx;
   }
 

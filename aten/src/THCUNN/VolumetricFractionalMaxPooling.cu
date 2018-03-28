@@ -105,13 +105,10 @@ __global__ void VolumetricFractionalMaxPooling_updateGradInput(
     int outputH = ourOutputPoint / (gradOutput.getSize(3)*gradOutput.getSize(4));
 
     int index = indices[batch][plane][outputH][outputW][outputT] - TH_INDEX_BASE;
-
     assert(index >= 0);
-
     int inputT = index % gradInput.getSize(4);
     int inputW = (index / gradInput.getSize(4)) % gradInput.getSize(3);
     int inputH = index / (gradInput.getSize(3) * gradInput.getSize(4));
-
     assert(inputH < gradInput.getSize(2));
 
     atomicAdd(gradInput[batch][plane][inputH][inputW][inputT].data(),

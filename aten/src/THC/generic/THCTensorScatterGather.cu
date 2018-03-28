@@ -2,10 +2,10 @@
 #define THC_GENERIC_FILE "generic/THCTensorScatterGather.cu"
 #else
 
-  #define RUN(TYPE, DIMS, REAL)                                           \
-    THCudaTensor_gatherKernel<TYPE, REAL, DIMS>                                \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(               \
-      tensorInfo, srcInfo, indexInfo, dim, (TYPE)totalElements);
+#define RUN(TYPE, DIMS, REAL)                                           \
+  THCudaTensor_gatherKernel<TYPE, REAL, DIMS>                                \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>(               \
+    tensorInfo, srcInfo, indexInfo, dim, (TYPE)totalElements);
 
 void THCTensor_(gather)(THCState* state, THCTensor *tensor,
                          THCTensor *src, int dim, THCudaLongTensor *index) {
@@ -96,10 +96,10 @@ void THCTensor_(gather)(THCState* state, THCTensor *tensor,
 #undef RUN
 
 
-  #define RUN(TYPE, DIMS, REAL)                                           \
-    THCudaTensor_scatterKernel<TYPE, REAL, DIMS>                               \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(               \
-      tensorInfo, srcInfo, indexInfo, dim, (TYPE)totalElements);
+#define RUN(TYPE, DIMS, REAL)                                           \
+  THCudaTensor_scatterKernel<TYPE, REAL, DIMS>                               \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>(               \
+    tensorInfo, srcInfo, indexInfo, dim, (TYPE)totalElements);
 
 void THCTensor_(scatter)(THCState* state, THCTensor *tensor, int dim, THCudaLongTensor *index, THCTensor *src) {
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 2, tensor, src));
@@ -184,10 +184,10 @@ void THCTensor_(scatter)(THCState* state, THCTensor *tensor, int dim, THCudaLong
 
 #undef RUN
 
-  #define RUN(TYPE, DIMS, REAL)                                           \
-    THCudaTensor_scatterAddKernel<TYPE, REAL, DIMS>                               \
-    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(               \
-      tensorInfo, srcInfo, indexInfo, dim, (TYPE)totalElements);
+#define RUN(TYPE, DIMS, REAL)                                           \
+  THCudaTensor_scatterAddKernel<TYPE, REAL, DIMS>                               \
+  <<<grid, block, 0, THCState_getCurrentStream(state)>>>(               \
+    tensorInfo, srcInfo, indexInfo, dim, (TYPE)totalElements);
 
 void THCTensor_(scatterAdd)(THCState* state, THCTensor *tensor, int dim, THCudaLongTensor *index, THCTensor *src) {
   THCAssertSameGPU(THCTensor_(checkGPU)(state, 2, tensor, src));
@@ -271,10 +271,10 @@ void THCTensor_(scatterAdd)(THCState* state, THCTensor *tensor, int dim, THCudaL
 
 #undef RUN
 
-  #define RUN(TYPE, DIMS, REAL)                                           \
-    THCudaTensor_scatterFillKernel<TYPE, REAL, DIMS>                           \
-        <<<grid, block, 0, THCState_getCurrentStream(state)>>>(      \
-            tensorInfo, indexInfo, value, dim, (TYPE)totalElements);
+#define RUN(TYPE, DIMS, REAL)                                           \
+  THCudaTensor_scatterFillKernel<TYPE, REAL, DIMS>                           \
+      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(      \
+          tensorInfo, indexInfo, value, dim, (TYPE)totalElements);
 
 void
 THCTensor_(scatterFill)(THCState* state, THCTensor *tensor,

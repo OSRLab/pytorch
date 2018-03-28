@@ -28,21 +28,21 @@ THC_API void THCTensor_(topk)(THCState* state,
   THCudaLongTensor_resize(state, indices, topKSize, NULL);
   THLongStorage_free(topKSize);
 
-  #define RUN_K(INDEX_T, DIM, DIR)                                        \
-    gatherTopK<real, INDEX_T, DIM, DIR>                                   \
-      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-        inputInfo,                                                        \
-        sliceSize,                                                        \
-        k,                                                                \
-        inputSlices,                                                      \
-        /* The actual dimension that the k-selection is running in */     \
-        /* may have changed from collapseDims() */                        \
-        inputInfo.strides[collapseInputDim],                              \
-        topKInfo,                                                         \
-        topKSlices,                                                       \
-        topKInfo.strides[collapseTopKDim],                                \
-        indicesInfo,                                                      \
-        indicesInfo.strides[collapseIndicesDim])
+#define RUN_K(INDEX_T, DIM, DIR)                                        \
+  gatherTopK<real, INDEX_T, DIM, DIR>                                   \
+    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+      inputInfo,                                                        \
+      sliceSize,                                                        \
+      k,                                                                \
+      inputSlices,                                                      \
+      /* The actual dimension that the k-selection is running in */     \
+      /* may have changed from collapseDims() */                        \
+      inputInfo.strides[collapseInputDim],                              \
+      topKInfo,                                                         \
+      topKSlices,                                                       \
+      topKInfo.strides[collapseTopKDim],                                \
+      indicesInfo,                                                      \
+      indicesInfo.strides[collapseIndicesDim])
 
 #define RUN_DIR(INDEX_T, DIM)                   \
   if (dir) {                                    \
