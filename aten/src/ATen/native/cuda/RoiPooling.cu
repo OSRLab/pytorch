@@ -131,8 +131,8 @@ std::tuple<Tensor, Tensor> RoiPooling2d_forward_cuda(
   dim3 block(512);
   dim3 grid((output.numel() + 512 - 1) / 512);
   RoiPooling2d_forward_kernel<float><<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
-    static_cast<int>(output.numel()), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), static_cast<int>(inputChannels),
-    static_cast<int>(inputHeight), static_cast<int>(inputWidth), static_cast<int>(pooledHeight), static_cast<int>(pooledWidth), output.data<float>(), argmaxes.data<int>());
+    output.numel(), input.data<float>(), rois.data<float>(), static_cast<float>(spatialScale), inputChannels,
+    inputHeight, inputWidth, pooledHeight, pooledWidth, output.data<float>(), argmaxes.data<int>());
 
   AT_ASSERT(cudaGetLastError() == cudaSuccess, "RoiPooling2d_forward_kernel failed");
 
@@ -199,9 +199,9 @@ Tensor RoiPooling2d_backward_cuda(
   dim3 block(512);
   dim3 grid((gradInput.numel() + 512 - 1) / 512);
   RoiPooling2d_backward_kernel<float><<<grid, block, 0, globalContext().getCurrentCUDAStream()>>>(
-    static_cast<int>(gradOutput.numel()), gradOutput.data<float>(), argmaxes.data<int>(), static_cast<int>(proposals),
-    static_cast<float>(spatialScale), static_cast<int>(inputChannels), static_cast<int>(inputHeight), static_cast<int>(inputWidth),
-    static_cast<int>(pooledHeight), static_cast<int>(pooledWidth), gradInput.data<float>(), rois.data<float>());
+    gradOutput.numel(), gradOutput.data<float>(), argmaxes.data<int>(), proposals,
+    static_cast<float>(spatialScale), inputChannels, inputHeight, inputWidth,
+    pooledHeight, pooledWidth, gradInput.data<float>(), rois.data<float>());
 
   AT_ASSERT(cudaGetLastError() == cudaSuccess, "RoiPooling2d_forward_kernel failed");
 

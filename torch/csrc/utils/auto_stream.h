@@ -2,13 +2,13 @@
 
 // RAII structs to set CUDA stream
 
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#ifdef WITH_CUDA
 #include <THC/THC.h>
 extern THCState* state;
 #endif
 
 struct AutoStream {
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#ifdef WITH_CUDA
   explicit AutoStream(THCStream* stream)
     : original_stream(THCState_getStream(state))
   {
