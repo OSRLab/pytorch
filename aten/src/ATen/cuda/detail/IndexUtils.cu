@@ -16,7 +16,6 @@ int compareSizeAndStride(const void* a, const void* b) {
   return aS->stride < bS->stride;
 }
 
-#if !defined(__HIP_DEVICE_COMPILE__)
 bool overlappingIndices(const Tensor& t) {
   // In this function, we don't care about permutations of the
   // size/stride arrays (transpositions).
@@ -69,7 +68,6 @@ bool overlappingIndices(const Tensor& t) {
   /* Tensor has holes or is contiguous */
   return false;
 }
-#endif
 
 
 bool canUse32BitIndexMath(const Tensor& t, int64_t max_elem) {

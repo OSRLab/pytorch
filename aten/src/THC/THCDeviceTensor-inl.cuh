@@ -182,8 +182,7 @@ template <typename T, int Dim,
 __host__ __device__ THCDeviceTensor<T, Dim, IndexT, PtrTraits>
 THCDeviceTensor<T, Dim, IndexT, PtrTraits>::transpose(int dim1,
                                                       int dim2) const {
-#if defined(__HIP_DEVICE_COMPILE__)
-#elif defined(__CUDA_ARCH__)
+#ifdef __CUDA_ARCH__
   // Device code
   assert(dim1 >= 0 && dim1 < Dim);
   assert(dim1 >= 0 && dim2 < Dim);
@@ -286,8 +285,7 @@ THCDeviceTensor<T, Dim, IndexT, PtrTraits>::downcastOuter() {
   // in all of the dimensions we are collapsing (no padding in
   // them).
   bool cont = isContiguousRange(0, Dim - NewDim);
-#if defined(__HIP_DEVICE_COMPILE__)
-#elif defined(__CUDA_ARCH__)
+#ifdef __CUDA_ARCH__
   // Device code
   assert(cont);
 #else
@@ -338,8 +336,7 @@ THCDeviceTensor<T, Dim, IndexT, PtrTraits>::downcastInner() {
   // in all of the dimensions we are collapsing (no padding in
   // them).
   bool cont = isContiguousRange(NewDim, Dim);
-#if defined(__HIP_DEVICE_COMPILE__)
-#elif defined(__CUDA_ARCH__)
+#ifdef __CUDA_ARCH__
   // Device code
   assert(cont);
 #else
@@ -407,8 +404,7 @@ template <typename T, int Dim,
           typename IndexT, template <typename U> class PtrTraits>
 void
 THCDeviceTensor<T, Dim, IndexT, PtrTraits>::zero(cudaStream_t stream) {
-#if defined(__HIP_DEVICE_COMPILE__)
-#elif defined(__CUDA_ARCH__)
+#ifdef __CUDA_ARCH__
   assert(isContiguous());
 #else
   if (!isContiguous()) {

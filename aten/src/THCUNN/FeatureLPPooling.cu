@@ -428,17 +428,6 @@ runFeatureLPPoolingUpdateOutput(THCState* state,
   dim3 grid(nonFeatureSizeBlocks, featureBlocks, input.getSize(0));
   dim3 block(blockSize);
 
-#if defined(__HIP_PLATFORM_HCC__)
-#define L2_STRIDE_CASE(STRIDE, WIDTH)                                   \
-  case STRIDE:                                                          \
-    hipLaunchKernelGGL((detail::featureLPPoolingUpdateOutput<T, WIDTH,  \
-                                 STRIDE,                                \
-                                 detail::power2,                        \
-                                 detail::root2>), grid, block, 0, stream, \
-                                   input, output,                       \
-                                   ScalarConvert<float, T>::to(power)); \
-    return true;
-#else
 #define L2_STRIDE_CASE(STRIDE, WIDTH)                                   \
   case STRIDE:                                                          \
     detail::                                                            \
@@ -449,7 +438,6 @@ runFeatureLPPoolingUpdateOutput(THCState* state,
                                    input, output,                       \
                                    ScalarConvert<float, T>::to(power)); \
     return true;
-#endif
 
 #define L2_WIDTH_CASE(WIDTH)                    \
   case WIDTH:                                   \
@@ -460,17 +448,6 @@ runFeatureLPPoolingUpdateOutput(THCState* state,
       L2_STRIDE_CASE(4, WIDTH);                 \
     }
 
-#if defined(__HIP_PLATFORM_HCC__)
-#define LP_STRIDE_CASE(STRIDE, WIDTH)                                   \
-  case STRIDE:                                                          \
-    hipLaunchKernelGGL((detail::featureLPPoolingUpdateOutput<T, WIDTH,  \
-                                 STRIDE,                                \
-                                 detail::powerN,                        \
-                                 detail::rootN>), grid, block, 0, stream, \
-                                   input, output,                       \
-                                   ScalarConvert<float, T>::to(power)); \
-    return true;
-#else
 #define LP_STRIDE_CASE(STRIDE, WIDTH)                                   \
   case STRIDE:                                                          \
     detail::                                                            \
@@ -481,7 +458,6 @@ runFeatureLPPoolingUpdateOutput(THCState* state,
                                    input, output,                       \
                                    ScalarConvert<float, T>::to(power)); \
     return true;
-#endif
 
 #define LP_WIDTH_CASE(WIDTH)                    \
   case WIDTH:                                   \
@@ -592,15 +568,6 @@ runFeatureLPPoolingUpdateGradInput(THCState* state,
   dim3 grid(nonFeatureSizeBlocks, featureBlocks, input.getSize(0));
   dim3 block(blockSize);
 
-#if defined(__HIP_PLATFORM_HCC__)
-#define L2_STRIDE_CASE(STRIDE, WIDTH)                                   \
-  case STRIDE:                                                          \
-    hipLaunchKernelGGL((detail::featureLPPoolingUpdateGradInput<        \
-          T, WIDTH, STRIDE, detail::powerGrad2>), grid, block, 0, stream, \
-            gradOutput, input, output, gradInput,                       \
-            ScalarConvert<float, T>::to(power));                        \
-    return true;
-#else
 #define L2_STRIDE_CASE(STRIDE, WIDTH)                                   \
   case STRIDE:                                                          \
     detail::                                                            \
@@ -609,7 +576,6 @@ runFeatureLPPoolingUpdateGradInput(THCState* state,
             gradOutput, input, output, gradInput,                       \
             ScalarConvert<float, T>::to(power));                        \
     return true;
-#endif
 
 #define L2_WIDTH_CASE(WIDTH)                    \
   case WIDTH:                                   \

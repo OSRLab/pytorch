@@ -90,9 +90,9 @@ void THCTensor_(cat)(THCState *state, THCTensor *result,
   THCTensor_(catArray)(state, result, inputs, 2, dimension);
 }
 
-void THCTensor_(check_shape_except_dim)(THCState *state, 
+void THCTensor_(check_shape_except_dim)(THCState *state,
     THCTensor *first, THCTensor *second, int dimension);
-inline void THCTensor_(check_shape_except_dim)(THCState *state, 
+inline void THCTensor_(check_shape_except_dim)(THCState *state,
     THCTensor *first, THCTensor *second, int dimension)
 {
   int first_dims = THCTensor_(nDimension)(state, first);
@@ -154,9 +154,9 @@ void THCTensor_(catArray)(THCState *state, THCTensor *result,
 
   THArgCheck(numInputs > 0, 3, "invalid number of inputs %d", numInputs);
   THArgCheck(cat_dimension >= 0, 4, "invalid dimension %d", dimension + TH_INDEX_BASE);
-  
+
   size = THLongStorage_newWithSize(nDims);
-  
+
   // Compute size of the result in the cat dimension
   int64_t cat_dim_size = 0;
   for (int i = 0; i < numInputs; i++) {
@@ -217,14 +217,8 @@ void THCTensor_(catArray)(THCState *state, THCTensor *result,
     THCStream* stream = THCState_getStream(state);
 
     // Template Declarations for dim = 1, 2, 3, 4
-#if defined (__HIP_PLATFORM_HCC__)
-#define HANDLE_CASE(DIMS) \
-  hipLaunchKernelGGL((CatArrayBatchedCopy<real, unsigned int, DIMS>), catGrid, applyBlock, 0, stream->stream, \
-    data, d_inputs, param, cat_dimension, param.outputStride[cat_dimension]);
-#else
 #define HANDLE_CASE(DIMS) \
   CatArrayBatchedCopy<real, unsigned int, DIMS><<<catGrid, applyBlock, 0, stream->stream>>>(data, d_inputs, param, cat_dimension, param.outputStride[cat_dimension]);
-#endif
 
     // Now we loop
     offset = 0;

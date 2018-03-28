@@ -147,7 +147,7 @@ void THNN_(SpatialDilatedMaxPooling_updateOutput)(
 
   MaxPoolForward<real, accreal> <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
       (count, input_data,
-      static_cast<int>(batchSize), static_cast<int>(nInputPlane), static_cast<int>(nInputRows), static_cast<int>(nInputCols), static_cast<int>(nOutputRows), static_cast<int>(nOutputCols),
+      batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
       kH, kW, dH, dW, padH, padW, dilationH, dilationW, output_data, indices_data);
   THCudaCheck(cudaGetLastError());
 
@@ -231,7 +231,7 @@ void THNN_(SpatialDilatedMaxPooling_updateGradInput)(
       (count,
       THCTensor_(data)(state, gradOutput),
       THCIndexTensor_(data)(state, indices),
-      static_cast<int>(batchSize), static_cast<int>(nInputPlane), static_cast<int>(nInputRows), static_cast<int>(nInputCols), static_cast<int>(nOutputRows), static_cast<int>(nOutputCols),
+      batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
       kH, kW, dH, dW, padH, padW, dilationH, dilationW,
       THCTensor_(data)(state, gradInput));
   THCudaCheck(cudaGetLastError());

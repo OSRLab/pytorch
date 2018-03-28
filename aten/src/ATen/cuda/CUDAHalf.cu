@@ -5,7 +5,6 @@
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 
-#if !defined(__HIP_PLATFORM_HCC__)
 namespace at {
 #if CUDA_VERSION < 9000
 template <> AT_API
@@ -55,4 +54,3 @@ template <> Half HalfFix(__half h) {
 }
 #endif
 } // namespace at
-#endif

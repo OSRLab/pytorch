@@ -44,11 +44,7 @@ void Context::doInitCUDA() {
 #if AT_CUDA_ENABLED()
   thc_state = THCState_alloc();
   THCState_setDeviceAllocator(thc_state, THCCachingAllocator_get());
-#if defined(__HIP_PLATFORM_HCC__)
-  thc_state->hipHostAllocator = &THCCachingHostAllocator;
-#else
   thc_state->cudaHostAllocator = &THCCachingHostAllocator;
-#endif
   THCudaInit(thc_state);
   generator_registry[static_cast<int>(Backend::CUDA)]
     .reset(new CUDAGenerator(this));

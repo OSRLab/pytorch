@@ -547,11 +547,7 @@ THC_API std::mutex* THCCachingAllocator_getCudaFreeMutex()
 
 static inline void assertValidDevice(int device) {
   int device_count;
-#if defined(__HIP_PLATFORM_HCC__)
-  THCudaCheck(hipGetDeviceCount(&device_count));
-#else
   THCudaCheck(cudaGetDeviceCount(&device_count));
-#endif
   THAssertMsg(0 <= device && device < device_count, "Invalid device argument.");
 }
 

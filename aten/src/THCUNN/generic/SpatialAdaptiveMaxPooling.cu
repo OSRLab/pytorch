@@ -49,8 +49,8 @@ void THNN_(SpatialAdaptiveMaxPooling_updateOutput)(
     // run maxpool kernel
     adaptivemaxpool <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (input_data, output_data,
                                    indices_data,
-                                   static_cast<int>(isizeH), static_cast<int>(isizeW), 
-                                   static_cast<int>(osizeH), static_cast<int>(osizeW),
+                                   isizeW,
+                                   osizeW,
                                    istrideD, istrideH, istrideW);
     THCudaCheck(cudaGetLastError());
 
@@ -82,8 +82,8 @@ void THNN_(SpatialAdaptiveMaxPooling_updateOutput)(
     // run maxpool kernel
     adaptivemaxpool <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (input_data, output_data,
                                    indices_data,
-                                   static_cast<int>(isizeH), static_cast<int>(isizeW), 
-                                   static_cast<int>(osizeH), static_cast<int>(osizeW),
+                                   isizeW,
+                                   osizeW,
                                    istrideD, istrideH, istrideW);
     THCudaCheck(cudaGetLastError());
     // clean
@@ -136,16 +136,16 @@ void THNN_(SpatialAdaptiveMaxPooling_updateGradInput)(
       // run updateGradInput kernel, accumulate gradients atomically
       atomicadaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          static_cast<int>(isizeH), static_cast<int>(isizeW), 
-                                          static_cast<int>(osizeH), static_cast<int>(osizeW));
+                                          isizeW,
+                                          osizeW);
     }
     else
     {
       // run updateGradInput kernel
       atomicadaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          static_cast<int>(isizeH), static_cast<int>(isizeW), 
-                                          static_cast<int>(osizeH), static_cast<int>(osizeW));
+                                          isizeW,
+                                          osizeW);
     }
     THCudaCheck(cudaGetLastError());
   } else {
@@ -177,16 +177,16 @@ void THNN_(SpatialAdaptiveMaxPooling_updateGradInput)(
       // run updateGradInput kernel, accumulate gradients atomically
       atomicadaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          static_cast<int>(isizeH), static_cast<int>(isizeW), 
-                                          static_cast<int>(osizeH), static_cast<int>(osizeW));
+                                          isizeW,
+                                          osizeW);
     }
     else
     {
       // run updateGradInput kernel, accumulate gradients atomically
       adaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          static_cast<int>(isizeH), static_cast<int>(isizeW), 
-                                          static_cast<int>(osizeH), static_cast<int>(osizeW));
+                                          isizeW,
+                                          osizeW);
     }
     THCudaCheck(cudaGetLastError());
   }
