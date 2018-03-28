@@ -175,7 +175,8 @@ void THNN_(VolumetricDilatedMaxPooling_updateOutput)(
     inputHeight = THCTensor_(size)(state, input, 3);
     inputWidth  = THCTensor_(size)(state, input, 4);
   }
-  else{
+  else
+  {
     THArgError(2, "4D or 5D tensor expected, got %d", THCTensor_(nDimension)(state, input));
   }
 
@@ -224,21 +225,20 @@ void THNN_(VolumetricDilatedMaxPooling_updateOutput)(
 
   input = THCTensor_(newContiguous)(state, input);
   if (fiveDimensionalInput) {
-      // Collapse batch and feature dimensions
-      output = THCTensor_(newFoldBatchDim)(state, output);
+    // Collapse batch and feature dimensions
+    output = THCTensor_(newFoldBatchDim)(state, output);
 
-      THCTensor *old_input = input;
-      input = THCTensor_(newFoldBatchDim)(state, input);
-      THCTensor_(free)(state, old_input);
+    THCTensor *old_input = input;
+    input = THCTensor_(newFoldBatchDim)(state, input);
+    THCTensor_(free)(state, old_input);
   } else {
-      THCTensor_(retain)(state, output);
+    THCTensor_(retain)(state, output);
   }
-
+  
   real* inputData = THCTensor_(data)(state, input);
 
   THCDeviceTensor<real, 4> cudaOutput;
   cudaOutput = toDeviceTensor<real, 4>(state, output);
-
 
   THLongStorage *indicesSize = THLongStorage_newWithSize(4);
   int64_t indicesSizeRaw[4] = { batchSize * inputSlices,

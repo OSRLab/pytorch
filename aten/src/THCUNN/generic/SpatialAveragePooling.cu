@@ -132,15 +132,13 @@ void THNN_(SpatialAveragePooling_updateOutput)(
     AvePoolForward<real, accreal, true>
       <<<GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>(
         count, input_data,
-        nInputRows,
-        nOutputCols,
+        batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
         kH, kW, dH, dW, padH, padW, output_data);
   else
     AvePoolForward<real, accreal, false>
       <<<GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>(
         count, input_data,
-        nInputRows,
-        nOutputCols,
+        batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
         kH, kW, dH, dW, padH, padW, output_data);
   THCudaCheck(cudaGetLastError());
 
@@ -218,8 +216,7 @@ void THNN_(SpatialAveragePooling_updateGradInput)(
       <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
         (count,
         THCTensor_(data)(state, gradOutput),
-        nInputRows,
-        nOutputCols,
+        batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
         kH, kW, dH, dW, padH, padW,
         THCTensor_(data)(state, gradInput));
   else
@@ -227,8 +224,7 @@ void THNN_(SpatialAveragePooling_updateGradInput)(
       <<< GET_BLOCKS(count), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state) >>>
         (count,
         THCTensor_(data)(state, gradOutput),
-        nInputRows,
-        nOutputCols,
+        batchSize, nInputPlane, nInputRows, nInputCols, nOutputRows, nOutputCols,
         kH, kW, dH, dW, padH, padW,
         THCTensor_(data)(state, gradInput));
   THCudaCheck(cudaGetLastError());

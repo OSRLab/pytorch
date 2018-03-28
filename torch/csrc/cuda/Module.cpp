@@ -33,11 +33,7 @@ THCState *state;
 
 void THCPModule_setDevice(int device)
 {
-#if defined(__HIP_PLATFORM_HCC__)
-  THCudaCheck(hipSetDevice(device));
-#else
   THCudaCheck(cudaSetDevice(device));
-#endif
 }
 
 PyObject * THCPModule_setDevice_wrap(PyObject *self, PyObject *arg)
@@ -56,11 +52,7 @@ PyObject * THCPModule_getDevice_wrap(PyObject *self)
 {
   HANDLE_TH_ERRORS
   int device;
-#if defined(__HIP_PLATFORM_HCC__)
-  THCudaCheck(hipGetDevice(&device));
-#else
   THCudaCheck(cudaGetDevice(&device));
-#endif
   return PyLong_FromLong(device);
   END_HANDLE_TH_ERRORS
 }
@@ -69,17 +61,11 @@ PyObject * THCPModule_getDeviceCount_wrap(PyObject *self)
 {
   HANDLE_TH_ERRORS
   int ndevice;
-#if defined(__HIP_PLATFORM_HCC__)
-  if (hipGetDeviceCount(&ndevice) != hipSuccess) {
-    hipGetLastError();
-    ndevice = 0;
-  }
-#else
   if (cudaGetDeviceCount(&ndevice) != cudaSuccess) {
     cudaGetLastError();
     ndevice = 0;
   }
-#endif
+
   return PyLong_FromLong(ndevice);
   END_HANDLE_TH_ERRORS
 }
@@ -90,13 +76,9 @@ PyObject * THCPModule_getDeviceName_wrap(PyObject *self, PyObject *arg)
   THPUtils_assert(THPUtils_checkLong(arg), "invalid argument to getDeviceName");
   long device = THPUtils_unpackLong(arg);
 
-#if defined(__HIP_PLATFORM_HCC__)
-  hipDeviceProp_t prop;
-  THCudaCheck(hipGetDeviceProperties(&prop, device));
-#else
   cudaDeviceProp prop;
   THCudaCheck(cudaGetDeviceProperties(&prop, device));
-#endif
+
   return THPUtils_packString(prop.name);
   END_HANDLE_TH_ERRORS
 }
@@ -107,13 +89,9 @@ PyObject * THCPModule_getDeviceCapability_wrap(PyObject *self, PyObject *arg)
   THPUtils_assert(THPUtils_checkLong(arg), "invalid argument to getDeviceCapability");
   long device = THPUtils_unpackLong(arg);
 
-#if defined(__HIP_PLATFORM_HCC__)
-  hipDeviceProp_t prop;
-  THCudaCheck(hipGetDeviceProperties(&prop, device));
-#else
   cudaDeviceProp prop;
   THCudaCheck(cudaGetDeviceProperties(&prop, device));
-#endif
+
   return Py_BuildValue("(ii)", prop.major, prop.minor);
   END_HANDLE_TH_ERRORS
 }
@@ -140,32 +118,17 @@ PyObject * THCPModule_setStream_wrap(PyObject *self, PyObject *obj)
 PyObject * THCPModule_isDriverSufficient(PyObject *self)
 {
   int count;
-#if defined(__HIP_PLATFORM_HCC__)
-  hipError_t err = hipGetDeviceCount(&count);
-  if (err == hipErrorInsufficientDriver) {
-    return PyBool_FromLong(0);
-  }
-#else
   cudaError_t err = cudaGetDeviceCount(&count);
   if (err == cudaErrorInsufficientDriver) {
     return PyBool_FromLong(0);
   }
-#endif
+
   return PyBool_FromLong(1);
 }
 
 PyObject * THCPModule_getDriverVersion(PyObject *self)
 {
   int driverVersion = -1;
-#if defined(__HIP_PLATFORM_HCC__)
-  hipError_t err = hipDriverGetVersion(&driverVersion);
-  if (err != hipSuccess) {
-    PyErr_Format(PyExc_RuntimeError,
-                    "Error calling hipDriverGetVersion: %d %s",
-                    err, hipGetErrorString(err));
-    return NULL;
-  }
-#else
   cudaError_t err = cudaDriverGetVersion(&driverVersion);
   if (err != cudaSuccess) {
     PyErr_Format(PyExc_RuntimeError,
@@ -173,7 +136,7 @@ PyObject * THCPModule_getDriverVersion(PyObject *self)
                     err, cudaGetErrorString(err));
     return NULL;
   }
-#endif
+
   return PyLong_FromLong((int64_t) driverVersion);
 }
 
@@ -262,11 +225,7 @@ PyObject * THCPModule_cudaHostAllocator(PyObject *_unused)
 PyObject * THCPModule_cudaSynchronize(PyObject *_unused)
 {
   HANDLE_TH_ERRORS
-#if defined(__HIP_PLATFORM_HCC__)
-  THCudaCheck(hipDeviceSynchronize());
-#else
   THCudaCheck(cudaDeviceSynchronize());
-#endif
   Py_RETURN_NONE;
   END_HANDLE_TH_ERRORS
 }
@@ -459,11 +418,7 @@ void THCPModule_useNccl()
 PyObject * THCPModule_getCurrentBlasHandle_wrap(PyObject *self)
 {
   HANDLE_TH_ERRORS
-#if defined(__HIP_PLATFORM_HCC__)
-  hipblasHandle_t handle = THCState_getCurrentBlasHandle(state);
-#else
   cublasHandle_t handle = THCState_getCurrentBlasHandle(state);
-#endif
   return PyLong_FromVoidPtr(handle);
   END_HANDLE_TH_ERRORS
 }

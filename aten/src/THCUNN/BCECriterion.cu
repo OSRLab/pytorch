@@ -34,9 +34,7 @@ struct bce_functor
   {
     Dtype input = thrust::get<0>(x);
     Dtype t = thrust::get<1>(x);
-#if defined (__NVCC__)
     assert(input >= 0. && input <= 1.);
-#endif
     return - (t * THCNumerics<Acctype>::log(input + eps<Acctype>()) + (Acctype(1)- t) * THCNumerics<Acctype>::log(Acctype(1) - input + eps<Acctype>()));
   }
 };
@@ -50,9 +48,7 @@ struct bce_updateOutput_no_reduce_functor
       const Dtype *target,
       Dtype *output)
   {
-#if defined (__NVCC__)
     assert(*input >= 0. && *input <= 1.);
-#endif
     *output = ScalarConvert<Acctype, Dtype>::to(
         -(*target * THCNumerics<Acctype>::log(*input + eps<Acctype>()) +
           (Acctype(1) - *target) * THCNumerics<Acctype>::log(Acctype(1) - *input + eps<Acctype>())));
@@ -69,9 +65,7 @@ struct bce_functor_weights
     Dtype input = thrust::get<0>(x);
     Dtype t = thrust::get<1>(x);
     Dtype w = thrust::get<2>(x);
-#if defined (__NVCC__)
     assert(input >= 0. && input <= 1.);
-#endif
     return - w * (t * THCNumerics<Acctype>::log(input + eps<Acctype>()) +
         (Acctype(1) - t) * THCNumerics<Acctype>::log(Acctype(1) - input + eps<Acctype>()));
   }

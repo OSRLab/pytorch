@@ -414,7 +414,7 @@ void HostSoftMaxForward(
 
     cunn_SoftMaxForward<ILP, T, AccumT, Epilogue>
       <<<grid, block, block.x * sizeof(AccumT), THCState_getCurrentStream(state)>>>(
-        output, input, static_cast<int>(dim_size)
+        output, input, dim_size
     );
   // This kernel runs in a 2D grid, where each application along y dimension has a fixed
   // outer_size, and runs in parallel over inner_size. Dimension x is parallel over outer_size.
@@ -424,13 +424,13 @@ void HostSoftMaxForward(
     dim3 grid, block;
     SpatialSoftMax_getLaunchSizes<AccumT>(
         state, &cunn_SpatialSoftMaxForward<T, AccumT, Epilogue>,
-        static_cast<uint32_t>(outer_size), static_cast<uint32_t>(dim_size), static_cast<uint32_t>(inner_size),
+        outer_size, static_cast<uint32_t>(dim_size), inner_size,
         grid, block, smem_size);
 
     cunn_SpatialSoftMaxForward<T, AccumT, Epilogue>
       <<<grid, block, smem_size, THCState_getCurrentStream(state)>>>(
-        output, input, 
-        static_cast<uint32_t>(outer_size), static_cast<uint32_t>(dim_size), static_cast<uint32_t>(inner_size)
+        output, input,
+        outer_size, static_cast<uint32_t>(dim_size), inner_size
     );
   }
   THCudaCheck(cudaGetLastError());
@@ -451,20 +451,20 @@ void HostSoftMaxBackward(
 
     cunn_SoftMaxBackward<ILP, T, AccumT, Epilogue>
       <<<grid, block, block.x * sizeof(AccumT), THCState_getCurrentStream(state)>>>(
-        gradInput, output, gradOutput, static_cast<int>(dim_size)
+        gradInput, output, gradOutput, dim_size
     );
   } else {
     uint32_t smem_size;
     dim3 grid, block;
     SpatialSoftMax_getLaunchSizes<AccumT>(
         state, &cunn_SpatialSoftMaxBackward<T, AccumT, Epilogue>,
-        static_cast<uint32_t>(outer_size), static_cast<uint32_t>(dim_size), static_cast<uint32_t>(inner_size),
+        outer_size, static_cast<uint32_t>(dim_size), inner_size,
         grid, block, smem_size);
 
     cunn_SpatialSoftMaxBackward<T, AccumT, Epilogue>
       <<<grid, block, smem_size, THCState_getCurrentStream(state)>>>(
-        gradInput, output, gradOutput, 
-        static_cast<uint32_t>(outer_size), static_cast<uint32_t>(dim_size), static_cast<uint32_t>(inner_size)
+        gradInput, output, gradOutput,
+        outer_size, static_cast<uint32_t>(dim_size), inner_size
     );
   }
   THCudaCheck(cudaGetLastError());

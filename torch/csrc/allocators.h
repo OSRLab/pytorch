@@ -5,7 +5,7 @@
 #include <memory>
 
 #include <TH/TH.h>
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#ifdef WITH_CUDA
 #include <THC/THC.h>
 #endif
 
@@ -41,7 +41,7 @@ public:
   void free(void* ptr);
 };
 
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#ifdef WITH_CUDA
 class CudaStorageWeakRefAllocator {
 public:
   CudaStorageWeakRefAllocator(PyObject *wrapped_object, THCDeviceAllocator *alloc, void *ctx) {
@@ -51,15 +51,9 @@ public:
     allocatorContext = ctx;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  hipError_t malloc(void** ptr, size_t size, hipStream_t stream);
-  hipError_t realloc(void** ptr, size_t old_size, size_t size, hipStream_t stream);
-  hipError_t free(void* ptr);
-#else
   cudaError_t malloc(void** ptr, size_t size, cudaStream_t stream);
   cudaError_t realloc(void** ptr, size_t old_size, size_t size, cudaStream_t stream);
   cudaError_t free(void* ptr);
-#endif
 
   THPObjectPtr object;
   THCDeviceAllocator *allocator;
@@ -69,6 +63,6 @@ public:
 
 extern THAllocator THObjectPtrAllocator;
 extern THAllocator THStorageWeakRefAllocator;
-#if defined(WITH_CUDA) || defined(WITH_ROCM)
+#ifdef WITH_CUDA
 extern THCDeviceAllocator THCStorageWeakRefAllocator;
 #endif

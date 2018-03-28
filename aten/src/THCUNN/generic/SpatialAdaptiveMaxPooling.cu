@@ -49,8 +49,7 @@ void THNN_(SpatialAdaptiveMaxPooling_updateOutput)(
     // run maxpool kernel
     adaptivemaxpool <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (input_data, output_data,
                                    indices_data,
-                                   isizeW,
-                                   osizeW,
+                                   isizeH, isizeW, osizeH, osizeW,
                                    istrideD, istrideH, istrideW);
     THCudaCheck(cudaGetLastError());
 
@@ -82,8 +81,7 @@ void THNN_(SpatialAdaptiveMaxPooling_updateOutput)(
     // run maxpool kernel
     adaptivemaxpool <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (input_data, output_data,
                                    indices_data,
-                                   isizeW,
-                                   osizeW,
+                                   isizeH, isizeW, osizeH, osizeW,
                                    istrideD, istrideH, istrideW);
     THCudaCheck(cudaGetLastError());
     // clean
@@ -136,16 +134,14 @@ void THNN_(SpatialAdaptiveMaxPooling_updateGradInput)(
       // run updateGradInput kernel, accumulate gradients atomically
       atomicadaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          isizeW,
-                                          osizeW);
+                                          isizeH, isizeW, osizeH, osizeW);
     }
     else
     {
       // run updateGradInput kernel
       atomicadaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          isizeW,
-                                          osizeW);
+                                          isizeH, isizeW, osizeH, osizeW);
     }
     THCudaCheck(cudaGetLastError());
   } else {
@@ -177,16 +173,14 @@ void THNN_(SpatialAdaptiveMaxPooling_updateGradInput)(
       // run updateGradInput kernel, accumulate gradients atomically
       atomicadaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          isizeW,
-                                          osizeW);
+                                          isizeH, isizeW, osizeH, osizeW);
     }
     else
     {
       // run updateGradInput kernel, accumulate gradients atomically
       adaptivemaxgradinput <<<blocks, threads, 0, THCState_getCurrentStream(state)>>> (gradInput_data, gradOutput_data,
                                           indices_data,
-                                          isizeW,
-                                          osizeW);
+                                          isizeH, isizeW, osizeH, osizeW);
     }
     THCudaCheck(cudaGetLastError());
   }

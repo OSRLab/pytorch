@@ -78,10 +78,10 @@ void THNN_(VolumetricFractionalMaxPooling_updateOutput)(
             devInput.getSize(0));
   dim3 block(outputPlaneSize > 128 ? 128 : outputPlaneSize);
 
-  #define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
-    VolumetricFractionalMaxPooling_updateOutput<POOL_W, real, accreal>       \
-      <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
-        devInput, devOutput, devIndices, devSamples, poolSizeT, poolSizeW, poolSizeH);
+#define SFMP_UPDATE_OUTPUT(POOL_W)                                      \
+  VolumetricFractionalMaxPooling_updateOutput<POOL_W, real, accreal>       \
+    <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
+      devInput, devOutput, devIndices, devSamples, poolSizeT, poolSizeW, poolSizeH);
 
 #define SFMP_UPDATE_OUTPUT_CASE(POOL_W)                 \
   case POOL_W: SFMP_UPDATE_OUTPUT(POOL_W); break
