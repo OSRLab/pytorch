@@ -32,7 +32,7 @@ struct TensorAddConstantOp {
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorAddConstantOp<half> {
-#if defined (UDA_HALF_INSTRUCTIONS)|| defined (__HIP_PLATFORM_HCC__)
+#if defined (CUDA_HALF_INSTRUCTIONS)|| defined (__HIP_PLATFORM_HCC__)
   #if defined(__HIP_PLATFORM_HCC__)
     __host__ __device__
     explicit
@@ -349,7 +349,7 @@ struct TensorRemainderOp {
 
 #if defined(__HIP_PLATFORM_HCC__)
   __host__ __device__
-  ~TensorRemainderOp() {}  
+  ~TensorRemainderOp() {}
 #endif
 
   const T val;
@@ -409,7 +409,7 @@ struct TensorRemainderOp<half> {
 #endif
 
   __device__ __forceinline__ void operator()(half* out, half* in) {
-#if defined(CUDA_HALF_INSTRUCTIONS) 
+#if defined(CUDA_HALF_INSTRUCTIONS)
     *out = __hsub(*in,  __hmul(val, hfloor(__hdiv(*in,  val))));
 #elif defined(__HIP_PLATFORM_HCC__)
     *out = __hsub(*in,  __hmul(val, hfloor(hdiv(*in,  val))));

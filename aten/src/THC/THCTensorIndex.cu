@@ -40,9 +40,9 @@ __global__ void indexCopySmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(dstIndex < dstCopyDimSize);
-#endif
+
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -96,9 +96,9 @@ __global__ void indexCopyLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(dstIndex < dstCopyDimSize);
-#endif
+
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex * dst.strides[dstCopyDim];
@@ -134,9 +134,9 @@ __global__ void indexAddSmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(dstIndex < dstAddDimSize);
-#endif
+
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -189,9 +189,9 @@ __global__ void indexAddLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(srcIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(dstIndex < dstAddDimSize);
-#endif
+
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex * dst.strides[dstAddDim];
@@ -226,9 +226,9 @@ __global__ void indexFillSmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex_ =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(dstIndex < dstFillDimSize);
-#endif
+
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -276,9 +276,9 @@ __global__ void indexFillLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType dstIndex_ =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(dstIndex_ < dstFillDimSize);
-#endif
+
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex_ * dst.strides[dstFillDim];
@@ -310,9 +310,9 @@ __global__ void indexSelectSmallIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType srcIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(srcIndex < srcSelectDimSize);
-#endif
+
     // We stride over the output ignoring the indexed dimension
     // (innerSize), whose offset calculation is handled differently
     for (IndexType linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
@@ -365,9 +365,9 @@ __global__ void indexSelectLargeIndex(TensorInfo<T, IndexType> dst,
     // Lua indices begin at 1
     IndexType srcIndex =
       indices.data[IndexToOffset<int64_t, IndexType, IdxDim>::get(dstIndex, indices)] - TH_INDEX_BASE;
-#if defined(__NVCC__)
+
     assert(srcIndex < srcSelectDimSize);
-#endif
+
     IndexType dstOffset =
       IndexToOffset<T, IndexType, DstDim>::get(elementInSlice, dst);
     dstOffset += dstIndex * dst.strides[dstSelectDim];
@@ -423,9 +423,8 @@ __device__ __forceinline__ int64_t calculateOffset(
       indexAtDim = index - nextIndex * sizeAtDim;
     }
 
-#if defined(__NVCC__)
     assert(indexAtDim < data.baseSizes[dim]);
-#endif
+
     offset += indexAtDim * strideAtDim;
     index = nextIndex;
   }
@@ -455,9 +454,9 @@ __device__ __forceinline__ IndexType indexToOffset(
     IndexType size)
 {
   IndexType linearIndex = static_cast<IndexType>(index);
-#if defined(__NVCC__)
+
   assert(linearIndex < size && linearIndex >= -size);
-#endif
+
   if (linearIndex < 0) {
     linearIndex += size;
   }
@@ -469,9 +468,9 @@ struct WrapIndexOp {
 
   __device__ __forceinline__ void operator()(int64_t* out, int64_t* in) {
     auto idx = *in;
-#if defined(__NVCC__)
+
     assert(idx < size && idx >= -size);
-#endif
+
     *out = idx < 0 ? idx + size : idx;
   }
 

@@ -45,41 +45,6 @@ THC_API void THCTensor_(sortKeyValueInplace)(THCState* state,
     THError("Slice to sort is too large");
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, A, SIZE)                                      \
-    do {                                                                  \
-      int blockSize = SIZE / 2;                                           \
-      if (blockSize < 1) {                                                \
-        blockSize = 1;                                                    \
-      }                                                                   \
-                                                                          \
-      dim3 block(blockSize);                                              \
-                                                                          \
-      if (dir) {                                                          \
-        hipLaunchKernelGGL(                                               \
-          (bitonicSortKVInPlace<real, int64_t, A, -1, GTComp<real>, TYPE, SIZE>), \
-            grid, block, 0, THCState_getCurrentStream(state),             \
-            keyInfo,                                                      \
-            keySlices,                                                    \
-            (TYPE) keySliceSize,                                          \
-            (TYPE) keyInfo.strides[collapseKeyDim],                       \
-            valueInfo,                                                    \
-            (TYPE) valueInfo.strides[collapseValueDim],                   \
-            GTComp<real>());                                              \
-      } else {                                                            \
-        hipLaunchKernelGGL(                                               \
-          (bitonicSortKVInPlace<real, int64_t, A, -1, LTComp<real>, TYPE, SIZE>), \
-            grid, block, 0, THCState_getCurrentStream(state),             \
-            keyInfo,                                                      \
-            keySlices,                                                    \
-            (TYPE) keySliceSize,                                          \
-            (TYPE) keyInfo.strides[collapseKeyDim],                       \
-            valueInfo,                                                    \
-            (TYPE) valueInfo.strides[collapseValueDim],                   \
-            LTComp<real>());                                              \
-      }                                                                   \
-    } while (0)
-#else
   #define HANDLE_CASE(TYPE, A, SIZE)                                      \
     do {                                                                  \
       int blockSize = SIZE / 2;                                           \
@@ -111,7 +76,6 @@ THC_API void THCTensor_(sortKeyValueInplace)(THCState* state,
             LTComp<real>());                                              \
       }                                                                   \
     } while (0)
-#endif
 
 #define HANDLE_SORT_CASE(TYPE, A)                       \
   {                                                     \

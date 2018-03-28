@@ -121,10 +121,10 @@ void THNN_(SpatialClassNLLCriterion_updateOutput)(
       input_data,
       target_data,
       weights_data,
-      static_cast<int>(sizeAverage),
-      static_cast<int>(THCTensor_(size)(state, input, 0)),
-      static_cast<int>(THCTensor_(size)(state, input, 1)),
-      static_cast<int>(THCTensor_(size)(state, input, 2) * THCTensor_(size)(state, input, 3)),
+      sizeAverage,
+      THCTensor_(size)(state, input, 0),
+      THCTensor_(size)(state, input, 1),
+      THCTensor_(size)(state, input, 2) * THCTensor_(size)(state, input, 3),
       blocks_per_sample,
       ignore_index
   );
@@ -219,10 +219,10 @@ void THNN_(SpatialClassNLLCriterion_updateGradInput)(
       target_data,
       weights_data,
       total_weight_data,
-      static_cast<int>(sizeAverage),
-      static_cast<int>(THCTensor_(size)(state, input, 0)),
-      static_cast<int>(THCTensor_(size)(state, input, 1)),
-      static_cast<int>(THCTensor_(size)(state, input, 2) *THCTensor_(size)(state, input, 3)),
+      sizeAverage,
+      THCTensor_(size)(state, input, 0),
+      THCTensor_(size)(state, input, 1),
+      THCTensor_(size)(state, input, 2) *THCTensor_(size)(state, input, 3),
       blocks_per_sample,
       ignore_index
   );

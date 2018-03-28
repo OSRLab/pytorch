@@ -346,42 +346,7 @@ bool THC_reduceDim(THCState* state,
   // (or vice versa), the contiguous tensor can be collapsed to one
   // dimension, and the loop to translate the linear index to the array
   // index can be similarly collapsed. That is what this unrolling is for.
-#if defined(__HIP_PLATFORM_HCC__)
-  #define HANDLE_CASE(TYPE, OUT, IN)                                      \
-    if (contigReduction) {                                                \
-      hipLaunchKernelGGL(                                                 \
-        (kernelReduceContigDim<ModifyOp, ReduceOp, ReduceAccOp,           \
-                             typename TensorUtils<TensorType>::DataType,  \
-                             AccT,                                        \
-                             TYPE, OUT, IN>),                             \
-            grid, block, smemSize, THCState_getCurrentStream(state),      \
-            outInfo, inInfo,      \
-            reductionSize,                                                \
-            (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);   \
-    } else {                                                              \
-      if(block.y == 1){                                                   \
-        hipLaunchKernelGGL(                                               \
-          (kernelReduceNoncontigDim<ModifyOp, ReduceOp, ReduceAccOp,      \
-                             typename TensorUtils<TensorType>::DataType,  \
-                             AccT,                                        \
-                             TYPE, OUT, IN>),                             \
-            grid, block, 0, THCState_getCurrentStream(state),             \
-            outInfo, inInfo,      \
-            reductionStride, reductionSize,                               \
-            (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);   \
-      }else{                                                              \
-        hipLaunchKernelGGL(                                               \
-          (kernelReduceNoncontigDim_shared<ModifyOp, ReduceOp, ReduceAccOp, \
-                             typename TensorUtils<TensorType>::DataType,  \
-                             AccT,                                        \
-                             TYPE, OUT, IN>),                             \
-          grid, block, 0, THCState_getCurrentStream(state),               \
-          outInfo, inInfo,        \
-          reductionStride, reductionSize,                                 \
-          (TYPE) outElements, init, modifyOp, reduceOp, reduceAccOp);     \
-      }                                                                   \
-    }
-#else
+
   #define HANDLE_CASE(TYPE, OUT, IN)                                      \
     if (contigReduction) {                                                \
       kernelReduceContigDim<ModifyOp, ReduceOp, ReduceAccOp,              \
@@ -411,7 +376,6 @@ bool THC_reduceDim(THCState* state,
                          reduceAccOp);                                    \
       }                                                                   \
     }
-#endif
 
 #define HANDLE_IN_CASE(TYPE, OUT, IN)                     \
   {                                                       \

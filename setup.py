@@ -126,9 +126,6 @@ IS_WINDOWS = (platform.system() == 'Windows')
 IS_DARWIN = (platform.system() == 'Darwin')
 IS_LINUX = (platform.system() == 'Linux')
 
-WITH_ROCM=True
-WITH_CUDA=False
-
 # If using ROCM stack disable distributed for now
 if WITH_ROCM:
   WITH_DISTRIBUTED=False

@@ -28,24 +28,6 @@ THC_API void THCTensor_(topk)(THCState* state,
   THCudaLongTensor_resize(state, indices, topKSize, NULL);
   THLongStorage_free(topKSize);
 
-#if defined(__HIP_PLATFORM_HCC__)
-  #define RUN_K(INDEX_T, DIM, DIR)                                        \
-    hipLaunchKernelGGL(                                                   \
-      (gatherTopK<real, INDEX_T, DIM, DIR>),                              \
-        grid, block, 0, THCState_getCurrentStream(state),                 \
-        inputInfo,                                                        \
-        sliceSize,                                                        \
-        k,                                                                \
-        inputSlices,                                                      \
-        /* The actual dimension that the k-selection is running in */     \
-        /* may have changed from collapseDims() */                        \
-        inputInfo.strides[collapseInputDim],                              \
-        topKInfo,                                                         \
-        topKSlices,                                                       \
-        topKInfo.strides[collapseTopKDim],                                \
-        indicesInfo,                                                      \
-        indicesInfo.strides[collapseIndicesDim])
-#else
   #define RUN_K(INDEX_T, DIM, DIR)                                        \
     gatherTopK<real, INDEX_T, DIM, DIR>                                   \
       <<<grid, block, 0, THCState_getCurrentStream(state)>>>(             \
@@ -61,7 +43,6 @@ THC_API void THCTensor_(topk)(THCState* state,
         topKInfo.strides[collapseTopKDim],                                \
         indicesInfo,                                                      \
         indicesInfo.strides[collapseIndicesDim])
-#endif
 
 #define RUN_DIR(INDEX_T, DIM)                   \
   if (dir) {                                    \

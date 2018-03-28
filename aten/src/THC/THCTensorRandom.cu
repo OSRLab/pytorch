@@ -12,7 +12,7 @@
 #include <curand_mtgp32_host.h>
 #include <curand_mtgp32dc_p_11213.h>
 
-#define MAX_NUM_BLOCKS 200 
+#define MAX_NUM_BLOCKS 200
 #define BLOCK_SIZE 256
 
 
@@ -91,26 +91,6 @@ __host__ void THCRandom_setRNGState(THCState* state, THByteTensor *rng_state)
     gen->philox_seed_offset = 0;
   }
 }
-
-// Goes from (0, 1] to [0, 1). Note 1-x is not sufficient since for some floats
-// eps near 0, 1-eps will round to 1.
-template <typename T>
-__device__ inline T reverse_bounds(T value) {
-  if (THCNumerics<T>::eq(value, ScalarConvert<int, T>::to(1))) {
-    return ScalarConvert<int, T>::to(0);
-  }
-  return value;
-}
-
-
-#ifdef CUDA_HALF_TENSOR
-__device__ inline half half_uniform_scale_and_shift(float x, double a, double b) {
-  half width = ScalarConvert<double, half>::to(b - a);
-  half start = ScalarConvert<double, half>::to(a);
-  half scaled = THCNumerics<half>::mul(reverse_bounds(ScalarConvert<float, half>::to(x)), width);
-  return THCNumerics<half>::add(scaled, start);
-}
-#endif
 
 // Goes from (0, 1] to [0, 1). Note 1-x is not sufficient since for some floats
 // eps near 0, 1-eps will round to 1.

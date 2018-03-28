@@ -23,7 +23,7 @@ void THNN_(VolumetricAdaptiveAveragePooling_updateOutput)(
   real *output_data;
   real *input_data;
 
-  int32_t sizeD, isizeT, isizeH, isizeW;
+  int64_t sizeD, isizeT, isizeH, isizeW;
   int64_t istrideD, istrideT, istrideH, istrideW;
   int64_t totalZ;
 
@@ -102,8 +102,8 @@ void THNN_(VolumetricAdaptiveAveragePooling_updateGradInput)(
   real *gradInput_data;
   real *gradOutput_data;
 
-  int32_t sizeD, isizeT, isizeH, isizeW;
-  int32_t osizeT, osizeH, osizeW;
+  int64_t sizeD, isizeT, isizeH, isizeW;
+  int64_t osizeT, osizeH, osizeW;
   int64_t totalZ;
 
   if (input->nDimension == 4) {
