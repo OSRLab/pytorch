@@ -58,7 +58,7 @@ template <>
 struct TopKTypeConfig<int16_t> {
   typedef uint32_t RadixType;
 
-  static inline __device__ RadixType convert(int64_t v) {
+  static inline __device__ RadixType convert(int16_t v) {
     assert(sizeof(short) == 2);
     return 32768u + v;
   }
@@ -429,6 +429,7 @@ __global__ void gatherTopK(TensorInfo<T, IndexType> input,
     if (hasTopK) {
       int writeIndex = writeIndexStart + index;
       assert(writeIndex < outputSliceSize);
+
       IndexType topKOffset = writeIndex * topKWithinSliceStride;
       IndexType indexOffset = writeIndex * indicesWithinSliceStride;
 
@@ -460,6 +461,7 @@ __global__ void gatherTopK(TensorInfo<T, IndexType> input,
     if (hasTopK && index < topKRemaining) {
       int writeIndex = writeIndexStart + index;
       assert(writeIndex < outputSliceSize);
+
       IndexType topKOffset = writeIndex * topKWithinSliceStride;
       IndexType indexOffset = writeIndex * indicesWithinSliceStride;
 

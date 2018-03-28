@@ -84,6 +84,7 @@ void col2row(cudaStream_t stream, const Dtype *data_col, const int channels,
       Dtype, Acctype><<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
       num_kernels, data_col, width, channels, patch_w, pad_w, stride_w,
       dilation_w, width_col, data_row);
+
   THCudaCheck(cudaGetLastError());
 }
 #endif

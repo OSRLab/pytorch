@@ -1,7 +1,6 @@
 #ifndef THC_STREAM_INC
 #define THC_STREAM_INC
 
-#if defined(__HIP_PLATFORM_HCC__)
 #include <cuda_runtime_api.h>
 #include "THCGeneral.h"
 

@@ -1,5 +1,7 @@
+#ifdef WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#endif
 
 #if defined(__HIP_PLATFORM_HCC__)
   #undef PyBytes_AS_STRING(op)
@@ -255,6 +257,7 @@ static PyObject * THPStorage_(shareCuda)(THPStorage *self)
 
     cudaIpcMemHandle_t handle;
     THCudaCheck(cudaIpcGetMemHandle(&handle, base_ptr));
+
     _handle = PyBytes_FromStringAndSize((char *)&handle, CUDA_IPC_HANDLE_SIZE);
 
     _offset = PyLong_FromSsize_t((Py_ssize_t)offset);

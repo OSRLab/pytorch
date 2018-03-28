@@ -1,4 +1,6 @@
+#ifdef WITH_CUDA
 #include <cuda_runtime.h>
+#endif
 
 static PyObject * THPStorage_(size)(THPStorage *self)
 {
@@ -35,6 +37,7 @@ static PyObject * THPStorage_(isPinned)(THPStorage *self)
     Py_RETURN_FALSE;
   }
   return PyBool_FromLong(attr.memoryType == cudaMemoryTypeHost);
+#else
   Py_RETURN_FALSE;
 #endif
   END_HANDLE_TH_ERRORS
