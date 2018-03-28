@@ -424,13 +424,13 @@ void HostSoftMaxForward(
     dim3 grid, block;
     SpatialSoftMax_getLaunchSizes<AccumT>(
         state, &cunn_SpatialSoftMaxForward<T, AccumT, Epilogue>,
-        outer_size, static_cast<uint32_t>(dim_size), inner_size,
+        outer_size, dim_size, inner_size,
         grid, block, smem_size);
 
     cunn_SpatialSoftMaxForward<T, AccumT, Epilogue>
       <<<grid, block, smem_size, THCState_getCurrentStream(state)>>>(
         output, input,
-        outer_size, static_cast<uint32_t>(dim_size), inner_size
+        outer_size, dim_size, inner_size
     );
   }
   THCudaCheck(cudaGetLastError());
@@ -458,13 +458,13 @@ void HostSoftMaxBackward(
     dim3 grid, block;
     SpatialSoftMax_getLaunchSizes<AccumT>(
         state, &cunn_SpatialSoftMaxBackward<T, AccumT, Epilogue>,
-        outer_size, static_cast<uint32_t>(dim_size), inner_size,
+        outer_size, dim_size, inner_size,
         grid, block, smem_size);
 
     cunn_SpatialSoftMaxBackward<T, AccumT, Epilogue>
       <<<grid, block, smem_size, THCState_getCurrentStream(state)>>>(
         gradInput, output, gradOutput,
-        outer_size, static_cast<uint32_t>(dim_size), inner_size
+        outer_size, dim_size, inner_size
     );
   }
   THCudaCheck(cudaGetLastError());
