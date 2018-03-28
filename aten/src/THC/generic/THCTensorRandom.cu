@@ -443,7 +443,7 @@ THC_API void THCTensor_(NAME)(THCState* state,                                 \
   THArgCheck(size == prob_size, 3, "inconsistent tensor size");                \
                                                                                \
   generate_bernoulli_tensor<<<NUM_BLOCKS, BLOCK_SIZE, 0, THCState_getCurrentStream(state)>>>( \
-      gen->gen_states, size, result_data, probs_data);       \
+      gen->gen_states, size, result_data, probs_data);                         \
                                                                                \
   PROB_TYPE##_free(state, probs);                                              \
   THCTensor_(freeCopyTo)(state, self, self_);                                  \

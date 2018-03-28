@@ -3,6 +3,7 @@
 #include <random>
 #include <curand.h>
 
+
 void initializeGenerator(THCState *state, THCGenerator* gen);
 void createGeneratorState(THCGenerator* gen, uint64_t seed);
 
