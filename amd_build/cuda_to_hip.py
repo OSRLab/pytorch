@@ -70,6 +70,8 @@ def compute_stats(stats):
     #    print("Detected an unsupported function %s in file %s" % unsupported)
 
 
+
+
 def processKernelLaunches(string, stats):
     """ Replace the CUDA style Kernel launches with the HIP style kernel launches."""
     def create_hip_kernel(cuda_kernel):
