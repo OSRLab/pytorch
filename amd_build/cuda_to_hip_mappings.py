@@ -1112,7 +1112,7 @@ CUDA_IDENTIFIER_MAP = {
      "cudaHostRegisterPortable": ("hipHostRegisterPortable", CONV_MEM, API_RUNTIME),
      "cudaHostRegisterMapped": ("hipHostRegisterMapped", CONV_MEM, API_RUNTIME),
      "cudaHostRegisterIoMemory": ("hipHostRegisterIoMemory", CONV_MEM, API_RUNTIME),
-     "warpSize": ("hipWarpSize", CONV_SPECIAL_FUNC, API_RUNTIME),
+     # "warpSize": ("hipWarpSize", CONV_SPECIAL_FUNC, API_RUNTIME), (HIP actually uses warpSize...)
      "cudaEventCreate": ("hipEventCreate", CONV_EVENT, API_RUNTIME),
      "cudaEventCreateWithFlags": ("hipEventCreateWithFlags", CONV_EVENT, API_RUNTIME),
      "cudaEventDestroy": ("hipEventDestroy", CONV_EVENT, API_RUNTIME),
@@ -2080,7 +2080,8 @@ PYTORCH_SPECIFIC_MAPPINGS = {
     "cudaUVAAllocator": ("hipUVAAllocator", API_PYTORCH),
     "cudaDeviceAllocator": ("hipDeviceAllocator", API_PYTORCH),
     "#define MAX_NUM_BLOCKS 200": ("#define MAX_NUM_BLOCKS 64", API_PYTORCH),
-    "assert": ("//assert", API_PYTORCH)
+    #"static_assert:": ("//static_assert(", API_PYTORCH),
+    #"assert(": ("//assert(", API_PYTORCH),
 }
 
 CUDA_TO_HIP_MAPPINGS = [CUDA_TYPE_NAME_MAP, CUDA_IDENTIFIER_MAP, CUDA_INCLUDE_MAP, CUDA_SPARSE_MAP, PYTORCH_SPECIFIC_MAPPINGS]
