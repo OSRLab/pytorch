@@ -70,8 +70,6 @@ def compute_stats(stats):
     #    print("Detected an unsupported function %s in file %s" % unsupported)
 
 
-
-
 def processKernelLaunches(string, stats):
     """ Replace the CUDA style Kernel launches with the HIP style kernel launches."""
     def create_hip_kernel(cuda_kernel):
@@ -109,6 +107,21 @@ def processKernelLaunches(string, stats):
     return output_string
 
 
+def disable_asserts(input_string):
+    """ Disables regular assert statements
+    e.g. "assert(....)" -> "/*assert(....)*/"
+    """
+    def whitelist(input):
+        """ Avoid replacing PyTorch specific code """
+        string = input.group(1)
+        if string.find("thc_static_assert") == 0:
+            return string
+        else:
+            return "/*" + string + "*/"
+
+    return re.sub(r'([a-zA-Z_]*assert\(.*\))', whitelist, input_string)
+
+
 def preprocessor(filepath, stats, show_replacements=False, show_unsupported=False):
     """ Executes the CUDA -> HIP conversion on the specified file. """
     with open(filepath, "r+") as fileobj:
@@ -143,6 +156,9 @@ def preprocessor(filepath, stats, show_replacements=False, show_unsupported=Fals
         # Replace WITH_CUDA -> WITH_ROCM
         output_source = output_source.replace("WITH_CUDA", "WITH_ROCM")
 
+        # Disable asserts
+        output_source = disable_asserts(output_source)
+
         # Overwrite file contents
         fileobj.seek(0)
         fileobj.write(output_source)
@@ -172,6 +188,7 @@ def main():
     # Delete AMD PyTorch directory if it already exists.
     if os.path.exists(amd_pytorch_directory):
         shutil.rmtree(amd_pytorch_directory)
+
     shutil.copytree(pytorch_directory, amd_pytorch_directory)
 
     aten_directory = os.path.join(amd_pytorch_directory, "aten")
@@ -194,7 +211,7 @@ def main():
     # Due to an issue in HCC, change filename of CuDNN batch norm
     shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
 
-    # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
+    # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
     file_specific_replacement(os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"), "_OPENMP", "_OPENMP_STUBBED")
 
     # Swap the math functions from std:: to hcc device functions.
@@ -210,6 +227,9 @@ def main():
 
     # Start Preprocessor
     walk_over_directory(amd_pytorch_directory, preprocessor)
+
+    # Clean CMake Cache & Install PyTorch
+    # python setup.py install
 
 
 if __name__ == '__main__':
