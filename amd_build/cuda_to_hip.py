@@ -183,7 +183,6 @@ def main():
 
     # Extract HIP files
     thc_directory = os.path.join(aten_src_directory, "THC/")
-
     shutil.copy(os.path.join(thc_directory, "THCAllocator.c.hip"), os.path.join(thc_directory, "THCAllocator.c"))
     shutil.copy(os.path.join(thc_directory, "THCApply.cuh.hip"), os.path.join(thc_directory, "THCApply.cuh"))
     shutil.copy(os.path.join(thc_directory, "THCBlas.cu.hip"), os.path.join(thc_directory, "THCBlas.cu"))
