@@ -153,6 +153,17 @@ def preprocessor(filepath, stats, show_replacements=False, show_unsupported=Fals
         os.fsync(fileobj)
 
 
+def file_specific_replacement(filepath, search_string, replace_string):
+    with open(filepath, "r+") as f:
+        contents = f.read()
+        contents = contents.replace(search_string, replace_string)
+        f.seek(0)
+        f.write(contents)
+        f.truncate()
+        f.flush()
+        os.fsync(f)
+
+
 def main():
     # Clone the folder
     pytorch_directory = os.path.dirname(os.getcwd())
@@ -162,6 +173,41 @@ def main():
     if os.path.exists(amd_pytorch_directory):
         shutil.rmtree(amd_pytorch_directory)
     shutil.copytree(pytorch_directory, amd_pytorch_directory)
+
+    aten_directory = os.path.join(amd_pytorch_directory, "aten")
+    aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src")
+
+    # Use CMakeLists.txt.hip files.
+    shutil.copy(os.path.join(aten_directory, "CMakeLists.txt.hip"), os.path.join(aten_src_directory,"CMakeLists.txt"))
+    shutil.copy(os.path.join(aten_src_directory, "ATen/CMakeLists.txt.hip"), os.path.join(aten_src_directory,"ATen/CMakeLists.txt"))
+
+    # Extract HIP files
+    thc_directory = os.path.join(aten_src_directory, "THC/")
+
+    shutil.copy(os.path.join(thc_directory, "THCAllocator.c.hip"), os.path.join(thc_directory, "THCAllocator.c"))
+    shutil.copy(os.path.join(thc_directory, "THCApply.cuh.hip"), os.path.join(thc_directory, "THCApply.cuh"))
+    shutil.copy(os.path.join(thc_directory, "THCBlas.cu.hip"), os.path.join(thc_directory, "THCBlas.cu"))
+    shutil.copy(os.path.join(thc_directory, "THCNumerics.cuh.hip"), os.path.join(thc_directory, "THCNumerics.cuh"))
+    shutil.copy(os.path.join(thc_directory, "THCTensorRandom.cu.hip"), os.path.join(thc_directory, "THCTensorRandom.cu"))
+    shutil.copy(os.path.join(thc_directory, "THCTensorRandom.h.hip"), os.path.join(thc_directory, "THCTensorRandom.h"))
+    shutil.copy(os.path.join(thc_directory, "generic/THCTensorRandom.cu.hip"), os.path.join(thc_directory, "generic/THCTensorRandom.cu"))
+
+    # Due to an issue in HCC, change filename of CuDNN batch norm
+    shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
+
+    # Disable OpenMP in aten/hip-src/TH/generic/THTensorMath.c
+    file_specific_replacement(os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"), "_OPENMP", "_OPENMP_STUBBED")
+
+    # Swap the math functions from std:: to hcc device functions.
+    file_specific_replacement(os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"), "std::pow", "powf")
+    file_specific_replacement(os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"), "std::abs", "fabs")
+
+    # Disable the loading of the CUDA runtime in torch/cuda/__init__.py
+    torch_cuda_init = os.path.join(amd_pytorch_directory, "torch/cuda/__init__.py")
+    file_specific_replacement(torch_cuda_init, "_cudart = _load_cudart()", "# _cudart = _load_cudart()")
+    file_specific_replacement(torch_cuda_init, "_cudart.cudaGetErrorName.restype = ctypes.c_char_p", "#_cudart.cudaGetErrorName.restype = ctypes.c_char_p")
+    file_specific_replacement(torch_cuda_init, "_cudart.cudaGetErrorString.restype = ctypes.c_char_p", "#_cudart.cudaGetErrorString.restype = ctypes.c_char_p")
+    file_specific_replacement(torch_cuda_init, "_lazy_call(_check_capability)", "#_lazy_call(_check_capability)")
 
     # Start Preprocessor
     walk_over_directory(amd_pytorch_directory, preprocessor)
