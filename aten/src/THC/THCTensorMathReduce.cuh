@@ -77,18 +77,11 @@ struct ReduceMultiply<half, float> {
 
 template <typename ResT, typename ArgT>
 struct SquareFunctor {
-#if defined(__HIP_PLATFORM_HCC__)
-    __host__ __device__
-#endif
     SquareFunctor(ResT mean): mean_(mean) {}
 
     inline __device__ ResT operator()(ArgT x) const {
       return (((ResT) x) - mean_) * (((ResT) x) - mean_);
     }
-
-#if defined(__HIP_PLATFORM_HCC__)
-    __host__ __device__ ~SquareFunctor() {}
-#endif
 
     const ResT mean_;
 };
@@ -96,9 +89,6 @@ struct SquareFunctor {
 #ifdef CUDA_HALF_TENSOR
 template <typename ResT>
 struct SquareFunctor<ResT, half> {
-#if defined(__HIP_PLATFORM_HCC__)
-    __host__ __device__
-#endif
     SquareFunctor(ResT mean): mean_(mean) {}
 
     inline __device__ ResT operator()(half x) const {
@@ -108,10 +98,6 @@ struct SquareFunctor<ResT, half> {
       );
     }
 
-#if defined(__HIP_PLATFORM_HCC__)
-    __host__ __device__ ~SquareFunctor() {}
-#endif
-
     const ResT mean_;
 };
 #endif // CUDA_HALF_TENSOR
@@ -119,7 +105,7 @@ struct SquareFunctor<ResT, half> {
 template <typename T>
 struct ReduceMin {
   inline __device__ T operator()(T a, T b) const {
-#if defined(__HIP_PLATFORM_HCC__)
+#if defined(__HIP_PLATFORM_HCC__X)
     T diff = THCNumerics<T>::sub(a, b);
     return (diff < 0 ) ? a : b;
 #else
@@ -131,7 +117,7 @@ struct ReduceMin {
 template <typename T>
 struct ReduceMax {
   inline __device__ T operator()(T a, T b) const {
-#if defined(__HIP_PLATFORM_HCC__)
+#if defined(__HIP_PLATFORM_HCC__X)
     T diff = THCNumerics<T>::sub(a, b);
     return (diff > 0 ) ? a : b;
 #else
@@ -217,9 +203,6 @@ struct TensorNonZeroOp
 template <typename T, int StaticExp>
 struct TensorNormOp
 {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorNormOp(T exp) : exponent(exp) {}
 
   __host__ __device__ T operator()(T x) const {
@@ -232,19 +215,12 @@ struct TensorNormOp
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorNormOp() {}
-#endif
-
   const T exponent;
 };
 
 template <int StaticExp>
 struct TensorNormOp<double, StaticExp>
 {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorNormOp(double exp) : exponent(exp) {}
 
   __host__ __device__ double operator()(double x) const {
@@ -257,10 +233,6 @@ struct TensorNormOp<double, StaticExp>
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorNormOp() {}
-#endif
-
   const double exponent;
 };
 
@@ -268,9 +240,6 @@ struct TensorNormOp<double, StaticExp>
 template <int StaticExp>
 struct TensorNormOp<half, StaticExp>
 {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorNormOp(half exp) : exponent(exp) {}
 
   __host__ __device__ half operator()(half x) const {
@@ -283,10 +252,6 @@ struct TensorNormOp<half, StaticExp>
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorNormOp() {}
-#endif
-
   const half exponent;
 };
 #endif
@@ -294,9 +259,6 @@ struct TensorNormOp<half, StaticExp>
 template <typename Tacc, typename T>
 struct TensorDistOp
 {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorDistOp(Tacc exp) : exponent(exp) {}
 
   __host__ __device__ Tacc operator()(T x, T y) const {
@@ -307,10 +269,6 @@ struct TensorDistOp
       exponent
     );
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorDistOp() {}
-#endif
 
   const Tacc exponent;
 };
@@ -810,9 +768,6 @@ struct MinValuePair {
 
 template <typename T>
 struct AddOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__
-#endif
   __device__ __forceinline__ T operator()(T const &lhs, T const &rhs) {
     return THCNumerics<T>::add(lhs, rhs);
   }
@@ -820,9 +775,6 @@ struct AddOp {
 
 template <typename T>
 struct MulOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__
-#endif
   __device__ __forceinline__ T operator()(T const &lhs, T const &rhs) {
     return THCNumerics<T>::mul(lhs, rhs);
   }
