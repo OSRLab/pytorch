@@ -73,6 +73,7 @@ CUDA_TYPE_NAME_MAP = {
      "CUcontext": ("hipCtx_t", CONV_TYPE, API_DRIVER),
      "CUmodule": ("hipModule_t", CONV_TYPE, API_DRIVER),
      "CUstream": ("hipStream_t", CONV_TYPE, API_DRIVER),
+     "CUstream_st": ("ihipStream_t", CONV_TYPE, API_DRIVER),
      "CUstreamCallback": ("hipStreamCallback_t", CONV_TYPE, API_DRIVER),
      "CUsurfObject": ("hipSurfaceObject", CONV_TYPE, API_DRIVER, HIP_UNSUPPORTED),
      "CUsurfref": ("hipSurfaceReference_t", CONV_TYPE, API_DRIVER, HIP_UNSUPPORTED),

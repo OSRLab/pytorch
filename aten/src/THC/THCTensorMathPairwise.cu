@@ -8,10 +8,6 @@
 
 template <typename T>
 struct TensorAddConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
   TensorAddConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in + val;
@@ -20,11 +16,6 @@ struct TensorAddConstantOp {
   __device__ __forceinline__ void operator()(T* v) {
     *v += val;
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorAddConstantOp() {}
-#endif
 
   const T val;
 };
@@ -77,10 +68,6 @@ struct TensorAddConstantOp<half> {
 
 template <typename T>
 struct TensorSubConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
   TensorSubConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in - val;
@@ -89,11 +76,6 @@ struct TensorSubConstantOp {
   __device__ __forceinline__ void operator()(T* v) {
     *v -= val;
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorSubConstantOp() {}
-#endif
 
   const T val;
 };
@@ -147,10 +129,6 @@ struct TensorSubConstantOp<half> {
 
 template <typename T>
 struct TensorMulConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
   TensorMulConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in * val;
@@ -160,10 +138,6 @@ struct TensorMulConstantOp {
     *v *= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorMulConstantOp() {}
-#endif
   const T val;
 };
 
@@ -214,10 +188,6 @@ struct TensorMulConstantOp<half> {
 
 template <typename T>
 struct TensorDivConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
   TensorDivConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in / val;
@@ -227,21 +197,12 @@ struct TensorDivConstantOp {
     *v /= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorDivConstantOp() {}
-#endif
-
   const T val;
 };
 
 #if !defined(__HIP_PLATFORM_HCC__)
 template <>
 struct TensorDivConstantOp<float> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
   TensorDivConstantOp(float v) : val(1.f / v) {}
   __device__ __forceinline__ void operator()(float* out, float* in) {
     *out = *in * val;
@@ -251,20 +212,11 @@ struct TensorDivConstantOp<float> {
     *v *= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorDivConstantOp() {}
-#endif
-
   const float val;
 };
 
 template <>
 struct TensorDivConstantOp<double> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  explicit
-#endif
   TensorDivConstantOp(double v) : val(1. / v) {}
   __device__ __forceinline__ void operator()(double* out, double* in) {
     *out = *in * val;
@@ -273,11 +225,6 @@ struct TensorDivConstantOp<double> {
   __device__ __forceinline__ void operator()(double* v) {
     *v *= val;
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorDivConstantOp() {}
-#endif
 
   const double val;
 };
@@ -329,9 +276,6 @@ struct TensorDivConstantOp<half> {
 
 template <typename T>
 struct TensorRemainderOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorRemainderOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in % val;
@@ -351,15 +295,11 @@ struct TensorRemainderOp {
   __host__ __device__
   ~TensorRemainderOp() {}
 #endif
-
   const T val;
 };
 
 template <>
 struct TensorRemainderOp<float> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorRemainderOp(float v) : val(v) {}
   __device__ __forceinline__ void operator()(float* out, float* in) {
     *out = *in - val * floorf(*in / val);
@@ -369,18 +309,11 @@ struct TensorRemainderOp<float> {
     *v = *v - val * floorf(*v / val);
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorRemainderOp() {};
-#endif
-
   const float val;
 };
 
 template <>
 struct TensorRemainderOp<double> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorRemainderOp(double v) : val(v) {}
   __device__ __forceinline__ void operator()(double* out, double* in) {
     *out = *in - val * floor(*in / val);
@@ -389,10 +322,6 @@ struct TensorRemainderOp<double> {
   __device__ __forceinline__ void operator()(double* v) {
     *v = *v - val * floor(*v / val);
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorRemainderOp() {};
-#endif
 
   const double val;
 };
@@ -442,9 +371,6 @@ struct TensorRemainderOp<half> {
 
 template <typename T>
 struct TensorFmodOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorFmodOp(T v) : val((float)v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = (T) fmodf((float) *in, val);
@@ -459,9 +385,6 @@ struct TensorFmodOp {
 
 template <>
 struct TensorFmodOp<double> {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorFmodOp(double v) : val(v) {}
   __device__ __forceinline__ void operator()(double* out, double* in) {
     *out = fmod(*in, val);
@@ -533,9 +456,6 @@ struct TensorTriOp {
 
 template <typename T>
 struct TensorLShiftConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorLShiftConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in << val;
@@ -545,18 +465,11 @@ struct TensorLShiftConstantOp {
     *v <<= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorLShiftConstantOp() {};
-#endif
-
   const T val;
 };
 
 template <typename T>
 struct TensorRShiftConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorRShiftConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in >> val;
@@ -566,17 +479,11 @@ struct TensorRShiftConstantOp {
     *v >>= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorRShiftConstantOp() {};
-#endif
   const T val;
 };
 
 template <typename T>
 struct TensorBitAndConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorBitAndConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in & val;
@@ -586,17 +493,11 @@ struct TensorBitAndConstantOp {
     *v &= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorBitAndConstantOp() {}
-#endif
   const T val;
 };
 
 template <typename T>
 struct TensorBitOrConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorBitOrConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in | val;
@@ -606,18 +507,11 @@ struct TensorBitOrConstantOp {
     *v |= val;
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorBitOrConstantOp() {}
-#endif
-
   const T val;
 };
 
 template <typename T>
 struct TensorBitXorConstantOp {
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-#endif
   TensorBitXorConstantOp(T v) : val(v) {}
   __device__ __forceinline__ void operator()(T* out, T* in) {
     *out = *in ^ val;
@@ -626,10 +520,6 @@ struct TensorBitXorConstantOp {
   __device__ __forceinline__ void operator()(T* v) {
     *v ^= val;
   }
-
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__ ~TensorBitXorConstantOp() {}
-#endif
 
   const T val;
 };
