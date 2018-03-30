@@ -291,10 +291,6 @@ struct TensorRemainderOp {
     }
   }
 
-#if defined(__HIP_PLATFORM_HCC__)
-  __host__ __device__
-  ~TensorRemainderOp() {}
-#endif
   const T val;
 };
 
