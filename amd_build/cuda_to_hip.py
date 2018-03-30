@@ -148,6 +148,8 @@ def preprocessor(filepath, stats, show_replacements=False, show_unsupported=Fals
                         print("Replaced %s with %s" % (cuda_type, hip_type))
 
                 # Replace all occurances
+                if output_source.find(cuda_type) > -1:
+                    print(cuda_type + "   TO   " + hip_type)
                 output_source = output_source.replace(cuda_type, hip_type)
 
         # Perform Kernel Launch Replacements
@@ -233,7 +235,8 @@ def main():
 
 
 if __name__ == '__main__':
-    with open("/Users/gains/AMD_PYTORCH/amd_build/v12.cu") as f:
+    with open("/Users/gains/AMD_PYTORCH/amd_build/vv.cuh", "r+") as f:
         txt = f.read()
-        print(processKernelLaunches(txt, {"unsupported_calls": [], "kernel_launches": []}))
+        print(preprocessor("/Users/gains/AMD_PYTORCH/amd_build/vv.cuh", {"unsupported_calls": [], "kernel_launches": []}))
+
     #main()
