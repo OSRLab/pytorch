@@ -49,7 +49,6 @@ def walk_over_directory(path, func, extensions = [".cu", ".cuh", ".c", ".cpp", "
 
                 cur += 1
 
-    print("Done")
     compute_stats(stats)
 
 
@@ -81,7 +80,7 @@ def processKernelLaunches(string, stats):
         # Clean kernel arguments
         kernel_arguments = kernel_arguments.replace("\n", "").replace("\\", "")
         kernel_arguments = re.sub(' +', ' ', kernel_arguments)
-        kernel_arguments = kernel_arguments[1:-1]
+        kernel_arguments = kernel_arguments
 
         # Convert kernel launch params to list
         kernel_launch_params = kernel_launch_params.replace("<<<", "").replace(">>>", "").split(",")
@@ -102,7 +101,7 @@ def processKernelLaunches(string, stats):
         return hip_kernel_launch
 
     # Replace CUDA with HIP Kernel launch
-    output_string = re.sub(r'([a-zA-Z_0-9]+)(<.*>)?[\\| |\n]*(<<<.*>>>)(\([\\| |\n|a-zA-Z|,|.|[|\]|_|<|>|(|)|0-9]*\))', create_hip_kernel, string)
+    output_string = re.sub(r'([a-zA-Z0-9_]+)(\<[a-zA-Z0-9_|,| |\\|\n|<|>|:]+\>)?[ |\n|\\]*<<<(.*)>>>\(([a-zA-Z0-9_|,| |\\|\n|\<|\>|:|(|)|_|\[|\]||\-|\*]+)\)', create_hip_kernel, string)
 
     return output_string
 
@@ -148,8 +147,6 @@ def preprocessor(filepath, stats, show_replacements=False, show_unsupported=Fals
                         print("Replaced %s with %s" % (cuda_type, hip_type))
 
                 # Replace all occurances
-                if output_source.find(cuda_type) > -1:
-                    print(cuda_type + "   TO   " + hip_type)
                 output_source = output_source.replace(cuda_type, hip_type)
 
         # Perform Kernel Launch Replacements
@@ -235,8 +232,4 @@ def main():
 
 
 if __name__ == '__main__':
-    with open("/Users/gains/AMD_PYTORCH/amd_build/vv.cuh", "r+") as f:
-        txt = f.read()
-        print(preprocessor("/Users/gains/AMD_PYTORCH/amd_build/vv.cuh", {"unsupported_calls": [], "kernel_launches": []}))
-
-    #main()
+    main()
