@@ -24,7 +24,7 @@ def updt_progress(total, progress):
     sys.stdout.flush()
 
 
-def walk_over_directory(path, func, extensions = [".cu", ".cuh", ".c", ".cpp", ".h"]):
+def walk_over_directory(path, func, extensions = [".cu", ".cuh", ".c", ".cpp", ".h", ".in"]):
     """ Walks over the entire directory and applies the function with signature on each file encountered.
 
     func (path as string): void
@@ -74,7 +74,7 @@ def processKernelLaunches(string, stats):
     """ Replace the CUDA style Kernel launches with the HIP style kernel launches."""
     def create_hip_kernel(cuda_kernel):
         kernel_name = cuda_kernel.group(1)
-        kernel_template = cuda_kernel.group(2)
+        kernel_template = cuda_kernel.group(2) if cuda_kernel.group(2) else ""
         kernel_launch_params = cuda_kernel.group(3)
         kernel_arguments = cuda_kernel.group(4)
 
@@ -195,7 +195,7 @@ def main():
     aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src")
 
     # Use CMakeLists.txt.hip files.
-    shutil.copy(os.path.join(aten_directory, "CMakeLists.txt.hip"), os.path.join(aten_src_directory,"CMakeLists.txt"))
+    shutil.copy(os.path.join(aten_directory, "CMakeLists.txt.hip"), os.path.join(aten_directory,"CMakeLists.txt"))
     shutil.copy(os.path.join(aten_src_directory, "ATen/CMakeLists.txt.hip"), os.path.join(aten_src_directory,"ATen/CMakeLists.txt"))
 
     # Extract HIP files
@@ -233,4 +233,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    with open("/Users/gains/AMD_PYTORCH/amd_build/v12.cu") as f:
+        txt = f.read()
+        print(processKernelLaunches(txt, {"unsupported_calls": [], "kernel_launches": []}))
+    #main()
