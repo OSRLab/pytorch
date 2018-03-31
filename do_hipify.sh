@@ -3,7 +3,7 @@
 set -e
 
 ### Clear the directory before running hipify, or else the old .prehip files will be used ###
-sudo rm -r aten/hip-src
+rm -rf aten/hip-src
 
 #### Create HIP aten folder ####
 mkdir -p aten/hip-src
