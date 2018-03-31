@@ -75,12 +75,6 @@ def processKernelLaunches(string, stats):
         kernel_name = cuda_kernel.group(1)
         kernel_template = cuda_kernel.group(2) if cuda_kernel.group(2) else ""
         kernel_launch_params = cuda_kernel.group(3)
-        kernel_arguments = cuda_kernel.group(4)
-
-        # Clean kernel arguments
-        kernel_arguments = kernel_arguments.replace("\n", "").replace("\\", "")
-        kernel_arguments = re.sub(' +', ' ', kernel_arguments)
-        kernel_arguments = kernel_arguments
 
         # Convert kernel launch params to list
         kernel_launch_params = kernel_launch_params.replace("<<<", "").replace(">>>", "").split(",")
@@ -91,7 +85,7 @@ def processKernelLaunches(string, stats):
         kernel_launch_params[len(kernel_launch_params):4] = ["0"] * (4 - len(kernel_launch_params))
 
         # Create the Hip Kernel Launch
-        hip_kernel_launch = "".join("hipLaunchKernelGGL((%s%s), %s, %s)" % (kernel_name, kernel_template, ", ".join(kernel_launch_params), kernel_arguments))
+        hip_kernel_launch = "".join("hipLaunchKernelGGL((%s%s), %s, " % (kernel_name, kernel_template, ", ".join(kernel_launch_params)))
 
         # Clean up syntax
         hip_kernel_launch = re.sub(' +', ' ', hip_kernel_launch)
@@ -101,7 +95,7 @@ def processKernelLaunches(string, stats):
         return hip_kernel_launch
 
     # Replace CUDA with HIP Kernel launch
-    output_string = re.sub(r'([a-zA-Z0-9_]+)(\<[a-zA-Z0-9_|,| |\\|\n|<|>|:]+\>)?[ |\n|\\]*<<<(.*)>>>\(([a-zA-Z0-9_|,| |\\|\n|\<|\>|:|(|)|_|\[|\]||\-|\*]+)\)', create_hip_kernel, string)
+    output_string = re.sub(r'([a-zA-Z0-9_|]+)[ ]*(\<[a-zA-Z0-9_|,|(|)| |\\|\n|<|>|:]+\>)?[ |\n|\\]*<<<(.*)>>>[ ]*\(', create_hip_kernel, string)
 
     return output_string
 
@@ -232,4 +226,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    with open("/Users/gains/AMD_PYTORCH/test.txt", "r+") as f:
+        txt = f.read()
+        print(processKernelLaunches(txt, {"unsupported_calls": [], "kernel_launches": []}))
+    #main()
