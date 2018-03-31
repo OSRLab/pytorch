@@ -1,16 +1,17 @@
 #!/usr/bin/python
-from cuda_to_hip_mappings import CUDA_TO_HIP_MAPPINGS
-import os
 import constants
-from functools import reduce
+import re
 import shutil
 import sys
-import re
+import os
+
+from functools import reduce
+from cuda_to_hip_mappings import CUDA_TO_HIP_MAPPINGS
 
 
-def updt_progress(total, progress):
+def update_progress_bar(total, progress):
     """
-    Displays or updates a console progress bar.
+    Displays and updates a console progress bar.
     """
     barLength, status = 20, ""
     progress = float(progress) / float(total)
@@ -25,7 +26,7 @@ def updt_progress(total, progress):
 
 
 def walk_over_directory(path, func, extensions = [".cu", ".cuh", ".c", ".cpp", ".h", ".in"]):
-    """ Walks over the entire directory and applies the function with signature on each file encountered.
+    """ Walks over the entire directory and applies the function (func) on each file encountered.
 
     func (path as string): void
     """
@@ -44,8 +45,8 @@ def walk_over_directory(path, func, extensions = [".cu", ".cuh", ".c", ".cpp", "
                 func(filepath, stats)
 
                 # Update the progress
-                print (os.path.join(dirpath, filename))
-                updt_progress(total, cur)
+                print(os.path.join(dirpath, filename))
+                update_progress_bar(total, cur)
 
                 cur += 1
 
@@ -63,6 +64,7 @@ def compute_stats(stats):
 
     # Print the number of kernel launches
     print("\nTotal number of replaced kernel launches: %d" % (len(stats["kernel_launches"])))
+
     # print("\n".join(stats["kernel_launches"]))
 
     #for unsupported in stats["unsupported_calls"]:
@@ -141,7 +143,10 @@ def preprocessor(filepath, stats, show_replacements=False, show_unsupported=Fals
                         print("Replaced %s with %s" % (cuda_type, hip_type))
 
                 # Replace all occurances
-                output_source = output_source.replace(cuda_type, hip_type)
+                def swap(input):
+                    return "%s%s%s" % (input.group(1), input.group(2), input.group(3))
+
+                output_source = re.sub('([^a-zA-Z0-9_]*)(%s)([^a-zA-Z0-9_]*)' % cuda_type, swap, output_source)
 
         # Perform Kernel Launch Replacements
         output_source = processKernelLaunches(output_source, stats)
@@ -226,7 +231,5 @@ def main():
 
 
 if __name__ == '__main__':
-    with open("/Users/gains/AMD_PYTORCH/test.txt", "r+") as f:
-        txt = f.read()
-        print(processKernelLaunches(txt, {"unsupported_calls": [], "kernel_launches": []}))
-    #main()
+    #preprocessor("/Users/gains/AMD_PYTORCH/test.txt", {"unsupported_calls": [], "kernel_launches": []})
+    main()

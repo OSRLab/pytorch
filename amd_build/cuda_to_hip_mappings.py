@@ -2034,7 +2034,7 @@ CUDA_IDENTIFIER_MAP = {
      "curandSetPseudoRandomGeneratorSeed": ("hiprngSetPseudoRandomGeneratorSeed", CONV_MATH_FUNC, API_RAND),
      "curandSetQuasiRandomGeneratorDimensions": ("hiprngSetQuasiRandomGeneratorDimensions", CONV_MATH_FUNC, API_RAND),
      "curandSetStream": ("hiprngSetStream", CONV_MATH_FUNC, API_RAND),
-     "curand(": ("hiprng(", CONV_DEVICE_FUNC, API_RAND),
+     "curand": ("hiprng", CONV_DEVICE_FUNC, API_RAND),
      "curand_init": ("hiprng_init", CONV_DEVICE_FUNC, API_RAND),
      "curand_log_normal": ("hiprng_log_normal", CONV_DEVICE_FUNC, API_RAND),
      "curand_log_normal_double": ("hiprng_log_normal_double", CONV_DEVICE_FUNC, API_RAND),
