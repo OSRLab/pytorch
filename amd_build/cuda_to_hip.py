@@ -114,11 +114,11 @@ def disable_asserts(input_string):
         else:
             return "/*" + string + "*/"
 
-    return re.sub(r'([a-zA-Z_]*assert\(.*\))', whitelist, input_string)
+    return re.sub(r'([^a-zA-Z_]*assert\(.*\))', whitelist, input_string)
 
 
 def preprocessor(filepath, stats, show_replacements=False, show_unsupported=False):
-    """ Executes the CUDA -> HIP conversion on the specified file. """
+    """ Executes the CUDA -> HIP convers ion on the specified file. """
     with open(filepath, "r+") as fileobj:
         output_source = fileobj.read()
 
@@ -143,10 +143,13 @@ def preprocessor(filepath, stats, show_replacements=False, show_unsupported=Fals
                         print("Replaced %s with %s" % (cuda_type, hip_type))
 
                 # Replace all occurances
-                def swap(input):
-                    return "%s%s%s" % (input.group(1), input.group(2), input.group(3))
-
-                output_source = re.sub('([^a-zA-Z0-9_]*)(%s)([^a-zA-Z0-9_]*)' % cuda_type, swap, output_source)
+                if cuda_type in output_source:
+                    output_source = re.sub(
+                        '([^a-zA-Z0-9_.\n]+)(%s)([^a-zA-Z0-9_.\n]+)' % cuda_type,
+                        lambda input: "%s%s%s" % (input.group(1),
+                                                  hip_type,
+                                                  input.group(3)),
+                                                  output_source)
 
         # Perform Kernel Launch Replacements
         output_source = processKernelLaunches(output_source, stats)
@@ -231,5 +234,5 @@ def main():
 
 
 if __name__ == '__main__':
-    #preprocessor("/Users/gains/AMD_PYTORCH/test.txt", {"unsupported_calls": [], "kernel_launches": []})
-    main()
+    preprocessor("/Users/gains/AMD_PYTORCH/test.txt", {"unsupported_calls": [], "kernel_launches": []})
+    #main()
