@@ -23,7 +23,7 @@ struct TensorAddConstantOp {
 #ifdef CUDA_HALF_TENSOR
 template <>
 struct TensorAddConstantOp<half> {
-#if defined (CUDA_HALF_INSTRUCTIONS)|| defined (__HIP_PLATFORM_HCC__)
+#if defined (UDA_HALF_INSTRUCTIONS)|| defined (__HIP_PLATFORM_HCC__)
   #if defined(__HIP_PLATFORM_HCC__)
     __host__ __device__
     explicit
