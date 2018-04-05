@@ -429,8 +429,7 @@ void HostSoftMaxForward(
 
     cunn_SpatialSoftMaxForward<T, AccumT, Epilogue>
       <<<grid, block, smem_size, THCState_getCurrentStream(state)>>>(
-        output, input,
-        outer_size, dim_size, inner_size
+        output, input, outer_size, dim_size, inner_size
     );
   }
   THCudaCheck(cudaGetLastError());
@@ -463,8 +462,7 @@ void HostSoftMaxBackward(
 
     cunn_SpatialSoftMaxBackward<T, AccumT, Epilogue>
       <<<grid, block, smem_size, THCState_getCurrentStream(state)>>>(
-        gradInput, output, gradOutput,
-        outer_size, dim_size, inner_size
+        gradInput, output, gradOutput, outer_size, dim_size, inner_size
     );
   }
   THCudaCheck(cudaGetLastError());
