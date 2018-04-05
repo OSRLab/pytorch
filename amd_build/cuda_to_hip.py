@@ -56,7 +56,7 @@ def walk_over_directory(path, extensions, show_detailed):
     func (path as string): void
     """
     cur = 0
-    total = sum([sum([reduce(lambda result, ext: filename.endswith(ext) or result, extensions, False) for filename in files]) for r, d, files in os.walk(path)])
+    total = sum([sum([reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False) for filename in files]) for r, d, files in os.walk(path)])
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
     for (dirpath, _dirnames, filenames) in os.walk(path):
@@ -73,7 +73,7 @@ def walk_over_directory(path, extensions, show_detailed):
                 continue
 
             if reduce(
-                lambda result, ext: filename.endswith(ext) or result,
+                lambda result, ext: filename.endswith("." + ext) or result,
                     extensions, False):
                 filepath = os.sep.join([dirpath, filename])
 
@@ -289,6 +289,9 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     file_specific_replacement(os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"), "std::pow", "powf")
     file_specific_replacement(os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"), "std::abs", "fabs")
 
+    # Swap abs w/ fabsf for device code.
+    file_specific_replacement(os.path.join(aten_src_directory, "THCUNN/Abs.cu"), "abs(", "fabs(")
+
     # Disable the loading of the CUDA runtime in torch/cuda/__init__.py
     torch_cuda_init = os.path.join(amd_pytorch_directory, "torch/cuda/__init__.py")
     file_specific_replacement(torch_cuda_init, "_cudart = _load_cudart()", "# _cudart = _load_cudart()")
@@ -308,7 +311,6 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         "<thrust/execution_policy.h>"
     )
 
-
     # Add include to THCTensorIndex.cu
     file_add_header(
         os.path.join(aten_src_directory, "THCTensorIndex.cu"),
@@ -323,7 +325,6 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         os.path.join(aten_src_directory, "THC/THCStream.cpp"),
         "cudaStreamCreateWithPriority(&self->stream, flags, priority)",
         "cudaStreamCreateWithFlags(&self->stream, flags)")
-
 
     print("Successfully loaded PyTorch specific modifications.")
 
@@ -394,7 +395,7 @@ def main():
     # Start Preprocessor
     walk_over_directory(
         args.output_directory,
-        extensions=["cu", "cuh", "c", "cpp", "h", "in"],
+        extensions=args.extensions,
         show_detailed=args.show_detailed)
 
 
