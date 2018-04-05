@@ -19,8 +19,10 @@ inline __host__ __device__ double eps() { return 1e-12; }
 #else
 template <typename T>
 inline __device__ T eps();
+
 template <>
 inline __device__ float eps() { return 1e-12f; }
+
 template <>
 inline __device__ double eps() { return 1e-12; }
 #endif
