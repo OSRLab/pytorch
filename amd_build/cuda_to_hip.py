@@ -24,7 +24,6 @@
 
 import argparse
 import constants
-import clang.cindex
 import re
 import shutil
 import sys
@@ -206,8 +205,6 @@ def disable_asserts(input_string):
     # Calling asserts from device code results in errors.
     result = re.sub(r'(^|[^a-zA-Z0-9_.\n]+)(assert\(.*\))([^a-zA-Z0-9_.\n]+)', whitelist, input_string)
 
-    # PyTorch Specific - Calling THAssert when compiling for device causes errors.
-    result = re.sub(r'(^|[^a-zA-Z0-9_.\n]+)(THError\(.*\))([^a-zA-Z0-9_.\n]+)', whitelist, result)
     # Solution around this is to stub <assert.h> and then make sure __CUDA_ARCH__ is defined.
     # Potential issue is that setting __CUDA_ARCH__ may lead to issues in the code base / understandability.
     return result
@@ -267,7 +264,7 @@ def file_add_header(filepath, header):
         contents = f.read()
         if header[0] != "<" and header[1] != ">":
             header = '"%s"' % header
-        contents = ('#include "%s" \n' % header) + contents
+        contents = ('#include %s \n' % header) + contents
         f.seek(0)
         f.write(contents)
         f.truncate()
@@ -306,14 +303,14 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     )
 
     # Add include to THCStream.h
-    file_add_header(
+    """file_add_header(
         os.path.join(aten_src_directory, "THC/THCStream.h"),
         "<thrust/execution_policy.h>"
-    )
+    )"""
 
     # Add include to THCTensorIndex.cu
     file_add_header(
-        os.path.join(aten_src_directory, "THCTensorIndex.cu"),
+        os.path.join(aten_src_directory, "THC/THCTensorIndex.cu"),
         "<thrust/execution_policy.h>"
     )
 
