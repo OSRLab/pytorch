@@ -167,7 +167,7 @@ inline dim3 getApplyBlock() {
 
 inline bool getApplyGrid(THCState* state, uint64_t totalElements, dim3& grid) {
   int curDevice = -1;
-  cudaGetDevice(&curDevice);
+  hipGetDevice(&curDevice);
   if (curDevice == -1) return false;
 
   uint64_t numBlocks = THCCeilDiv(totalElements, static_cast<uint64_t>(THC_APPLY_THREADS_PER_BLOCK));
