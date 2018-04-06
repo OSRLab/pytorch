@@ -187,7 +187,7 @@ def processKernelLaunches(string, stats):
         hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ")
 
         # Replace cuda kernel with hip kernel
-        output_string = output_string.replace(cuda_kernel, hip_kernel, 1)
+        output_string = output_string.replace(cuda_kernel, hip_kernel)
 
         # Update the statistics
         stats["kernel_launches"].append(hip_kernel)
@@ -230,7 +230,6 @@ def preprocessor(filepath, stats):
 
                 if cuda_type in output_source:
                     output_source = re.sub(r'\b(%s)\b' % cuda_type, lambda x: hip_type, output_source)
-                    #output_source = output_source.replace(cuda_type, hip_type)
 
         # Perform Kernel Launch Replacements
         output_source = processKernelLaunches(output_source, stats)
@@ -248,10 +247,13 @@ def preprocessor(filepath, stats):
         os.fsync(fileobj)
 
 
-def file_specific_replacement(filepath, search_string, replace_string):
+def file_specific_replacement(filepath, search_string, replace_string, strict = False):
     with open(filepath, "r+") as f:
         contents = f.read()
-        contents = contents.replace(search_string, replace_string)
+        if strict:
+            contents = re.sub(r'\b(%s)\b' % search_string, lambda x: replace_string, contents)
+        else:
+            contents = contents.replace(search_string, replace_string)
         f.seek(0)
         f.write(contents)
         f.truncate()
@@ -270,6 +272,39 @@ def file_add_header(filepath, header):
         f.truncate()
         f.flush()
         os.fsync(f)
+
+
+def add_thcunn_templating_for_kernels(thcunn_generic_file):
+    """Given a THCUNN generic/file, scan the ../file, extract the argument types, and static cast as necessary"""
+    # Read the kernel file.
+    with open(thcunn_generic_file, "r") as f:
+        # Extract all kernels with their templates inside of the file
+        string = f.read()
+
+        get_kernel_definitions = [k for k in re.finditer("template <typename (.*)>\n__global__ void (\w+)\(", string)]
+
+        # Create new launch syntax
+        for kernel in get_kernel_definitions:
+            template_arguments = kernel.group(1).split(",")
+            kernel_name = kernel.group(2)
+
+            if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:
+                    # Updates kernel
+                    kernel_with_template = "%s<real>" % (kernel_name)
+
+                    # Find the thcunn_file
+                    thcunn_file = thcunn_generic_file.replace("/THCUNN/", "/THCUNN/generic/")
+
+                    # Replace kernels.
+                    if os.path.exists(thcunn_file):
+                        with open(thcunn_file, "r+") as f:
+                            contents = f.read()
+                            contents = re.sub(r'\b(%s).*<<<\b' % kernel_name, lambda x: ('(%s).*<<<' % kernel_with_template), contents)
+                            f.seek(0)
+                            f.write(contents)
+                            f.truncate()
+                            f.flush()
+                            os.fsync(f)
 
 
 def pytorch_specific_fixes(amd_pytorch_directory):
@@ -322,6 +357,18 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         os.path.join(aten_src_directory, "THC/THCStream.cpp"),
         "cudaStreamCreateWithPriority(&self->stream, flags, priority)",
         "cudaStreamCreateWithFlags(&self->stream, flags)")
+
+    # Add templating to all of the kernel calls inside THCUNN.
+    thcunn_directory = os.path.join(aten_src_directory, "THCUNN")
+    extensions = ["cu", "cuh", "h"]
+    for filename in os.listdir(thcunn_directory):
+        if reduce(
+            lambda result, ext: filename.endswith("." + ext) or result,
+                extensions, False):
+            the_file = os.sep.join([thcunn_directory, filename])
+
+            # Adds templating to the /generic/ based off the kernel definition.
+            add_thcunn_templating_for_kernels(the_file)
 
     print("Successfully loaded PyTorch specific modifications.")
 
@@ -397,4 +444,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main2()
