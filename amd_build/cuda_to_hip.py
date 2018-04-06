@@ -49,7 +49,7 @@ def update_progress_bar(total, progress):
     sys.stdout.flush()
 
 
-def walk_over_directory(path, extensions, show_detailed):
+def walk_over_directory(path, extensions, show_detailed, kernel_templates=None):
     """ Walks over the entire directory and applies the function (func) on each file encountered.
 
     func (path as string): void
@@ -184,7 +184,7 @@ def processKernelLaunches(string, stats):
         cuda_kernel = string[params[0]["start"]:paranthesis+1]
 
         # Transform cuda kernel to hip kernel
-        hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ")
+        hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].strip().replace("<<<", ", ").replace(">>>", ", ")
 
         # Replace cuda kernel with hip kernel
         output_string = output_string.replace(cuda_kernel, hip_kernel)
@@ -204,9 +204,6 @@ def disable_asserts(input_string):
 
     # Calling asserts from device code results in errors.
     result = re.sub(r'(^|[^a-zA-Z0-9_.\n]+)(assert\(.*\))([^a-zA-Z0-9_.\n]+)', whitelist, input_string)
-
-    # Solution around this is to stub <assert.h> and then make sure __CUDA_ARCH__ is defined.
-    # Potential issue is that setting __CUDA_ARCH__ may lead to issues in the code base / understandability.
     return result
 
 
@@ -274,14 +271,14 @@ def file_add_header(filepath, header):
         os.fsync(f)
 
 
-def add_thcunn_templating_for_kernels(thcunn_generic_file):
-    """Given a THCUNN generic/file, scan the ../file, extract the argument types, and static cast as necessary"""
+def get_kernel_template_params(the_file, KernelDictionary):
+    """Scan for __global__ kernel definitions then extract its argument types, and static cast as necessary"""
     # Read the kernel file.
-    with open(thcunn_generic_file, "r") as f:
+    with open(the_file, "r") as f:
         # Extract all kernels with their templates inside of the file
         string = f.read()
 
-        get_kernel_definitions = [k for k in re.finditer("template <typename (.*)>\n__global__ void (\w+)\(", string)]
+        get_kernel_definitions = [k for k in re.finditer("template[ ]*<typename (.*)>\n.*\n?__global__ void (\w+)\(", string)]
 
         # Create new launch syntax
         for kernel in get_kernel_definitions:
@@ -291,20 +288,7 @@ def add_thcunn_templating_for_kernels(thcunn_generic_file):
             if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:
                     # Updates kernel
                     kernel_with_template = "%s<real>" % (kernel_name)
-
-                    # Find the thcunn_file
-                    thcunn_file = thcunn_generic_file.replace("/THCUNN/", "/THCUNN/generic/")
-
-                    # Replace kernels.
-                    if os.path.exists(thcunn_file):
-                        with open(thcunn_file, "r+") as f:
-                            contents = f.read()
-                            contents = re.sub(r'\b(%s).*<<<\b' % kernel_name, lambda x: ('%s<<<' % kernel_with_template), contents)
-                            f.seek(0)
-                            f.write(contents)
-                            f.truncate()
-                            f.flush()
-                            os.fsync(f)
+                    KernelDictionary[kernel_name] = kernel_with_template
 
 
 def pytorch_specific_fixes(amd_pytorch_directory):
@@ -337,12 +321,6 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         "hip/hip_runtime.h"
     )
 
-    # Add include to THCStream.h
-    """file_add_header(
-        os.path.join(aten_src_directory, "THC/THCStream.h"),
-        "<thrust/execution_policy.h>"
-    )"""
-
     # Add include to THCTensorIndex.cu
     file_add_header(
         os.path.join(aten_src_directory, "THC/THCTensorIndex.cu"),
@@ -359,17 +337,20 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         "cudaStreamCreateWithFlags(&self->stream, flags)")
 
     # Add templating to all of the kernel calls inside THCUNN.
-    thcunn_directory = os.path.join(aten_src_directory, "THCUNN")
     extensions = ["cu", "cuh", "h"]
-    for filename in os.listdir(thcunn_directory):
-        if reduce(
-            lambda result, ext: filename.endswith("." + ext) or result,
-                extensions, False):
-            the_file = os.sep.join([thcunn_directory, filename])
+    KernelTemplateParams = {}
+    for (dirpath, _dirnames, filenames) in os.walk(aten_src_directory):
+        for filename in filenames:
+            if reduce(
+                lambda result, ext: filename.endswith("." + ext) or result,
+                    extensions, False):
+                the_file = os.sep.join([dirpath, filename])
 
-            # Adds templating to the /generic/ based off the kernel definition.
-            add_thcunn_templating_for_kernels(the_file)
+                # Store param information inside KernelTemplateParams
+                get_kernel_template_params(the_file, KernelTemplateParams)
 
+    # Walk over entire source tree and replace kernel launches with templated kernels.
+    return KernelTemplateParams
     print("Successfully loaded PyTorch specific modifications.")
 
 
@@ -434,13 +415,40 @@ def main():
     shutil.copytree(args.project_directory, args.output_directory)
 
     # PyTorch Specific Modifications
-    pytorch_specific_fixes(args.output_directory)
+    KernelTemplateParams = pytorch_specific_fixes(args.output_directory)
 
     # Start Preprocessor
     walk_over_directory(
         args.output_directory,
         extensions=args.extensions,
         show_detailed=args.show_detailed)
+
+    # Update the kernel launches.
+    for (dirpath, _dirnames, filenames) in os.walk(args.output_directory):
+        for filename in filenames:
+            if reduce(
+                lambda result, ext: filename.endswith("." + ext) or result,
+                    args.extensions, False):
+                filepath = os.sep.join([dirpath, filename])
+                with open(filepath, "r+") as fileobj:
+                    output_source = fileobj.read()
+
+                    # Replace with templated version.
+                    for kernel in KernelTemplateParams:
+                        if kernel in output_source:
+                            output_source = re.sub(
+                                r'hipLaunchKernelGGL\( \s*%s\s*,' % kernel,
+                                lambda x: 'hipLaunchKernelGGL( %s,' % KernelTemplateParams[kernel],
+                                output_source)
+
+                    # Overwrite file contents
+                    fileobj.seek(0)
+                    fileobj.write(output_source)
+                    fileobj.truncate()
+                    fileobj.flush()
+
+                    # Flush to disk
+                    os.fsync(fileobj)
 
 
 if __name__ == '__main__':
