@@ -299,7 +299,7 @@ def add_thcunn_templating_for_kernels(thcunn_generic_file):
                     if os.path.exists(thcunn_file):
                         with open(thcunn_file, "r+") as f:
                             contents = f.read()
-                            contents = re.sub(r'\b(%s).*<<<\b' % kernel_name, lambda x: ('(%s).*<<<' % kernel_with_template), contents)
+                            contents = re.sub(r'\b(%s).*<<<\b' % kernel_name, lambda x: ('%s<<<' % kernel_with_template), contents)
                             f.seek(0)
                             f.write(contents)
                             f.truncate()
@@ -444,4 +444,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main2()
+    main()
