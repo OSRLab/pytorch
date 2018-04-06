@@ -278,50 +278,63 @@ def get_kernel_template_params(the_file, KernelDictionary):
         # Extract all kernels with their templates inside of the file
         string = f.read()
 
-        get_kernel_definitions = [k for k in re.finditer("(template[ ]*<typename (.*)>\n.*\n?)?__global__ void (\w+)\(", string)]
+        get_kernel_definitions = [k for k in re.finditer("(template[ ]*<typename (.*)>\n.*\n?)?__global__ void (\w+(\(.*\))?)\(", string)]
 
         # Create new launch syntax
         for kernel in get_kernel_definitions:
-            template_arguments = kernel.group(2).split(",")
+            template_arguments = kernel.group(2).split(",") if kernel.group(2) else ""
             kernel_name = kernel.group(3)
 
             # Kernel starting / ending positions
             arguments_start = kernel.end()
+            argument_start_pos = arguments_start
             current_position = arguments_start + 1
-            closures_required = 1
 
             # Search for final parenthesis
-            while closures_required and current_position < len(string):
+            arguments = []
+            closures = {"(": 1, "<": 0}
+            while current_position < len(string):
                 if string[current_position] == "(":
-                    closures_required += 1
+                    closures["("] += 1
                 elif string[current_position] == ")":
-                    closures_required -= 1
+                    closures["("] -= 1
+                elif string[current_position] == "<":
+                    closures["<"] += 1
+                elif string[current_position] == ">":
+                    closures["<"] -= 1
 
-                if closures_required == 0:
-                    arguments_end = current_position
+                # Finished all arguments
+                if closures["("] == 0 and closures["<"] == 0:
+                    # Add final argument
+                    arguments.append({"start": argument_start_pos, "end": current_position})
                     break
+
+                # Finished current argument
+                if closures["("] == 1 and closures["<"] == 0 and string[current_position] == ",":
+                    arguments.append({"start": argument_start_pos, "end": current_position})
+                    argument_start_pos = current_position + 1
 
                 current_position += 1
 
             # Grab range of arguments
-            arguments = string[arguments_start:arguments_end+1].split(",")
-            arguments = [x.strip() for x in arguments]
-            for arg in arguments:
-                the_type = re.match(".* \w+", arg)
-
-            # Parse out the kernel arguments
-
+            arguments_string = [string[arg["start"]: arg["end"]] for arg in arguments]
+            argument_types = [None] * len(arguments_string)
+            for arg_idx, arg in enumerate(arguments_string):
+                for i in range(len(arg)-1, -1, -1):
+                    if arg[i] == "*" or arg[i] == " ":
+                        argument_types[arg_idx] = re.sub(' +',' ', arg[0:i+1].replace("\n", "").strip())
+                        break
             if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:#, "scalar_t"]:
                 # Updates kernel
                 kernel_with_template = "%s<real>" % (kernel_name)
-                KernelDictionary[kernel_name] = kernel_with_template
+                KernelDictionary[kernel_name] = {"kernel_with_template": kernel_with_template, "arg_types": argument_types}
 
 
 def pytorch_specific_fixes(amd_pytorch_directory):
     """Load the PyTorch specific patches"""
     aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src/")
 
-    # Due to an issue in HCC, change filename of CuDNN batch norm
+    """# Due to an issue in HCC, change filename of CuDNN batch norm
     shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
 
     # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
@@ -358,7 +371,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         os.path.join(aten_src_directory, "THC/THCStream.cpp"),
         "cudaStreamCreateWithPriority(&self->stream, flags, priority)",
         "cudaStreamCreateWithFlags(&self->stream, flags)")
-
+"""
     # Add templating to all of the kernel calls inside THCUNN.
     extensions = ["cu", "cuh", "h"]
     KernelTemplateParams = {}
@@ -455,18 +468,70 @@ def main():
                 filepath = os.sep.join([dirpath, filename])
                 with open(filepath, "r+") as fileobj:
                     output_source = fileobj.read()
+                    new_output_source = output_source
+                    get_kernel_definitions = [k for k in re.finditer("hipLaunchKernelGGL\(", output_source)]
+                    for kernel in get_kernel_definitions:
+                        arguments = []
+                        closures = {
+                            "<": 0,
+                            "(": 1
+                        }
+                        current_position = kernel.end()
+                        argument_start_pos = current_position
 
-                    # Replace with templated version.
-                    for kernel in KernelTemplateParams:
-                        if kernel in output_source:
-                            output_source = re.sub(
-                                r'hipLaunchKernelGGL\( \s*%s\s*,' % kernel,
-                                lambda x: 'hipLaunchKernelGGL( %s,' % KernelTemplateParams[kernel],
-                                output_source)
+                        # Search for final parenthesis
+                        while current_position < len(output_source):
+                            if output_source[current_position] == "(":
+                                closures["("] += 1
+                            elif output_source[current_position] == ")":
+                                closures["("] -= 1
+                            elif output_source[current_position] == "<":
+                                closures["<"] += 1
+                            elif output_source[current_position] == ">":
+                                closures["<"] -= 1
+
+                            # Finished all arguments
+                            if closures["("] == 0 and closures["<"] == 0:
+                                # Add final argument
+                                arguments.append({"start": argument_start_pos, "end": current_position})
+                                break
+
+                            # Finished current argument
+                            if closures["("] == 1 and closures["<"] == 0 and output_source[current_position] == ",":
+                                arguments.append({"start": argument_start_pos, "end": current_position})
+                                argument_start_pos = current_position + 1
+
+                            current_position += 1
+
+                        # Check if we have templating + static_cast information
+                        argument_strings = [output_source[arg["start"]:arg["end"]] for arg in arguments]
+                        kernel_name = argument_strings[0].strip()
+                        if kernel_name in KernelTemplateParams and kernel_name != "upscale":
+                            # Add template to the kernel
+                            argument_strings[0] = argument_strings[0].replace(kernel_name, KernelTemplateParams[kernel_name]["kernel_with_template"])
+
+                            # Add static_casts to relevant arguments
+                            argument_types = KernelTemplateParams[kernel_name]["arg_types"]
+
+                            old_kernel_launch = output_source[arguments[0]["start"]:arguments[-1]["end"]]
+                            new_kernel_launch = old_kernel_launch
+
+                            kernel_params = argument_strings[5:]
+                            for arg_idx, arg in enumerate(kernel_params):
+                                arg = kernel_params[arg_idx]
+                                the_type = argument_types[arg_idx]
+                                the_arg = arg.replace("\n", "").strip()
+                                if the_type in ["int", "const int", "int64_t", "THCIndex_t *", "const int *", "ptrdiff_t", "long", "const int64_t*", "int64_t *", "double"]:
+                                    static_argument = "static_cast<%s>(%s)" % (the_type, the_arg)
+                                    static_argument = arg.replace(the_arg, static_argument)
+                                    new_kernel_launch = new_kernel_launch.replace(arg, static_argument)
+
+                                    # Replace Launch
+                                    new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
 
                     # Overwrite file contents
                     fileobj.seek(0)
-                    fileobj.write(output_source)
+                    fileobj.write(new_output_source)
                     fileobj.truncate()
                     fileobj.flush()
 
