@@ -184,7 +184,7 @@ def processKernelLaunches(string, stats):
         cuda_kernel = string[params[0]["start"]:paranthesis+1]
 
         # Transform cuda kernel to hip kernel
-        hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].strip().replace("<<<", ", ").replace(">>>", ", ")
+        hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ")
 
         # Replace cuda kernel with hip kernel
         output_string = output_string.replace(cuda_kernel, hip_kernel)
@@ -278,17 +278,43 @@ def get_kernel_template_params(the_file, KernelDictionary):
         # Extract all kernels with their templates inside of the file
         string = f.read()
 
-        get_kernel_definitions = [k for k in re.finditer("template[ ]*<typename (.*)>\n.*\n?__global__ void (\w+)\(", string)]
+        get_kernel_definitions = [k for k in re.finditer("(template[ ]*<typename (.*)>\n.*\n?)?__global__ void (\w+)\(", string)]
 
         # Create new launch syntax
         for kernel in get_kernel_definitions:
-            template_arguments = kernel.group(1).split(",")
-            kernel_name = kernel.group(2)
+            template_arguments = kernel.group(2).split(",")
+            kernel_name = kernel.group(3)
 
-            if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:
-                    # Updates kernel
-                    kernel_with_template = "%s<real>" % (kernel_name)
-                    KernelDictionary[kernel_name] = kernel_with_template
+            # Kernel starting / ending positions
+            arguments_start = kernel.end()
+            current_position = arguments_start + 1
+            closures_required = 1
+
+            # Search for final parenthesis
+            while closures_required and current_position < len(string):
+                if string[current_position] == "(":
+                    closures_required += 1
+                elif string[current_position] == ")":
+                    closures_required -= 1
+
+                if closures_required == 0:
+                    arguments_end = current_position
+                    break
+
+                current_position += 1
+
+            # Grab range of arguments
+            arguments = string[arguments_start:arguments_end+1].split(",")
+            arguments = [x.strip() for x in arguments]
+            for arg in arguments:
+                the_type = re.match(".* \w+", arg)
+
+            # Parse out the kernel arguments
+
+            if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:#, "scalar_t"]:
+                # Updates kernel
+                kernel_with_template = "%s<real>" % (kernel_name)
+                KernelDictionary[kernel_name] = kernel_with_template
 
 
 def pytorch_specific_fixes(amd_pytorch_directory):
@@ -327,10 +353,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         "<thrust/execution_policy.h>"
     )
 
-    # Wrap all calls to THError(...) with #if defined(__HIP_DEVICE_COMPILE__) \n THError(...) \n #endif
-
     # Replace "cudaStreamCreateWithPriority(&self->stream, flags, priority)" with cudaStreamCreateWithFlags(&self->stream, flags)
-    # Inside of aten/src/THC/THCStream.cpp
     file_specific_replacement(
         os.path.join(aten_src_directory, "THC/THCStream.cpp"),
         "cudaStreamCreateWithPriority(&self->stream, flags, priority)",
