@@ -261,7 +261,7 @@ def file_specific_replacement(filepath, search_string, replace_string, strict = 
 def file_add_header(filepath, header):
     with open(filepath, "r+") as f:
         contents = f.read()
-        if header[0] != "<" and header[1] != ">":
+        if header[0] != "<" and header[-1] != ">":
             header = '"%s"' % header
         contents = ('#include %s \n' % header) + contents
         f.seek(0)
@@ -334,7 +334,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     """Load the PyTorch specific patches"""
     aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src/")
 
-    """# Due to an issue in HCC, change filename of CuDNN batch norm
+    # Due to an issue in HCC, change filename of CuDNN batch norm
     shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
 
     # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
@@ -371,7 +371,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         os.path.join(aten_src_directory, "THC/THCStream.cpp"),
         "cudaStreamCreateWithPriority(&self->stream, flags, priority)",
         "cudaStreamCreateWithFlags(&self->stream, flags)")
-"""
+
     # Add templating to all of the kernel calls inside THCUNN.
     extensions = ["cu", "cuh", "h"]
     KernelTemplateParams = {}
@@ -508,9 +508,8 @@ def main():
                         kernel_name = argument_strings[0].strip()
                         if kernel_name in KernelTemplateParams and kernel_name != "upscale":
                             # Add template to the kernel
-                            argument_strings[0] = argument_strings[0].replace(kernel_name, KernelTemplateParams[kernel_name]["kernel_with_template"])
-
                             # Add static_casts to relevant arguments
+                            kernel_name_with_template = KernelTemplateParams[kernel_name]["kernel_with_template"]
                             argument_types = KernelTemplateParams[kernel_name]["arg_types"]
 
                             old_kernel_launch = output_source[arguments[0]["start"]:arguments[-1]["end"]]
@@ -524,10 +523,15 @@ def main():
                                 if the_type in ["int", "const int", "int64_t", "THCIndex_t *", "const int *", "ptrdiff_t", "long", "const int64_t*", "int64_t *", "double"]:
                                     static_argument = "static_cast<%s>(%s)" % (the_type, the_arg)
                                     static_argument = arg.replace(the_arg, static_argument)
+
+                                    # Update to static_cast
                                     new_kernel_launch = new_kernel_launch.replace(arg, static_argument)
 
-                                    # Replace Launch
-                                    new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
+                            # Add template type
+                            new_kernel_launch = new_kernel_launch.replace(kernel_name, kernel_name_with_template)
+
+                            # Replace Launch
+                            new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
 
                     # Overwrite file contents
                     fileobj.seek(0)
