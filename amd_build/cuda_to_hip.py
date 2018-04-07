@@ -525,10 +525,10 @@ def main():
                                     static_argument = arg.replace(the_arg, static_argument)
 
                                     # Update to static_cast
-                                    new_kernel_launch = new_kernel_launch.replace(arg, static_argument)
+                                    new_kernel_launch = re.sub(r'\b(%s)\b' % arg, lambda x: static_argument, new_kernel_launch)
 
                             # Add template type
-                            new_kernel_launch = new_kernel_launch.replace(kernel_name, kernel_name_with_template)
+                            new_kernel_launch = re.sub(r'\b(%s)\b' % kernel_name, lambda x: kernel_name_with_template, new_kernel_launch)
 
                             # Replace Launch
                             new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
@@ -541,7 +541,6 @@ def main():
 
                     # Flush to disk
                     os.fsync(fileobj)
-
 
 if __name__ == '__main__':
     main()
