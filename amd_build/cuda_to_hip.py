@@ -110,6 +110,9 @@ def compute_stats(stats, show_detailed):
 
 def processKernelLaunches(string, stats):
     """ Replace the CUDA style Kernel launches with the HIP style kernel launches."""
+    # Concat the namespace with the kernel names. (Find cleaner way of doing this later).
+    string = re.sub(r'([ ]+)(detail+)::[ ]+\\\n[ ]+', lambda inp: "%s%s::" % (inp.group(1), inp.group(2)), string)
+
     def grab_method_and_template(in_kernel):
         # The positions for relevant kernel components.
         pos = {
@@ -149,7 +152,7 @@ def processKernelLaunches(string, stats):
 
             # Handle Kernel Name
             if status != AT_TEMPLATE:
-                if string[i] == "(" or string[i] == ")" or string[i] == "_" or string[i].isalnum():
+                if string[i] == "(" or string[i] == ")" or string[i] == "_" or string[i].isalnum() or string[i] == ":":
                     if status != AT_KERNEL_NAME:
                         status = AT_KERNEL_NAME
                         pos["kernel_name"]["end"] = i
@@ -160,6 +163,7 @@ def processKernelLaunches(string, stats):
 
                         # Finished
                         return [(pos["kernel_name"]), (pos["template"]), (pos["kernel_launch"])]
+
                 else:
                     # Potential ending point if we're already traversing a kernel's name.
                     if status == AT_KERNEL_NAME:
@@ -232,7 +236,8 @@ def preprocessor(filepath, stats):
         output_source = processKernelLaunches(output_source, stats)
 
         # Disable asserts
-        output_source = disable_asserts(output_source)
+        if not filepath.endswith("THCGeneral.h.in"):
+            output_source = disable_asserts(output_source)
 
         # Overwrite file contents
         fileobj.seek(0)
@@ -407,7 +412,6 @@ def main():
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
-
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
