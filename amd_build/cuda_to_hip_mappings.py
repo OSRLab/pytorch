@@ -1789,6 +1789,8 @@ CUDA_IDENTIFIER_MAP = {
      "cublasCreate_v2": ("hipblasCreate", CONV_MATH_FUNC, API_BLAS),
      "cublasDestroy_v2": ("hipblasDestroy", CONV_MATH_FUNC, API_BLAS),
      "cublasGetVersion_v2": ("hipblasGetVersion", CONV_MATH_FUNC, API_BLAS, HIP_UNSUPPORTED),
+     "cublasSetStream": ("hipblasSetStream", CONV_MATH_FUNC, API_BLAS),
+     "cublasGetStream": ("hipblasGetStream", CONV_MATH_FUNC, API_BLAS),
      "cublasSetStream_v2": ("hipblasSetStream", CONV_MATH_FUNC, API_BLAS),
      "cublasGetStream_v2": ("hipblasGetStream", CONV_MATH_FUNC, API_BLAS),
      "cublasGetPointerMode_v2": ("hipblasGetPointerMode", CONV_MATH_FUNC, API_BLAS),
