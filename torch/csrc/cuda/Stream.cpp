@@ -14,7 +14,6 @@ static PyObject * THCPStream_pynew(PyTypeObject *type, PyObject *args, PyObject 
 
   int current_device;
   THCudaCheck(cudaGetDevice(&current_device));
-
   int flags = cudaStreamNonBlocking;
   int priority = 0;
   unsigned long long cdata = 0;

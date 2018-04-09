@@ -354,6 +354,20 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     file_specific_replacement(torch_cuda_init, "_cudart.cudaGetErrorString.restype = ctypes.c_char_p", "#_cudart.cudaGetErrorString.restype = ctypes.c_char_p")
     file_specific_replacement(torch_cuda_init, "_lazy_call(_check_capability)", "#_lazy_call(_check_capability)")
 
+    # Replace WITH_CUDA with WITH_ROCM for all locations inside for /torch/
+    torch_directory = os.path.join(amd_pytorch_directory, 'torch')
+    extensions = [".h", ".cpp", ".hpp"]
+    exlucde_files = ["torch/csrc/autograd/profiler.h", "torch/csrc/autograd/profiler.cpp", "torch/csrc/cuda/cuda_check.h", "torch/csrc/jit/fusion_compiler.h", "torch/csrc/jit/fusion_compiler.cpp"]
+    for (dirpath, _dirnames, filenames) in os.walk(torch_directory):
+        for filename in filenames:
+            if reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False):
+                the_file = os.sep.join([dirpath, filename])
+                for exclude in exlucde_files:
+                    if not the_file.endswith(exclude):
+                        file_specific_replacement(the_file, "WITH_CUDA", "WITH_ROCM")
+    # Replace with THCudaCheck(hipSuccess)
+    file_specific_replacement(os.path.join(aten_src_directory, "THC/THCAllocator.c"), "cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)", "cudaSuccess")
+
     # Add include to ATen.h
     file_add_header(
         os.path.join(aten_src_directory, "ATen/ATen.h"),
@@ -377,9 +391,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     KernelTemplateParams = {}
     for (dirpath, _dirnames, filenames) in os.walk(aten_src_directory):
         for filename in filenames:
-            if reduce(
-                lambda result, ext: filename.endswith("." + ext) or result,
-                    extensions, False):
+            if reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False):
                 the_file = os.sep.join([dirpath, filename])
 
                 # Store param information inside KernelTemplateParams
