@@ -283,11 +283,12 @@ def get_kernel_template_params(the_file, KernelDictionary):
         # Extract all kernels with their templates inside of the file
         string = f.read()
 
-        get_kernel_definitions = [k for k in re.finditer("(template[ ]*<typename (.*)>\n.*\n?)?__global__ void (\w+(\(.*\))?)\(", string)]
+        get_kernel_definitions = [k for k in re.finditer(r"(template[ ]*<(.*)>\n.*\n?)?__global__ void (\w+(\(.*\))?)\(", string)]
 
         # Create new launch syntax
         for kernel in get_kernel_definitions:
             template_arguments = kernel.group(2).split(",") if kernel.group(2) else ""
+            template_arguments = [x.replace("template", "").strip() for x in template_arguments]
             kernel_name = kernel.group(3)
 
             # Kernel starting / ending positions
@@ -323,6 +324,7 @@ def get_kernel_template_params(the_file, KernelDictionary):
 
             # Grab range of arguments
             arguments_string = [string[arg["start"]: arg["end"]] for arg in arguments]
+
             argument_types = [None] * len(arguments_string)
             for arg_idx, arg in enumerate(arguments_string):
                 for i in range(len(arg)-1, -1, -1):
@@ -332,7 +334,23 @@ def get_kernel_template_params(the_file, KernelDictionary):
             if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:#, "scalar_t"]:
                 # Updates kernel
                 kernel_with_template = "%s<real>" % (kernel_name)
-                KernelDictionary[kernel_name] = {"kernel_with_template": kernel_with_template, "arg_types": argument_types}
+            else:
+                kernel_with_template = kernel_name
+            formatted_args = {}
+            for idx, arg_type in enumerate(argument_types):
+                formatted_args[idx] = arg_type
+
+            KernelDictionary[kernel_name] = {"kernel_with_template": kernel_with_template, "arg_types": formatted_args}
+
+        # Extract generated kernels
+        get_generated_kernels = [k for k in re.finditer(r"GENERATE_KERNEL[1-9]\((.*)\)", string)]
+        # curandStateMtgp32 *state, int size, T *result, ARG1
+        for kernel in get_generated_kernels:
+            kernel_name = kernel.group(1).split(",")[0]
+
+            # Argument at position 1 should be int
+            kernel_args = {1: "int"}
+            KernelDictionary[kernel_name] = {"kernel_with_template": kernel_name, "arg_types": kernel_args}
 
 
 def pytorch_specific_fixes(amd_pytorch_directory):
@@ -360,16 +378,16 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     file_specific_replacement(torch_cuda_init, "_lazy_call(_check_capability)", "#_lazy_call(_check_capability)")
 
     # Replace WITH_CUDA with WITH_ROCM for all locations inside for /torch/
-    torch_directory = os.path.join(amd_pytorch_directory, 'torch')
-    extensions = [".h", ".cpp", ".hpp"]
-    exlucde_files = ["torch/csrc/autograd/profiler.h", "torch/csrc/autograd/profiler.cpp", "torch/csrc/cuda/cuda_check.h", "torch/csrc/jit/fusion_compiler.h", "torch/csrc/jit/fusion_compiler.cpp"]
+    torch_directory = os.path.join(amd_pytorch_directory, 'torch/')
+    extensions = ["h", "cpp", "hpp"]
+    exclude_files = ["torch/csrc/autograd/profiler.h", "torch/csrc/autograd/profiler.cpp", "torch/csrc/cuda/cuda_check.h", "torch/csrc/jit/fusion_compiler.h", "torch/csrc/jit/fusion_compiler.cpp"]
     for (dirpath, _dirnames, filenames) in os.walk(torch_directory):
         for filename in filenames:
             if reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False):
                 the_file = os.sep.join([dirpath, filename])
-                for exclude in exlucde_files:
-                    if not the_file.endswith(exclude):
-                        file_specific_replacement(the_file, "WITH_CUDA", "WITH_ROCM")
+                if not reduce(lambda result, exclude: the_file.endswith(exclude) or result, exclude_files, False):
+                    file_specific_replacement(the_file, "WITH_CUDA", "WITH_ROCM")
+
     # Replace with THCudaCheck(hipSuccess)
     file_specific_replacement(os.path.join(aten_src_directory, "THC/THCAllocator.c"), "cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)", "cudaSuccess")
 
@@ -474,7 +492,6 @@ def main():
         args.output_directory,
         extensions=args.extensions,
         show_detailed=args.show_detailed)
-
     # Update the kernel launches.
     for (dirpath, _dirnames, filenames) in os.walk(args.output_directory):
         for filename in filenames:
@@ -503,7 +520,7 @@ def main():
                                 closures["("] -= 1
                             elif output_source[current_position] == "<":
                                 closures["<"] += 1
-                            elif output_source[current_position] == ">":
+                            elif output_source[current_position] == ">" and output_source[current_position-1] != "-":
                                 closures["<"] -= 1
 
                             # Finished all arguments
@@ -533,18 +550,20 @@ def main():
 
                             kernel_params = argument_strings[5:]
                             for arg_idx, arg in enumerate(kernel_params):
-                                arg = kernel_params[arg_idx]
-                                the_type = argument_types[arg_idx]
-                                the_arg = arg.replace("\n", "").strip()
-                                if the_type in ["int", "const int", "int64_t", "THCIndex_t *", "const int *", "ptrdiff_t", "long", "const int64_t*", "int64_t *", "double"]:
-                                    static_argument = "static_cast<%s>(%s)" % (the_type, the_arg)
-                                    static_argument = arg.replace(the_arg, static_argument)
+                                if arg_idx in argument_types:
+                                    arg = kernel_params[arg_idx].strip()
+                                    the_type = argument_types[arg_idx]
+                                    the_arg = arg.replace("\n", "").strip()
+                                    if the_type in ["int", "const int", "int64_t", "THCIndex_t *", "const int *", "ptrdiff_t", "long", "const int64_t*", "int64_t *", "double"]:
+                                        static_argument = "static_cast<%s>(%s)" % (the_type, the_arg)
+                                        static_argument = arg.replace(the_arg, static_argument)
 
-                                    # Update to static_cast
-                                    new_kernel_launch = re.sub(r'\b(%s)\b' % arg, lambda x: static_argument, new_kernel_launch)
+                                        # Update to static_cast
+                                        new_kernel_launch = re.sub(r'\b(%s)\b' % arg, lambda x: static_argument, new_kernel_launch)
 
                             # Add template type
                             new_kernel_launch = re.sub(r'\b(%s)\b' % kernel_name, lambda x: kernel_name_with_template, new_kernel_launch)
+
 
                             # Replace Launch
                             new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
