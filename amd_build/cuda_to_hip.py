@@ -288,7 +288,7 @@ def get_kernel_template_params(the_file, KernelDictionary):
         # Create new launch syntax
         for kernel in get_kernel_definitions:
             template_arguments = kernel.group(2).split(",") if kernel.group(2) else ""
-            template_arguments = [x.replace("template", "").strip() for x in template_arguments]
+            template_arguments = [x.replace("template", "").replace("typename", "").strip() for x in template_arguments]
             kernel_name = kernel.group(3)
 
             # Kernel starting / ending positions
@@ -343,13 +343,20 @@ def get_kernel_template_params(the_file, KernelDictionary):
             KernelDictionary[kernel_name] = {"kernel_with_template": kernel_with_template, "arg_types": formatted_args}
 
         # Extract generated kernels
-        get_generated_kernels = [k for k in re.finditer(r"GENERATE_KERNEL[1-9]\((.*)\)", string)]
+        get_generated_kernels = [k for k in re.finditer(r"GENERATE_KERNEL([1-9])\((.*)\)", string)]
         # curandStateMtgp32 *state, int size, T *result, ARG1
         for kernel in get_generated_kernels:
-            kernel_name = kernel.group(1).split(",")[0]
+            kernel_gen_type = int(kernel.group(1))
+            kernel_name = kernel.group(2).split(",")[0]
+            kernel_params = kernel.group(2).split(",")[1:]
+
+            if kernel_gen_type == 1:
+                kernel_args = {1: "int", 2: "%s *" % kernel_params[0], 3: kernel_params[1]}
+
+            if kernel_gen_type == 2:
+                kernel_args = {1: "int", 2: "%s *" % kernel_params[0], 3: kernel_params[1], 4: kernel_params[2]}
 
             # Argument at position 1 should be int
-            kernel_args = {1: "int"}
             KernelDictionary[kernel_name] = {"kernel_with_template": kernel_name, "arg_types": kernel_args}
 
 
