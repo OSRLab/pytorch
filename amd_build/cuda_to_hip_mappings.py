@@ -2088,7 +2088,7 @@ PYTORCH_SPECIFIC_MAPPINGS = {
     "cudaHostAllocator": ("hipHostAllocator", API_PYTORCH),
     "cudaUVAAllocator": ("hipUVAAllocator", API_PYTORCH),
     "cudaDeviceAllocator": ("hipDeviceAllocator", API_PYTORCH),
-    "#define MAX_NUM_BLOCKS 200": ("#define MAX_NUM_BLOCKS 64", API_PYTORCH),
+    "define MAX_NUM_BLOCKS 200": ("define MAX_NUM_BLOCKS 64", API_PYTORCH),
 }
 
 CUDA_TO_HIP_MAPPINGS = [CUDA_TYPE_NAME_MAP, CUDA_IDENTIFIER_MAP, CUDA_INCLUDE_MAP, CUDA_SPARSE_MAP, PYTORCH_SPECIFIC_MAPPINGS]
