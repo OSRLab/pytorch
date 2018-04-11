@@ -59,7 +59,7 @@ def walk_over_directory(path, extensions, show_detailed, exclude_dirs=[], kernel
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
     for (dirpath, _dirnames, filenames) in os.walk(path):
-        if dirpath in exclude_dirs:
+        if reduce(lambda result, ext: ext in dirpath or result, exclude_dirs, False):
             continue
         for filename in filenames:
             # Extract the (.hip)
@@ -379,6 +379,9 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     # Swap abs w/ fabsf for device code.
     file_specific_replacement(os.path.join(aten_src_directory, "THCUNN/Abs.cu"), "abs(", "fabs(")
 
+    # Remove the "struct" from the return type since hipStageMtgp32* implies pointer to struct.
+    file_specific_replacement(os.path.join(aten_src_directory, "THC/THCTensorRandom.cpp"), "struct curandStateMtgp32*", "curandStateMtgp32*")
+
     # Disable the loading of the CUDA runtime in torch/cuda/__init__.py
     torch_cuda_init = os.path.join(amd_pytorch_directory, "torch/cuda/__init__.py")
     file_specific_replacement(torch_cuda_init, "_cudart = _load_cudart()", "# _cudart = _load_cudart()")
@@ -550,7 +553,7 @@ def main():
                         # Check if we have templating + static_cast information
                         argument_strings = [output_source[arg["start"]:arg["end"]] for arg in arguments]
                         kernel_name = argument_strings[0].strip()
-                        ignore = ["upscale"]:#,"im3d2col_kernel" "im2col_kernel", "vol2col_kernel"]
+                        ignore = ["upscale"]#,"im3d2col_kernel" "im2col_kernel", "vol2col_kernel"]
                         if kernel_name in KernelTemplateParams and kernel_name not in ignore:
                             # Add template to the kernel
                             # Add static_casts to relevant arguments
