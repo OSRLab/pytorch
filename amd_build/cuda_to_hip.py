@@ -550,7 +550,7 @@ def main():
                         # Check if we have templating + static_cast information
                         argument_strings = [output_source[arg["start"]:arg["end"]] for arg in arguments]
                         kernel_name = argument_strings[0].strip()
-                        ignore = ["upscale", "im2col_kernel", "im3d2col_kernel", "vol2col_kernel"]
+                        ignore = ["upscale"]:#,"im3d2col_kernel" "im2col_kernel", "vol2col_kernel"]
                         if kernel_name in KernelTemplateParams and kernel_name not in ignore:
                             # Add template to the kernel
                             # Add static_casts to relevant arguments
