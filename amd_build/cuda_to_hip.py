@@ -49,16 +49,18 @@ def update_progress_bar(total, progress):
     sys.stdout.flush()
 
 
-def walk_over_directory(path, extensions, show_detailed, kernel_templates=None):
+def walk_over_directory(path, extensions, show_detailed, exclude_dirs=[], kernel_templates=None):
     """ Walks over the entire directory and applies the function (func) on each file encountered.
 
     func (path as string): void
     """
     cur = 0
-    total = sum([sum([reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False) for filename in files]) for r, d, files in os.walk(path)])
+    total = sum([sum([reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False) for filename in files]) if r not in exclude_dirs else 0 for r, d, files in os.walk(path)])
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
     for (dirpath, _dirnames, filenames) in os.walk(path):
+        if dirpath in exclude_dirs:
+            continue
         for filename in filenames:
             # Extract the (.hip)
             if filename.endswith(".hip"):
@@ -498,7 +500,9 @@ def main():
     walk_over_directory(
         args.output_directory,
         extensions=args.extensions,
-        show_detailed=args.show_detailed)
+        show_detailed=args.show_detailed,
+        exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS"])
+
     # Update the kernel launches.
     for (dirpath, _dirnames, filenames) in os.walk(args.output_directory):
         for filename in filenames:
@@ -546,7 +550,8 @@ def main():
                         # Check if we have templating + static_cast information
                         argument_strings = [output_source[arg["start"]:arg["end"]] for arg in arguments]
                         kernel_name = argument_strings[0].strip()
-                        if kernel_name in KernelTemplateParams and kernel_name != "upscale":
+                        ignore = ["upscale", "im2col_kernel", "im3d2col_kernel", "vol2col_kernel"]
+                        if kernel_name in KernelTemplateParams and kernel_name not in ignore:
                             # Add template to the kernel
                             # Add static_casts to relevant arguments
                             kernel_name_with_template = KernelTemplateParams[kernel_name]["kernel_with_template"]
@@ -569,6 +574,8 @@ def main():
                                         new_kernel_launch = re.sub(r'\b(%s)\b' % arg, lambda x: static_argument, new_kernel_launch)
 
                             # Add template type
+                            if "THCUNN" in filepath.split("/") and "generic" not in filepath.split("/"):
+                                kernel_name_with_template = kernel_name_with_template.replace("<real>", "<Dtype>")
                             new_kernel_launch = re.sub(r'\b(%s)\b' % kernel_name, lambda x: kernel_name_with_template, new_kernel_launch)
 
 
