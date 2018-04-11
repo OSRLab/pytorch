@@ -924,9 +924,7 @@ half THC_float2half(float f)
 #if defined(__HIP_PLATFORM_HCC__)
   half h;
   return h;
-#endif
-
-#if CUDA_VERSION < 9000
+#elif CUDA_VERSION < 9000
   half h;
   TH_float2halfbits(&f, &h.x);
   return h;
@@ -942,9 +940,7 @@ float  THC_half2float(half h)
 #if defined(__HIP_PLATFORM_HCC__)
   float f;
   return f;
-#endif
-
-#if CUDA_VERSION < 9000
+#elif CUDA_VERSION < 9000
   TH_halfbits2float(&h.x, &f);
 #else
   __half_raw h_raw(h);
