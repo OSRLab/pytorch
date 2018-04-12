@@ -7,8 +7,8 @@
 #endif
 
 #if defined(__HIP_PLATFORM_HCC__)
-  #undef PyBytes_AS_STRING(op)
-  #undef PyBytes_GET_SIZE(op)
+  #undef PyBytes_AS_STRING
+  #undef PyBytes_GET_SIZE
   #define PyBytes_AS_STRING(op) (((PyBytesObject *)(op))->ob_sval)
   #define PyBytes_GET_SIZE(op)  Py_SIZE(op)
 #endif
