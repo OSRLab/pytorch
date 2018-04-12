@@ -5,11 +5,7 @@
 #include "THCHalf.h"
 #include "THCHalfAutoNumerics.cuh"
 #include "THCTensorSort.cuh"
-#if defined(__HIP_PLATFORM_HCC__)
-#include "THC/THCTensorMathReduce.cuh"
-#else
 #include "../THC/THCTensorMathReduce.cuh"
-#endif
 
 #if defined(__NVCC__)
 const int WARP_SIZE = 32;
@@ -194,10 +190,10 @@ struct FastPow<DType, AccType, 2>
 /* Calculate norms of the rows of weight_ptr given by idx_ptr and capture them in norms */
 template <typename DType, typename AccType, typename IndexType, int Norm>
 __global__
-void calculate_norms_and_renorm(DType *weights, 
-                                THCIndex_t *indices, 
+void calculate_norms_and_renorm(DType *weights,
+                                THCIndex_t *indices,
                                 AccType normType,
-                                AccType maxNorm, 
+                                AccType maxNorm,
                                 IndexType dim)
 {
 #if !defined(__HIP_PLATFORM_HCC__)
@@ -218,7 +214,7 @@ void calculate_norms_and_renorm(DType *weights,
         (sdata, blockDim.x, v, ReduceAdd<AccType, AccType>(), accZero);
 
   if (tid == 0) {
-    sdata[0] = std::pow(v, 
+    sdata[0] = std::pow(v,
         THCNumerics<AccType>::div(ScalarConvert<int, AccType>::to(1), normType)
     );
   }

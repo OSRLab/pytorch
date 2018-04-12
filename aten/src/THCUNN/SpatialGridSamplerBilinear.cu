@@ -87,7 +87,6 @@ __global__ void SpatialGridSamplerBilinear_updateOutput_kernel(
     Dtype out_val;
     for (c = 0; c < C; ++c) {
       out_val = ScalarConvert<int,Dtype>::to(0);
-#if defined(__HIP_PLATFORM_HCC__)
       if (WITHIN_BOUNDS(ix_nw, iy_nw, IH, IW)) {
         out_val += (input[n][c][iy_nw][ix_nw]).template as<Dtype>() * nw;
       }
@@ -101,21 +100,6 @@ __global__ void SpatialGridSamplerBilinear_updateOutput_kernel(
         out_val += (input[n][c][iy_se][ix_se]).template as<Dtype>() * se;
       }
       output[n][c][h][w] = out_val;
-#else
-      if (WITHIN_BOUNDS(ix_nw, iy_nw, IH, IW)) {
-        out_val += input[n][c][iy_nw][ix_nw] * nw;
-      }
-      if (WITHIN_BOUNDS(ix_ne, iy_ne, IH, IW)) {
-        out_val += input[n][c][iy_ne][ix_ne] * ne;
-      }
-      if (WITHIN_BOUNDS(ix_sw, iy_sw, IH, IW)) {
-        out_val += input[n][c][iy_sw][ix_sw] * sw;
-      }
-      if (WITHIN_BOUNDS(ix_se, iy_se, IH, IW)) {
-        out_val += input[n][c][iy_se][ix_se] * se;
-      }
-      output[n][c][h][w] = out_val;
-#endif
     }
   }
 }
@@ -174,7 +158,7 @@ __global__ void SpatialGridSamplerBilinear_updateGradInput_kernel(
     Dtype ne_val;
     Dtype sw_val;
     Dtype se_val;
-    
+
     int ix_nw_cl, iy_nw_cl, ix_ne_cl, iy_ne_cl, ix_sw_cl, iy_sw_cl, ix_se_cl, iy_se_cl;
 
     if (padding_mode==MODE_BORDER){
