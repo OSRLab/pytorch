@@ -59,8 +59,9 @@ def walk_over_directory(path, extensions, show_detailed, exclude_dirs=[], kernel
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
     for (dirpath, _dirnames, filenames) in os.walk(path):
-        if reduce(lambda result, ext: ext in dirpath or result, exclude_dirs, False):
+        if reduce(lambda result, ext: dirpath.endswith(ext) or result, exclude_dirs, False):
             continue
+
         for filename in filenames:
             # Extract the (.hip)
             if filename.endswith(".hip"):
@@ -368,6 +369,9 @@ def pytorch_specific_fixes(amd_pytorch_directory):
 
     # Due to an issue in HCC, change filename of CuDNN batch norm
     shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
+
+    # Remove the assert from THAtomic.c
+    file_specific_replacement(os.path.join(aten_src_directory, "TH/THAtomic.c"), "assert(sizeof(int) == sizeof(int32_t));", "")
 
     # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
     file_specific_replacement(os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"), "_OPENMP", "_OPENMP_STUBBED")
