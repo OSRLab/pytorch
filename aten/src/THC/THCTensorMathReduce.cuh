@@ -105,7 +105,7 @@ struct SquareFunctor<ResT, half> {
 template <typename T>
 struct ReduceMin {
   inline __device__ T operator()(T a, T b) const {
-#if defined(__HIP_PLATFORM_HCC__X)
+#if defined(__HIP_PLATFORM_HCC__)
     T diff = THCNumerics<T>::sub(a, b);
     return (diff < 0 ) ? a : b;
 #else
@@ -117,7 +117,7 @@ struct ReduceMin {
 template <typename T>
 struct ReduceMax {
   inline __device__ T operator()(T a, T b) const {
-#if defined(__HIP_PLATFORM_HCC__X)
+#if defined(__HIP_PLATFORM_HCC__)
     T diff = THCNumerics<T>::sub(a, b);
     return (diff > 0 ) ? a : b;
 #else
