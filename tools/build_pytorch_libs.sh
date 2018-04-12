@@ -262,7 +262,6 @@ function build_aten() {
 # In the torch/lib directory, create an installation directory
 mkdir -p torch/lib/tmp_install
 
-<<<<<<< HEAD:tools/build_pytorch_libs.sh
 # Build
 for arg in "$@"; do
     if [[ "$arg" == "nccl" ]]; then
@@ -291,9 +290,7 @@ for arg in "$@"; do
         popd
     fi
 done
-=======
-# Link folders if ROCm
->>>>>>> Updating build style to start from aten.:torch/lib/build_libs.sh
+
 if [[ $WITH_ROCM -eq 1 ]]; then
     mkdir -p HIP
     cd HIP

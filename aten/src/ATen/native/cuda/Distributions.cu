@@ -5,6 +5,7 @@
 #include <curand.h>
 #include <curand_kernel.h>
 #include <curand_philox4x32_x.h>
+
 #include <TH/THAtomic.h>
 
 #include <THC/THCGeneral.h>
@@ -14,6 +15,7 @@
 
 #include <cstdint>
 #include <utility>
+
 #if !defined(__HIP_PLATFORM_HCC__)
 THCGenerator* THCRandom_getGenerator(THCState* state);
 
