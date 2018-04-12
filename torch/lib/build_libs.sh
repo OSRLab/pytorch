@@ -237,31 +237,6 @@ function build_aten() {
 # In the torch/lib directory, create an installation directory
 mkdir -p tmp_install
 
-# Link folders if ROCm
-if [[ $WITH_ROCM -eq 1 ]]; then
-    mkdir -p HIP
-    cd HIP
-    if [ ! -L "THC" ]; then
-        ln -s ../THC/hip THC
-    fi
-    if [ ! -L "THCUNN" ]; then
-        ln -s ../THCUNN/hip THCUNN
-    fi
-    if [ ! -L "THD" ]; then
-        ln -s ../THD THD
-    fi
-    if [ ! -L "THPP" ]; then
-        ln -s ../THPP THPP
-    fi
-    if [ ! -L "THS" ]; then
-        ln -s ../THS THS
-    fi
-    if [ ! -L "ATen" ]; then
-        ln -s ../ATen ATen
-    fi
-    cd ..
-fi
-
 # Build
 for arg in "$@"; do
   if [[ "$arg" == "nccl" ]]; then

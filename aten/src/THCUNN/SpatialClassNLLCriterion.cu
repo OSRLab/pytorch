@@ -62,11 +62,7 @@ __global__ void SpatialClassNLLCriterion_updateGradInput_no_reduce_kernel(
     }
     Dtype value =
         -(weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1));
-#if defined(__HIP_PLATFORM_HCC__)
     gradInput[b][cur_target][h][w] = value * gradOutput[b][h][w].template as<Dtype>();
-#else
-    gradInput[b][cur_target][h][w] = value * gradOutput[b][h][w];
-#endif
   }
 }
 
