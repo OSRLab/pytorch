@@ -95,7 +95,7 @@ def walk_over_directory(path, extensions, show_detailed=False, exclude_dirs=None
     # Begin traversing the files.
     for (dirpath, _dirnames, filenames) in os.walk(path):
         # Check if file ends with a valid extensions
-        if sum([dirpath.endswith(ext) for ext in extensions]) == 0:
+        if sum([dirpath.endswith(exclude) for exclude in exclude_dirs]):
             continue
 
         for filename in filenames:
@@ -298,38 +298,39 @@ def disable_function(input_string, function, replace_style):
         info["function_start"] = input_string.find(function_string)
     else:
         # Automatically detect signature.
-        the_match = re.search("((.*) (\*)?)(%s)(\(.*\))" % (function.replace("(", "\(").replace(")", "\)")), input_string)
-
+        the_match = re.search(r"(((.*) (\*)?)(%s)(\([^{)]*\)))\s*{" % (function.replace("(", "\(").replace(")", "\)")), input_string)
         func_info = {
-            "return_type": the_match.group(1).strip(),
-            "function_name": the_match.group(4).strip(),
-            "function_args": the_match.group(5).strip(),
+            "return_type": the_match.group(2).strip(),
+            "function_name": the_match.group(5).strip(),
+            "function_args": the_match.group(6).strip(),
         }
 
         # Find the starting position for the function
         info["function_start"] = the_match.start()
-        function_string = input_string[the_match.span()[0]:the_match.span()[1]]
+        function_string = the_match.group(1)
+
 
     # The function can't be found anymore.
     if info["function_start"] == -1:
         return input_string
 
     # Find function block start.
-    pos = info["function_start"] + len(function_string)
-    while pos < len(input_string) - 1 and STATE != BRACKET_COMPLETE:
-        pos += 1
+    pos = info["function_start"] + len(function_string) - 1
+    while pos < len(input_string) and STATE != BRACKET_COMPLETE:
         if input_string[pos] == "{":
             if STATE != INSIDE_FUNCTION:
                 STATE = INSIDE_FUNCTION
-                bracket_count = 1
+                info["bracket_count"] = 1
             else:
-                bracket_count += 1
+                info["bracket_count"] += 1
         elif input_string[pos] == "}":
-            bracket_count -= 1
+            info["bracket_count"] -= 1
 
-            if bracket_count == 0 and STATE == INSIDE_FUNCTION:
+            if info["bracket_count"] == 0 and STATE == INSIDE_FUNCTION:
                 STATE = BRACKET_COMPLETE
                 info["function_end"] = pos
+
+        pos += 1
 
     # Never found the function end. Corrupted file!
     if STATE != BRACKET_COMPLETE:
@@ -349,7 +350,7 @@ def disable_function(input_string, function, replace_style):
             stub = "%s{\n}" % (function_string)
         # pointer return type
         elif "*" in func_info["return_type"]:
-            stub = "%s{\nreturn %s;\n}" % (function_string, "NULL")
+            stub = "%s{\nreturn %s;\n}" % (function_string, "NULL") #nullptr
         else:
             stub = "%s{\n%s stub_var;\nreturn stub_var;\n}" % (function_string, func_info["return_type"])
 
@@ -721,7 +722,7 @@ def main():
 
     args = parser.parse_args()
 
-    # Sanity check arguments
+    """# Sanity check arguments
     if not os.path.exists(args.project_directory):
         print("The project folder specified does not exist.")
         return
@@ -753,7 +754,7 @@ def main():
         exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS"])
 
     # Add static_casts
-    add_static_casts(args, KernelTemplateParams)
+    add_static_casts(args, KernelTemplateParams)"""
 
     # Disable functions in certain files according to YAML description
     with open(os.path.join(args.project_directory, "amd_build/disabled_funcs.yaml"), "r") as lines:
@@ -767,6 +768,7 @@ def main():
                 txt = f.read()
                 for func in functions:
                     txt = disable_function(txt, func, 1)
+
                 f.seek(0)
                 f.write(txt)
                 f.truncate()

@@ -1,6 +1,13 @@
 {
   "disabled": [
     {
+      "path": "aten/src/THC/THCGeneral.cpp",
+      "functions": [
+        "THC_float2half",
+        "THC_half2float"
+      ]
+    },
+    {
       "path": "aten/src/THCUNN/generic/SparseLinear.cu",
       "functions": [
         "THNN_(SparseLinear_updateOutput)",
@@ -17,7 +24,7 @@
     {
       "path": "aten/src/THCUNN/generic/LookupTable.cu",
       "functions": [
-        "THNN_(LookupTable_accGradParameters)"
+        "THNN_(LookupTable_accGradParameters)",
         "THNN_(LookupTable_renorm)"
       ]
     },
@@ -38,8 +45,7 @@
         "THCSTensor_(cadd)",
         "THCSTensor_(csub)",
         "THCSTensor_(cmul)",
-        "THCSTensor_(pow)",
-        ""
+        "THCSTensor_(pow)"
       ]
     },
     {
