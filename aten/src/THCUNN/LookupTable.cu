@@ -213,7 +213,7 @@ void calculate_norms_and_renorm(DType *weights,
         (sdata, blockDim.x, v, ReduceAdd<AccType, AccType>(), accZero);
 
   if (tid == 0) {
-    sdata[0] = std::pow(v, 
+    sdata[0] = std::pow(v,
         THCNumerics<AccType>::div(ScalarConvert<int, AccType>::to(1), normType)
     );
   }
@@ -225,6 +225,7 @@ void calculate_norms_and_renorm(DType *weights,
       weights[baseIndex + i] *= factor;
     }
   }
+
 }
 
 #include "generic/LookupTable.cu"
