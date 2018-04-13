@@ -722,7 +722,7 @@ def main():
 
     args = parser.parse_args()
 
-    """# Sanity check arguments
+    # Sanity check arguments
     if not os.path.exists(args.project_directory):
         print("The project folder specified does not exist.")
         return
@@ -754,7 +754,7 @@ def main():
         exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS"])
 
     # Add static_casts
-    add_static_casts(args, KernelTemplateParams)"""
+    add_static_casts(args, KernelTemplateParams)
 
     # Disable functions in certain files according to YAML description
     with open(os.path.join(args.project_directory, "amd_build/disabled_funcs.yaml"), "r") as lines:
