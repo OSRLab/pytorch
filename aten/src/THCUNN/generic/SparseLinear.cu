@@ -34,7 +34,6 @@ void THNN_(SparseLinear_updateOutput)(
            THCTensor *weight,
            THCTensor *bias)
 {
-#if defined(__NVCC_)
   THAssert(THCTensor_(checkGPU)(state, 4, input, output, weight, bias));
 
   int64_t h;
@@ -46,7 +45,7 @@ void THNN_(SparseLinear_updateOutput)(
   THArgCheck(checkSize1D(bias, outDim), 5, "bias size wrong");
 
   weight = THCTensor_(newContiguous)(state, weight);
-  
+
   int64_t batchnum = THCTensor_(size)(state, output, 0);
   int64_t nnz = THCTensor_(size)(state, input, 0);
 
@@ -121,7 +120,6 @@ void THNN_(SparseLinear_updateOutput)(
   THCudaIntTensor_free(state, rowbuf);
   THCudaIntTensor_free(state, colInds);
   THCudaIntTensor_free(state, csrPtrs);
-#endif
 }
 
 void THNN_(SparseLinear_accGradParameters)(
@@ -135,7 +133,6 @@ void THNN_(SparseLinear_accGradParameters)(
            accreal weightDecay,
            accreal scale)
 {
-#if defined(__NVCC__)
   int64_t outDim = THCTensor_(size)(state, weight, 0);
   int64_t inDim = THCTensor_(size)(state, weight, 1);
 
@@ -228,7 +225,6 @@ void THNN_(SparseLinear_accGradParameters)(
   THCudaIntTensor_free(state, colbuf);
   THCudaIntTensor_free(state, rowInds);
   THCudaIntTensor_free(state, colPtrs);
-#endif
 }
 
 void THNN_(SparseLinear_legacyUpdateOutput)(
