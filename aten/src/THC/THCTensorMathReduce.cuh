@@ -191,6 +191,7 @@ __global__ void THCTensor_kernel_renorm(Real *data, const Real value, const ptrd
 template <typename T>
 struct TensorNonZeroOp
 {
+  TensorNonZeroOp() {}
   __host__ __device__ T operator()(T lhs) const {
     if (THCNumerics<T>::eq(lhs, ScalarConvert<float, T>::to(0.0))) {
       return ScalarConvert<int, T>::to(0);
@@ -454,7 +455,7 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
       local_sum = THCNumerics<Accreal>::add(local_sum,
           WARP_SHFL_XOR((row < num_rows) ? local_sum : acc_zero, lane_mask, 16));
     }
-    Accreal true_mean = THCNumerics<Accreal>::div(local_sum,
+    Accreal true_mean = THCNumerics<Accreal>::div(local_sum, 
         ScalarConvert<int, Accreal>::to(row_size));
 
     /*
@@ -477,7 +478,7 @@ __global__ void THCTensor_kernel_varInnermostDim(Real *tgt, Real *src_, unsigned
      * the total sum, which is equal to the M2 for the entire input row.
      */
     for (unsigned s = 8; s >= 1; s >>= 1) {
-      adjusted_M2 = THCNumerics<Accreal>::add(adjusted_M2, 
+      adjusted_M2 = THCNumerics<Accreal>::add(adjusted_M2,
           WARP_SHFL_DOWN((row < num_rows) ? adjusted_M2 : acc_zero, s, 16));
     }
 

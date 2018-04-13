@@ -28,6 +28,7 @@ import re
 import shutil
 import sys
 import os
+import yaml
 
 from functools import reduce
 from cuda_to_hip_mappings import CUDA_TO_HIP_MAPPINGS
@@ -41,25 +42,60 @@ def update_progress_bar(total, progress):
     progress = float(progress) / float(total)
     if progress >= 1.:
         progress, status = 1, "\r\n"
+
+    # Number of blocks to display. Used to visualize progress.
     block = int(round(barLength * progress))
     text = "\r[{}] {:.0f}% {}".format(
         "#" * block + "-" * (barLength - block), round(progress * 100, 0),
         status)
+
+    # Send the progress to stdout.
     sys.stdout.write(text)
+
+    # Send the buffered text to stdout!
     sys.stdout.flush()
 
 
-def walk_over_directory(path, extensions, show_detailed, exclude_dirs=[], kernel_templates=None):
-    """ Walks over the entire directory and applies the function (func) on each file encountered.
+def walk_over_directory(path, extensions, show_detailed=False, exclude_dirs=None):
+    """ Recursively walk over directory and preprocesses files
+    with specified extensions.
 
-    func (path as string): void
+    extensions - A list of file extensions excluding the leading "."
+                (e.g. ['cuh'] not ['.cuh'])
+
+    show_detailed - If set to true, then show all replaced kernels.
     """
-    cur = 0
-    total = sum([sum([reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False) for filename in files]) if r not in exclude_dirs else 0 for r, d, files in os.walk(path)])
+
+    # Default argument for excluded directories.
+    if exclude_dirs is None:
+        exclude_dirs = []
+
+    # Dissalow the 'hip' as an extension.
+    # .hip has a special meaning
+    #    => i.e. "This file has already been processed and simply needs to be moved"
+    #    => e.g. moving "kernel_file.cu.hip" to "kernel_file.cu"
+    if "hip" in extensions:
+        print(".hip files are assumed to already be preprocessed. \
+        Please remove 'hip' from the extensions list.")
+
+    # Compute the total number of files to be traversed.
+    total_files = 0
+    for (dirpath, _dirnames, filenames) in os.walk(path):
+        if dirpath not in exclude_dirs:
+            for filename in filenames:
+                total_files += reduce(
+                    lambda result, ext: filename.endswith("." + ext) or result,
+                    extensions, False)
+
+    current_file = 0
+
+    # Preprocessing statistics.
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
+    # Begin traversing the files.
     for (dirpath, _dirnames, filenames) in os.walk(path):
-        if reduce(lambda result, ext: dirpath.endswith(ext) or result, exclude_dirs, False):
+        # Check if file ends with a valid extensions
+        if sum([dirpath.endswith(ext) for ext in extensions]) == 0:
             continue
 
         for filename in filenames:
@@ -84,9 +120,9 @@ def walk_over_directory(path, extensions, show_detailed, exclude_dirs=[], kernel
 
                 # Update the progress
                 print(os.path.join(dirpath, filename))
-                update_progress_bar(total, cur)
+                update_progress_bar(total_files, current_file)
 
-                cur += 1
+                current_file += 1
 
     print("Finished")
     compute_stats(stats, show_detailed)
@@ -104,11 +140,9 @@ def compute_stats(stats, show_detailed):
     # Print the number of kernel launches
     print("\nTotal number of replaced kernel launches: %d" % (len(stats["kernel_launches"])))
 
+    # Show a detailed summary
     if show_detailed:
         print("\n".join(stats["kernel_launches"]))
-
-        for unsupported in stats["unsupported_calls"]:
-            print("Detected an unsupported function %s in file %s" % unsupported)
 
 
 def processKernelLaunches(string, stats):
@@ -214,6 +248,128 @@ def disable_asserts(input_string):
     return result
 
 
+def disable_function(input_string, function, replace_style):
+    """ Finds and disables a function in a particular file.
+
+    If type(function) == List
+        function - The signature of the function to disable.
+            e.g. ["bool", "overlappingIndices", "(const Tensor& t)"]
+            disables function -> "bool overlappingIndices(const Tensor& t)"
+
+    If type(function) == String
+        function - Disables the function by name only.
+            e.g. "overlappingIndices"
+
+    replace_style - The style to use when stubbing functions.
+        0 - Remove the function entirely (includes the signature).
+        1 - Stub the function and return an empty object based off the type.
+        2 - Add !defined(__HIP_PLATFORM_HCC__) preprocessors around the function.
+        3 - Add !defined(__HIP_DEVICE_COMPILE__) preprocessors around the function.
+    """
+
+    info = {
+        "function_start": -1,
+        "function_end": -1,
+        "bracket_count": 0
+    }
+
+    STARTED = 0
+    INSIDE_FUNCTION = 1
+    BRACKET_COMPLETE = 2
+
+    STATE = STARTED
+
+    if type(function) == list:
+        # Extract components from function signature.
+        func_info = {
+            "return_type": function[0].strip(),
+            "function_name": function[1].strip(),
+            "function_args": function[2].strip()
+        }
+
+        # Create function string to search for
+        function_string = "%s%s%s" % (
+            func_info["return_type"],
+            func_info["function_name"],
+            func_info["function_args"]
+        )
+
+        # Find the starting position for the function
+        info["function_start"] = input_string.find(function_string)
+    else:
+        # Automatically detect signature.
+        the_match = re.search("((.*) (\*)?)(%s)(\(.*\))" % (function.replace("(", "\(").replace(")", "\)")), input_string)
+
+        func_info = {
+            "return_type": the_match.group(1).strip(),
+            "function_name": the_match.group(4).strip(),
+            "function_args": the_match.group(5).strip(),
+        }
+
+        # Find the starting position for the function
+        info["function_start"] = the_match.start()
+        function_string = input_string[the_match.span()[0]:the_match.span()[1]]
+
+    # The function can't be found anymore.
+    if info["function_start"] == -1:
+        return input_string
+
+    # Find function block start.
+    pos = info["function_start"] + len(function_string)
+    while pos < len(input_string) - 1 and STATE != BRACKET_COMPLETE:
+        pos += 1
+        if input_string[pos] == "{":
+            if STATE != INSIDE_FUNCTION:
+                STATE = INSIDE_FUNCTION
+                bracket_count = 1
+            else:
+                bracket_count += 1
+        elif input_string[pos] == "}":
+            bracket_count -= 1
+
+            if bracket_count == 0 and STATE == INSIDE_FUNCTION:
+                STATE = BRACKET_COMPLETE
+                info["function_end"] = pos
+
+    # Never found the function end. Corrupted file!
+    if STATE != BRACKET_COMPLETE:
+        return input_string
+
+    # Preprocess the source by removing the function.
+    function_body = input_string[info["function_start"]:info["function_end"]+1]
+
+    # Remove the entire function body
+    if replace_style == 0:
+        output_string = input_string.replace(function_body, "")
+
+    # Stub the function based off its return type.
+    elif replace_style == 1:
+        # void return type
+        if func_info["return_type"] == "void" or func_info["return_type"] == "static void":
+            stub = "%s{\n}" % (function_string)
+        # pointer return type
+        elif "*" in func_info["return_type"]:
+            stub = "%s{\nreturn %s;\n}" % (function_string, "NULL")
+        else:
+            stub = "%s{\n%s stub_var;\nreturn stub_var;\n}" % (function_string, func_info["return_type"])
+
+        output_string = input_string.replace(function_body, stub)
+
+    # Add HIP Preprocessors.
+    elif replace_style == 2:
+        output_string = input_string.replace(
+            function_body,
+            "#if !defined(__HIP_PLATFORM_HCC__)\n%s\n#endif" % function_body)
+
+    # Add HIP Preprocessors.
+    elif replace_style == 3:
+        output_string = input_string.replace(
+            function_body,
+            "#if !defined(__HIP_DEVICE_COMPILE__)\n%s\n#endif" % function_body)
+
+    return output_string
+
+
 def preprocessor(filepath, stats):
     """ Executes the CUDA -> HIP conversion on the specified file. """
     with open(filepath, "r+") as fileobj:
@@ -221,9 +377,8 @@ def preprocessor(filepath, stats):
 
         # Perform type, method, constant replacements
         for mapping in CUDA_TO_HIP_MAPPINGS:
-            for key, value in mapping.iteritems():
-                # Extract relevanft info
-                cuda_type = key
+            for cuda_type, value in mapping.iteritems():
+                # Extract relevant information
                 hip_type = value[0]
                 meta_data = value[1:]
 
@@ -334,7 +489,7 @@ def get_kernel_template_params(the_file, KernelDictionary):
                     if arg[i] == "*" or arg[i] == " ":
                         argument_types[arg_idx] = re.sub(' +',' ', arg[0:i+1].replace("\n", "").strip())
                         break
-            if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:#, "scalar_t"]:
+            if len(template_arguments) == 1 and template_arguments[0].strip() in ["Dtype", "T"]:
                 # Updates kernel
                 kernel_with_template = "%s<real>" % (kernel_name)
             else:
@@ -367,31 +522,40 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     """Load the PyTorch specific patches"""
     aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src/")
 
+    # The strings in certain files to replace.
+    REPLACEMENTS = {
+        # ATen & TH* files.
+        os.path.join(aten_src_directory, "TH/THAtomic.c"): {"assert(sizeof(int) == sizeof(int32_t));": ""}, # Remove the assert from THAtomic.c
+        os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"): {"_OPENMP": "_OPENMP_STUBBED"}, # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
+        os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"): {"std::pow": "powf"}, # Swap the math functions from std:: to hcc device functions.
+        os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"): {"std::abs": "fabs"}, # Swap the math functions from std:: to hcc device functions.
+        os.path.join(aten_src_directory, "THCUNN/Abs.cu"): {"abs(": "fabs("}, # Swap abs w/ fabsf for device code.
+        os.path.join(aten_src_directory, "THC/THCTensorRandom.cpp"): {"struct curandStateMtgp32*": "curandStateMtgp32*"}, # Remove the "struct" from the return type since hipStageMtgp32* implies pointer to struct.
+
+        # Torch files
+        os.path.join(amd_pytorch_directory, "torch/csrc/cuda/Module.cpp"): {"CUDA_VERSION": "0"}, # Update CUDA_VERSION to 0.
+
+        # Disable the loading of the CUDA runtime in torch/cuda/__init__.py
+        os.path.join(amd_pytorch_directory, "torch/cuda/__init__.py"): {
+            "_cudart = _load_cudart()": "# _cudart = _load_cudart()",
+            "_cudart.cudaGetErrorName.restype = ctypes.c_char_p": "#_cudart.cudaGetErrorName.restype = ctypes.c_char_p",
+            "_cudart.cudaGetErrorString.restype = ctypes.c_char_p": "#_cudart.cudaGetErrorString.restype = ctypes.c_char_p",
+            "_lazy_call(_check_capability)": "#_lazy_call(_check_capability)"
+        },
+
+        os.path.join(aten_src_directory, "THC/THCAllocator.c"): {"cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)": "cudaSuccess"}, # Replace with THCudaCheck(hipSuccess)
+
+        # Replace "cudaStreamCreateWithPriority(&self->stream, flags, priority)" with cudaStreamCreateWithFlags(&self->stream, flags)
+        os.path.join(aten_src_directory, "THC/THCStream.cpp"): {"cudaStreamCreateWithPriority(&self->stream, flags, priority)": "cudaStreamCreateWithFlags(&self->stream, flags)"}
+    }
+
+    # Handle the necessary replacements
+    for filepath in REPLACEMENTS:
+        for key in REPLACEMENTS[filepath]:
+            file_specific_replacement(filepath, key, REPLACEMENTS[filepath][key])
+
     # Due to an issue in HCC, change filename of CuDNN batch norm
     shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
-
-    # Remove the assert from THAtomic.c
-    file_specific_replacement(os.path.join(aten_src_directory, "TH/THAtomic.c"), "assert(sizeof(int) == sizeof(int32_t));", "")
-
-    # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
-    file_specific_replacement(os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"), "_OPENMP", "_OPENMP_STUBBED")
-
-    # Swap the math functions from std:: to hcc device functions.
-    file_specific_replacement(os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"), "std::pow", "powf")
-    file_specific_replacement(os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"), "std::abs", "fabs")
-
-    # Swap abs w/ fabsf for device code.
-    file_specific_replacement(os.path.join(aten_src_directory, "THCUNN/Abs.cu"), "abs(", "fabs(")
-
-    # Remove the "struct" from the return type since hipStageMtgp32* implies pointer to struct.
-    file_specific_replacement(os.path.join(aten_src_directory, "THC/THCTensorRandom.cpp"), "struct curandStateMtgp32*", "curandStateMtgp32*")
-
-    # Disable the loading of the CUDA runtime in torch/cuda/__init__.py
-    torch_cuda_init = os.path.join(amd_pytorch_directory, "torch/cuda/__init__.py")
-    file_specific_replacement(torch_cuda_init, "_cudart = _load_cudart()", "# _cudart = _load_cudart()")
-    file_specific_replacement(torch_cuda_init, "_cudart.cudaGetErrorName.restype = ctypes.c_char_p", "#_cudart.cudaGetErrorName.restype = ctypes.c_char_p")
-    file_specific_replacement(torch_cuda_init, "_cudart.cudaGetErrorString.restype = ctypes.c_char_p", "#_cudart.cudaGetErrorString.restype = ctypes.c_char_p")
-    file_specific_replacement(torch_cuda_init, "_lazy_call(_check_capability)", "#_lazy_call(_check_capability)")
 
     # Replace WITH_CUDA with WITH_ROCM for all locations inside for /torch/
     torch_directory = os.path.join(amd_pytorch_directory, 'torch/')
@@ -404,26 +568,11 @@ def pytorch_specific_fixes(amd_pytorch_directory):
                 if not reduce(lambda result, exclude: the_file.endswith(exclude) or result, exclude_files, False):
                     file_specific_replacement(the_file, "WITH_CUDA", "WITH_ROCM")
 
-    # Replace with THCudaCheck(hipSuccess)
-    file_specific_replacement(os.path.join(aten_src_directory, "THC/THCAllocator.c"), "cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)", "cudaSuccess")
-
     # Add include to ATen.h
-    file_add_header(
-        os.path.join(aten_src_directory, "ATen/ATen.h"),
-        "hip/hip_runtime.h"
-    )
+    file_add_header(os.path.join(aten_src_directory, "ATen/ATen.h"), "hip/hip_runtime.h")
 
     # Add include to THCTensorIndex.cu
-    file_add_header(
-        os.path.join(aten_src_directory, "THC/THCTensorIndex.cu"),
-        "<thrust/execution_policy.h>"
-    )
-
-    # Replace "cudaStreamCreateWithPriority(&self->stream, flags, priority)" with cudaStreamCreateWithFlags(&self->stream, flags)
-    file_specific_replacement(
-        os.path.join(aten_src_directory, "THC/THCStream.cpp"),
-        "cudaStreamCreateWithPriority(&self->stream, flags, priority)",
-        "cudaStreamCreateWithFlags(&self->stream, flags)")
+    file_add_header(os.path.join(aten_src_directory, "THC/THCTensorIndex.cu"), "<thrust/execution_policy.h>")
 
     # Add templating to all of the kernel calls inside THCUNN.
     extensions = ["cu", "cuh", "h"]
@@ -441,11 +590,104 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     print("Successfully loaded PyTorch specific modifications.")
 
 
+def add_static_casts(args, KernelTemplateParams):
+    """Added necessary static casts to kernel launches due to issue in HIP"""
+
+    # Add static_casts<> to all kernel launches.
+    for (dirpath, _dirnames, filenames) in os.walk(args.output_directory):
+        for filename in filenames:
+            if reduce(
+                lambda result, ext: filename.endswith("." + ext) or result,
+                    args.extensions, False):
+                filepath = os.sep.join([dirpath, filename])
+                with open(filepath, "r+") as fileobj:
+                    output_source = fileobj.read()
+                    new_output_source = output_source
+                    get_kernel_definitions = [k for k in re.finditer("hipLaunchKernelGGL\(", output_source)]
+                    for kernel in get_kernel_definitions:
+                        arguments = []
+                        closures = {
+                            "<": 0,
+                            "(": 1
+                        }
+                        current_position = kernel.end()
+                        argument_start_pos = current_position
+
+                        # Search for final parenthesis
+                        while current_position < len(output_source):
+                            if output_source[current_position] == "(":
+                                closures["("] += 1
+                            elif output_source[current_position] == ")":
+                                closures["("] -= 1
+                            elif output_source[current_position] == "<":
+                                closures["<"] += 1
+                            elif output_source[current_position] == ">" and output_source[current_position-1] != "-":
+                                closures["<"] -= 1
+
+                            # Finished all arguments
+                            if closures["("] == 0 and closures["<"] == 0:
+                                # Add final argument
+                                arguments.append({"start": argument_start_pos, "end": current_position})
+                                break
+
+                            # Finished current argument
+                            if closures["("] == 1 and closures["<"] == 0 and output_source[current_position] == ",":
+                                arguments.append({"start": argument_start_pos, "end": current_position})
+                                argument_start_pos = current_position + 1
+
+                            current_position += 1
+
+                        # Check if we have templating + static_cast information
+                        argument_strings = [output_source[arg["start"]:arg["end"]] for arg in arguments]
+                        kernel_name = argument_strings[0].strip()
+                        ignore = ["upscale"]
+                        if kernel_name in KernelTemplateParams and kernel_name not in ignore:
+                            # Add template to the kernel
+                            # Add static_casts to relevant arguments
+                            kernel_name_with_template = KernelTemplateParams[kernel_name]["kernel_with_template"]
+                            argument_types = KernelTemplateParams[kernel_name]["arg_types"]
+
+                            old_kernel_launch = output_source[arguments[0]["start"]:arguments[-1]["end"]]
+                            new_kernel_launch = old_kernel_launch
+
+                            kernel_params = argument_strings[5:]
+                            for arg_idx, arg in enumerate(kernel_params):
+                                if arg_idx in argument_types:
+                                    arg = kernel_params[arg_idx].strip()
+                                    the_type = argument_types[arg_idx]
+                                    the_arg = arg.replace("\n", "").strip()
+                                    if the_type in ["int", "const int", "int64_t", "THCIndex_t *", "const int *", "ptrdiff_t", "long", "const int64_t*", "int64_t *", "double"]:
+                                        static_argument = "static_cast<%s>(%s)" % (the_type, the_arg)
+                                        static_argument = arg.replace(the_arg, static_argument)
+
+                                        # Update to static_cast
+                                        new_kernel_launch = re.sub(r'\b(%s)\b' % arg, lambda x: static_argument, new_kernel_launch)
+
+                            # Add template type
+                            if "THCUNN" in filepath.split("/") and "generic" not in filepath.split("/"):
+                                kernel_name_with_template = kernel_name_with_template.replace("<real>", "<Dtype>")
+                            new_kernel_launch = re.sub(r'\b(%s)\b' % kernel_name, lambda x: kernel_name_with_template, new_kernel_launch)
+
+
+                            # Replace Launch
+                            new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
+
+                    # Overwrite file contents
+                    fileobj.seek(0)
+                    fileobj.write(new_output_source)
+                    fileobj.truncate()
+                    fileobj.flush()
+
+                    # Flush to disk
+                    os.fsync(fileobj)
+
+
 def main():
     """Example invocation
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
+
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
@@ -510,93 +752,26 @@ def main():
         show_detailed=args.show_detailed,
         exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS"])
 
-    # Update the kernel launches.
-    for (dirpath, _dirnames, filenames) in os.walk(args.output_directory):
-        for filename in filenames:
-            if reduce(
-                lambda result, ext: filename.endswith("." + ext) or result,
-                    args.extensions, False):
-                filepath = os.sep.join([dirpath, filename])
-                with open(filepath, "r+") as fileobj:
-                    output_source = fileobj.read()
-                    new_output_source = output_source
-                    get_kernel_definitions = [k for k in re.finditer("hipLaunchKernelGGL\(", output_source)]
-                    for kernel in get_kernel_definitions:
-                        arguments = []
-                        closures = {
-                            "<": 0,
-                            "(": 1
-                        }
-                        current_position = kernel.end()
-                        argument_start_pos = current_position
+    # Add static_casts
+    add_static_casts(args, KernelTemplateParams)
 
-                        # Search for final parenthesis
-                        while current_position < len(output_source):
-                            if output_source[current_position] == "(":
-                                closures["("] += 1
-                            elif output_source[current_position] == ")":
-                                closures["("] -= 1
-                            elif output_source[current_position] == "<":
-                                closures["<"] += 1
-                            elif output_source[current_position] == ">" and output_source[current_position-1] != "-":
-                                closures["<"] -= 1
+    # Disable functions in certain files according to YAML description
+    with open("/Users/gains/amd_build/disabled_funcs.yaml", "r") as lines:
+        yaml_data = yaml.load(lines)
 
-                            # Finished all arguments
-                            if closures["("] == 0 and closures["<"] == 0:
-                                # Add final argument
-                                arguments.append({"start": argument_start_pos, "end": current_position})
-                                break
+        for disable_info in yaml_data["disabled"]:
+            filepath = os.path.join(args.output_directory, disable_info["path"])
+            functions = disable_info["functions"]
 
-                            # Finished current argument
-                            if closures["("] == 1 and closures["<"] == 0 and output_source[current_position] == ",":
-                                arguments.append({"start": argument_start_pos, "end": current_position})
-                                argument_start_pos = current_position + 1
+            with open(filepath, "r+") as f:
+                txt = f.read()
+                for func in functions:
+                    txt = disable_function(txt, func, 1)
+                f.seek(0)
+                f.write(txt)
+                f.truncate()
+                f.close()
 
-                            current_position += 1
-
-                        # Check if we have templating + static_cast information
-                        argument_strings = [output_source[arg["start"]:arg["end"]] for arg in arguments]
-                        kernel_name = argument_strings[0].strip()
-                        ignore = ["upscale"]#,"im3d2col_kernel" "im2col_kernel", "vol2col_kernel"]
-                        if kernel_name in KernelTemplateParams and kernel_name not in ignore:
-                            # Add template to the kernel
-                            # Add static_casts to relevant arguments
-                            kernel_name_with_template = KernelTemplateParams[kernel_name]["kernel_with_template"]
-                            argument_types = KernelTemplateParams[kernel_name]["arg_types"]
-
-                            old_kernel_launch = output_source[arguments[0]["start"]:arguments[-1]["end"]]
-                            new_kernel_launch = old_kernel_launch
-
-                            kernel_params = argument_strings[5:]
-                            for arg_idx, arg in enumerate(kernel_params):
-                                if arg_idx in argument_types:
-                                    arg = kernel_params[arg_idx].strip()
-                                    the_type = argument_types[arg_idx]
-                                    the_arg = arg.replace("\n", "").strip()
-                                    if the_type in ["int", "const int", "int64_t", "THCIndex_t *", "const int *", "ptrdiff_t", "long", "const int64_t*", "int64_t *", "double"]:
-                                        static_argument = "static_cast<%s>(%s)" % (the_type, the_arg)
-                                        static_argument = arg.replace(the_arg, static_argument)
-
-                                        # Update to static_cast
-                                        new_kernel_launch = re.sub(r'\b(%s)\b' % arg, lambda x: static_argument, new_kernel_launch)
-
-                            # Add template type
-                            if "THCUNN" in filepath.split("/") and "generic" not in filepath.split("/"):
-                                kernel_name_with_template = kernel_name_with_template.replace("<real>", "<Dtype>")
-                            new_kernel_launch = re.sub(r'\b(%s)\b' % kernel_name, lambda x: kernel_name_with_template, new_kernel_launch)
-
-
-                            # Replace Launch
-                            new_output_source = new_output_source.replace(old_kernel_launch, new_kernel_launch)
-
-                    # Overwrite file contents
-                    fileobj.seek(0)
-                    fileobj.write(new_output_source)
-                    fileobj.truncate()
-                    fileobj.flush()
-
-                    # Flush to disk
-                    os.fsync(fileobj)
 
 if __name__ == '__main__':
     main()

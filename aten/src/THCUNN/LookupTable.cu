@@ -196,7 +196,6 @@ void calculate_norms_and_renorm(DType *weights,
                                 AccType maxNorm,
                                 IndexType dim)
 {
-#if !defined(__HIP_PLATFORM_HCC__)
   // Some casting hacks since dynamic shared memory and templates don't work together:
   extern __shared__ unsigned char smem[];
   AccType *sdata = reinterpret_cast<AccType *>(smem);
@@ -214,7 +213,7 @@ void calculate_norms_and_renorm(DType *weights,
         (sdata, blockDim.x, v, ReduceAdd<AccType, AccType>(), accZero);
 
   if (tid == 0) {
-    sdata[0] = std::pow(v,
+    sdata[0] = std::pow(v, 
         THCNumerics<AccType>::div(ScalarConvert<int, AccType>::to(1), normType)
     );
   }
@@ -226,7 +225,6 @@ void calculate_norms_and_renorm(DType *weights,
       weights[baseIndex + i] *= factor;
     }
   }
-#endif
 }
 
 #include "generic/LookupTable.cu"
