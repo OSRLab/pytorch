@@ -211,7 +211,7 @@ __global__ void VolumetricGridSamplerBilinear_updateGradInput_kernel(
     int ix_tnw = floor(ScalarConvert<Dtype,float>::to(ix));
     int iy_tnw = floor(ScalarConvert<Dtype,float>::to(iy));
     int iz_tnw = floor(ScalarConvert<Dtype,float>::to(iz));
-
+    
     int ix_tne = ix_tnw + 1;
     int iy_tne = iy_tnw;
     int iz_tne = iz_tnw;
@@ -259,7 +259,7 @@ __global__ void VolumetricGridSamplerBilinear_updateGradInput_kernel(
     Dtype bne_val;
     Dtype bsw_val;
     Dtype bse_val;
-    
+
     int ix_tnw_cl, iy_tnw_cl, iz_tnw_cl, ix_tne_cl, iy_tne_cl, iz_tne_cl;
     int ix_tsw_cl, iy_tsw_cl, iz_tsw_cl, ix_tse_cl, iy_tse_cl, iz_tse_cl;
     int ix_bnw_cl, iy_bnw_cl, iz_bnw_cl, ix_bne_cl, iy_bne_cl, iz_bne_cl;

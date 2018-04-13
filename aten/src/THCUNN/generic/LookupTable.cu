@@ -14,7 +14,6 @@ void THNN_(LookupTable_accGradParameters)(
            int paddingValue,
            accreal scale_)
 {
-#if defined(__NVCC__)
   real scale = ScalarConvert<accreal, real>::to(scale_);
   THCUNN_assertSameGPU(state, 5, input, gradOutput, gradWeight, sortedIndices, origIndices);
   gradOutput = THCTensor_(newContiguous)(state, gradOutput);
@@ -144,7 +143,6 @@ void THNN_(LookupTable_accGradParameters)(
 
   THCTensor_(free)(state, gradOutput);
   THCudaCheck(cudaGetLastError());
-#endif
 }
 
 #define THREADS 256
@@ -160,7 +158,6 @@ void THNN_(LookupTable_renorm)(
            accreal maxNorm,
            accreal normType)
 {
-#if defined(__NVCC__)
   THCUNN_assertSameGPU(state, 2, idx, weight);
   if (!(THCIndexTensor_(isContiguous)(state, idx) &&
         THCTensor_(isContiguous)(state, weight))) {
@@ -204,7 +201,6 @@ void THNN_(LookupTable_renorm)(
       RUN(-1, unsigned long);
     }
   }
-#endif
 }
 
 #endif
