@@ -225,7 +225,10 @@ def processKernelLaunches(string, stats):
         cuda_kernel = string[params[0]["start"]:paranthesis+1]
 
         # Transform cuda kernel to hip kernel
-        hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ")
+        head = cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ").strip()
+        if head.startswith("\n"):
+            head = head[2:].strip()
+        hip_kernel = "hipLaunchKernelGGL(" + head
 
         # Replace cuda kernel with hip kernel
         output_string = output_string.replace(cuda_kernel, hip_kernel)
@@ -519,7 +522,7 @@ def get_kernel_template_params(the_file, KernelDictionary):
             KernelDictionary[kernel_name] = {"kernel_with_template": kernel_name, "arg_types": kernel_args}
 
 
-def disable_unsupported_function_call(function, input_string, replace="cudaSuccess"):
+def disable_unsupported_function_call(function, input_string, replace):
     """Disables calls to an unsupported HIP function"""
     # Prepare output string
     output_string = input_string
@@ -581,11 +584,6 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         },
 
         os.path.join(aten_src_directory, "THC/THCAllocator.c"): {"cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)": "cudaSuccess"}, # Replace with THCudaCheck(hipSuccess)
-
-        # Update THCBlas
-        os.path.join(aten_src_directory, "THC/THCBlas.cu"): {
-            "": ""
-        },
 
         # Replace "cudaStreamCreateWithPriority(&self->stream, flags, priority)" with cudaStreamCreateWithFlags(&self->stream, flags)
         os.path.join(aten_src_directory, "THC/THCStream.cpp"): {"cudaStreamCreateWithPriority(&self->stream, flags, priority)": "cudaStreamCreateWithFlags(&self->stream, flags)"}
@@ -729,7 +727,15 @@ def main():
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
-
+    stats = {"unsupported_calls": [], "kernel_launches": []}
+    with open("/Users/gains/amd_build/gains.cpp", "r+") as f:
+        txt = f.read()
+        o = processKernelLaunches(txt, stats)
+        f.seek(0)
+        f.write(o)
+        f.truncate()
+        f.flush()
+    return
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
@@ -786,7 +792,7 @@ def main():
 
     # PyTorch Specific Modifications
     KernelTemplateParams = pytorch_specific_fixes(args.output_directory)
-    return
+
     # Start Preprocessor
     walk_over_directory(
         args.output_directory,
@@ -818,10 +824,10 @@ def main():
     # Disable unsupported functions
     filepath = os.path.join(args.output_directory, "aten/src/THC/THCBlas.cu")
     functions = ["hipblasSgemmEx", "hipblasSgetrfBatched", "hipblasDgetrfBatched", "hipblasSgetrsBatched", "hipblasDgetrsBatched", "hipblasSgetriBatched", "hipblasDgetriBatched"]
-    with open(filepath, "r") as f:
+    with open(filepath, "r+") as f:
         txt = f.read()
         for func in functions:
-            txt = disable_unsupported_function_call(func, txt)
+            txt = disable_unsupported_function_call(func, txt, "HIPBLAS_STATUS_SUCCESS")
         f.seek(0)
         f.write(txt)
         f.truncate()
