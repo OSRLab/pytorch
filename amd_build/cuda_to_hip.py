@@ -756,7 +756,7 @@ def main():
     add_static_casts(args, KernelTemplateParams)
 
     # Disable functions in certain files according to YAML description
-    with open("/Users/gains/amd_build/disabled_funcs.yaml", "r") as lines:
+    with open(os.path.join(args.project_directory, "amd_build/disabled_funcs.yaml"), "r") as lines:
         yaml_data = yaml.load(lines)
 
         for disable_info in yaml_data["disabled"]:
