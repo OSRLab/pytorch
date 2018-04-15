@@ -184,23 +184,33 @@ function build() {
 }
 
 function build_rocm_aten() {
-  mkdir -p build/aten
-  cd  build/aten
-  ${CMAKE_VERSION} ../../../../aten \
+  mkdir -p build
+  pushd build
+  ${CMAKE_VERSION} .. \
   ${CMAKE_GENERATOR} \
-  -DCMAKE_BUILD_TYPE=$([ $DEBUG ] && echo Debug || echo Release) \
-  -DNO_CUDA=0 \
-  -DNO_NNPACK=$((1-$WITH_NNPACK)) \
-  -DCUDNN_INCLUDE_DIR=$CUDNN_INCLUDE_DIR \
-  -DCUDNN_LIB_DIR=$CUDNN_LIB_DIR \
-  -DCUDNN_LIBRARY=$CUDNN_LIBRARY \
-  -DATEN_NO_CONTRIB=1 \
-  -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
-  -DWITH_ROCM=1
-  # purpusefully not passing C_FLAGS for the same reason as above
-  ${CMAKE_INSTALL} -j$(getconf _NPROCESSORS_ONLN)
-  cd ../..
+      -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -DNO_CUDA=$((1-$WITH_CUDA)) \
+      -DNO_NNPACK=$((1-$WITH_NNPACK)) \
+      -DCUDNN_INCLUDE_DIR=$CUDNN_INCLUDE_DIR \
+      -DCUDNN_LIB_DIR=$CUDNN_LIB_DIR \
+      -DCUDNN_LIBRARY=$CUDNN_LIBRARY \
+      -DNO_MKLDNN=$((1-$WITH_MKLDNN)) \
+      -DMKLDNN_INCLUDE_DIR=$MKLDNN_INCLUDE_DIR \
+      -DMKLDNN_LIB_DIR=$MKLDNN_LIB_DIR \
+      -DMKLDNN_LIBRARY=$MKLDNN_LIBRARY \
+      -DATEN_NO_CONTRIB=1 \
+      -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+      -DCMAKE_C_FLAGS="$USER_CFLAGS" \
+      -DCMAKE_CXX_FLAGS="$USER_CFLAGS" \
+      -DCMAKE_EXE_LINKER_FLAGS="$USER_LDFLAGS" \
+      -DWITH_ROCM=1 \
+      -DCMAKE_SHARED_LINKER_FLAGS="$USER_LDFLAGS"
+      # STOP!!! Are you trying to add a C or CXX flag?  Add it
+      # to aten/CMakeLists.txt, not here.  We need the vanilla
+      # cmake build to work.
+  ${CMAKE_INSTALL} -j"$NUM_JOBS"
+  popd
 }
 
 function build_nccl() {
@@ -274,7 +284,11 @@ for arg in "$@"; do
         popd
     elif [[ "$arg" == "ATen" ]]; then
         pushd "$BASE_DIR/aten"
-        build_aten
+        if [[ $WITH_ROCM -eq 1 ]]; then
+          build_rocm_aten
+        else
+          build_aten
+        fi
         popd
     elif [[ "$arg" == "THD" ]]; then
         pushd "$TORCH_LIB_DIR"
@@ -290,55 +304,6 @@ for arg in "$@"; do
         popd
     fi
 done
-
-if [[ $WITH_ROCM -eq 1 ]]; then
-    mkdir -p HIP
-    cd HIP
-    if [ ! -L "THC" ]; then
-        ln -s ../THC/hip THC
-    fi
-    if [ ! -L "THCUNN" ]; then
-        ln -s ../THCUNN/hip THCUNN
-    fi
-    if [ ! -L "THD" ]; then
-        ln -s ../THD THD
-    fi
-    if [ ! -L "THPP" ]; then
-        ln -s ../THPP THPP
-    fi
-    if [ ! -L "THS" ]; then
-        ln -s ../THS THS
-    fi
-    if [ ! -L "ATen" ]; then
-        ln -s ../ATen ATen
-    fi
-    cd ..
-fi
-
-# Build
-for arg in "$@"; do
-  if [[ "$arg" == "nccl" ]]; then
-      build_nccl
-  elif [[ "$arg" == "gloo" ]]; then
-      build gloo $GLOO_FLAGS
-  elif [[ "$arg" == "ATen" ]]; then
-    if [[ $WITH_ROCM -eq 1 ]]; then
-      build_rocm_aten
-    else
-      build_aten
-    fi
-  elif [[ "$arg" == "THD" ]]; then
-      build THD $THD_FLAGS
-  else
-      build $arg
-  fi
-done
-
-# if [[ $WITH_ROCM -eq 1 ]]; then
-#     build_rocm_THC
-#     build_rocm_THCUNN
-#     build_rocm_THCS
-# fi
 
 pushd torch/lib
 
