@@ -81,7 +81,7 @@ def walk_over_directory(path, extensions, show_detailed=False, exclude_dirs=None
     # Compute the total number of files to be traversed.
     total_files = 0
     for (dirpath, _dirnames, filenames) in os.walk(path):
-        if dirpath not in exclude_dirs:
+        if sum([1 if re.match(r'(%s)\b' % os.path.join(path, exc), dirpath) else 0 for exc in exclude_dirs]) == 0:
             for filename in filenames:
                 total_files += reduce(
                     lambda result, ext: filename.endswith("." + ext) or result,
@@ -93,9 +93,9 @@ def walk_over_directory(path, extensions, show_detailed=False, exclude_dirs=None
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
     # Begin traversing the files.
-    for (dirpath, _dirnames, filenames) in os.walk(path):
+    for (dirpath, _dirnames, filenames) in os.walk(path, topdown=True):
         # Check if file ends with a valid extensions
-        if sum([dirpath.endswith(exclude) for exclude in exclude_dirs]):
+        if sum([1 if re.match(r'(%s)\b' % os.path.join(path, exc), dirpath) else 0  for exc in exclude_dirs]) > 0:
             continue
 
         for filename in filenames:
@@ -519,6 +519,43 @@ def get_kernel_template_params(the_file, KernelDictionary):
             KernelDictionary[kernel_name] = {"kernel_with_template": kernel_name, "arg_types": kernel_args}
 
 
+def disable_unsupported_function_call(function, input_string, replacement):
+    """Disables calls to an unsupported HIP function"""
+    # Prepare output string
+    output_string = input_string
+
+    # Find all calls to the function
+    calls = re.finditer(r"\b%s\b" % function, input_string)
+
+    # Do replacements
+    for call in calls:
+        start = call.start()
+        end = call.end()
+
+        pos = end
+        started_arguments = False
+        bracket_count = 0
+        while pos < len(input_string):
+            if input_string[pos] == "(":
+                if started_arguments is False:
+                    started_arguments = True
+                    bracket_count = 1
+                else:
+                    bracket_count += 1
+            elif input_string[pos] == ")" and started_arguments:
+                bracket_count -= 1
+
+            if bracket_count == 0 and started_arguments:
+                # Finished!
+                break
+            pos += 1
+
+        function_call = input_string[start:pos+1]
+        output_string = output_string.replace(function_call, replacement)
+
+    return output_string
+
+
 def pytorch_specific_fixes(amd_pytorch_directory):
     """Load the PyTorch specific patches"""
     aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src/")
@@ -528,8 +565,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         # ATen & TH* files.
         os.path.join(aten_src_directory, "TH/THAtomic.c"): {"assert(sizeof(int) == sizeof(int32_t));": ""}, # Remove the assert from THAtomic.c
         os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"): {"_OPENMP": "_OPENMP_STUBBED"}, # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
-        os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"): {"std::pow": "powf"}, # Swap the math functions from std:: to hcc device functions.
-        os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"): {"std::abs": "fabs"}, # Swap the math functions from std:: to hcc device functions.
+        os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"): {"std::pow": "powf", "std::abs": "fabs"}, # Swap the math functions from std:: to hcc device functions.
         os.path.join(aten_src_directory, "THCUNN/Abs.cu"): {"abs(": "fabs("}, # Swap abs w/ fabsf for device code.
         os.path.join(aten_src_directory, "THC/THCTensorRandom.cpp"): {"struct curandStateMtgp32*": "curandStateMtgp32*"}, # Remove the "struct" from the return type since hipStageMtgp32* implies pointer to struct.
 
@@ -688,7 +724,15 @@ def main():
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
-
+    stats = {"unsupported_calls": [], "kernel_launches": []}
+    with open("/Users/gains/amd_build/gains.cpp", "r+") as f:
+        txt = f.read()
+        o = processKernelLaunches(txt, stats)
+        f.seek(0)
+        f.write(o)
+        f.truncate()
+        f.flush()
+    return
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
@@ -751,7 +795,7 @@ def main():
         args.output_directory,
         extensions=args.extensions,
         show_detailed=args.show_detailed,
-        exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS"])
+        exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS", "caffe2"])
 
     # Add static_casts
     add_static_casts(args, KernelTemplateParams)
@@ -773,6 +817,21 @@ def main():
                 f.write(txt)
                 f.truncate()
                 f.close()
+
+    # Disable unsupported functions
+    filepath = os.path.join(args.output_directory, "aten/src/THC/THCBlas.cu")
+    functions = ["hipblasSgemmEx", "hipblasSgetrfBatched", "hipblasDgetrfBatched", "hipblasSgetrsBatched", "hipblasDgetrsBatched", "hipblasSgetriBatched", "hipblasDgetriBatched"]
+    with open(filepath, "r+") as f:
+        txt = f.read()
+        for func in functions:
+            txt = disable_unsupported_function_call(func, txt, "HIPBLAS_STATUS_SUCCESS")
+        f.seek(0)
+        f.write(txt)
+        f.truncate()
+        f.close()
+
+    file_specific_replacement(filepath, 'HIPBLAS_DATA_HALF', '0')
+
 
 
 if __name__ == '__main__':
