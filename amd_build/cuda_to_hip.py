@@ -724,15 +724,7 @@ def main():
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
-    stats = {"unsupported_calls": [], "kernel_launches": []}
-    with open("/Users/gains/amd_build/gains.cpp", "r+") as f:
-        txt = f.read()
-        o = processKernelLaunches(txt, stats)
-        f.seek(0)
-        f.write(o)
-        f.truncate()
-        f.flush()
-    return
+
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
@@ -795,7 +787,7 @@ def main():
         args.output_directory,
         extensions=args.extensions,
         show_detailed=args.show_detailed,
-        exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS", "caffe2"])
+        exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS", "caffe2", "third_party"])
 
     # Add static_casts
     add_static_casts(args, KernelTemplateParams)
