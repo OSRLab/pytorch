@@ -7,7 +7,6 @@
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
 
-#if !defined(__HIP_PLATFORM_HCC__)
 namespace at {
 template <> AT_API half convert(Half aten_half);
 template <> AT_API Half convert(half cuda_half);
@@ -17,4 +16,3 @@ template <> __half HalfFix(Half h);
 template <> Half HalfFix(__half h);
 #endif
 } // namespace at
-#endif
