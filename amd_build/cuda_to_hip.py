@@ -563,7 +563,7 @@ def disable_module(input_file):
         last = list(re.finditer(r"#include .*\n", txt))[-1]
         end = last.end()
 
-        disabled = "#if !defined(__HIP_PLATFORM_HCC__)\n%s\n#endif" % txt[end:]
+        disabled = "%s#if !defined(__HIP_PLATFORM_HCC__)\n%s\n#endif" % (txt[0:end], txt[end:])
 
         f.seek(0)
         f.write(disabled)
@@ -602,19 +602,19 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         # Replace preprocessor macro to disable functionality.
         os.path.join(aten_src_directory, "ATen/Error.h"): {"_WIN32": "__HIP_PLATFORM_HCC__"},
 
-        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/CuFFTUtils.h"): {"#include <cufft.h>": "", "#include <cufftXt.h>": ""},
+        os.path.join(aten_src_directory, "ATen/native/cuda/CuFFTUtils.h"): {"#include <cufft.h>": "", "#include <cufftXt.h>": ""},
 
-        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/SpectralOps.cu"): {"#include <cufft.h>": "", "#include <cufftXt.h>": ""},
+        os.path.join(aten_src_directory, "ATen/native/cuda/SpectralOps.cu"): {"#include <cufft.h>": "", "#include <cufftXt.h>": ""},
 
-        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/Distributions.cu"): {'#include "ATen/Dispatch.h"': ""},
+        os.path.join(aten_src_directory, "ATen/native/cuda/Distributions.cu"): {'#include "ATen/Dispatch.h"': ""},
 
-        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/TensorCompare.cu"): {'#include "ATen/Dispatch.h"': ""}
+        os.path.join(aten_src_directory, "ATen/native/cuda/TensorCompare.cu"): {'#include "ATen/Dispatch.h"': ""}
     }
 
     # Disable Module
-    disable_module(os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/CuFFTUtils.h"))
-    disable_module(os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/SpectralOps.cu"))
-    disable_module(os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/Distributions.cu"))
+    disable_module(os.path.join(aten_src_directory, "ATen/native/cuda/CuFFTUtils.h"))
+    disable_module(os.path.join(aten_src_directory, "ATen/native/cuda/SpectralOps.cu"))
+    disable_module(os.path.join(aten_src_directory, "ATen/native/cuda/Distributions.cu"))
 
 
 
@@ -624,6 +624,7 @@ def pytorch_specific_fixes(amd_pytorch_directory):
             file_specific_replacement(filepath, key, REPLACEMENTS[filepath][key])
 
     # Due to an issue in HCC, change filename of CuDNN batch norm
+    shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/Conv.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/ConvCuDNN.cpp"))
     shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
 
     # Replace WITH_CUDA with WITH_ROCM for all locations inside for /torch/
