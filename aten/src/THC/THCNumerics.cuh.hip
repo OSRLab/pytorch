@@ -319,6 +319,32 @@ struct THCNumerics<half> {
 
   __device__
   static
+  inline  half log2(half a) {
+    float fa = __half2float(a);
+    return __float2half(log2f(fa));
+  }
+
+  __host__
+  static
+  inline  half log2(half a) {
+    return THC_float2half(log2f(THC_half2float(a)));
+  }
+
+  __device__
+  static
+  inline  half log10(half a) {
+    float fa = __half2float(a);
+    return __float2half(log10f(fa));
+  }
+
+  __host__
+  static
+  inline  half log10(half a) {
+    return THC_float2half(log10f(THC_half2float(a)));
+  }
+
+  __device__
+  static
   inline
   half lgamma(half a) {
     float fa = __half2float(a);
@@ -823,7 +849,9 @@ struct THCNumerics<float> {
   static inline __host__ __device__  float exp  (float a) { return   expf(a); }
   static inline __host__ __device__  float exp10(float a) { return exp10f(a); }
   static inline __host__ __device__  float log  (float a) { return   logf(a); }
+  static inline __host__ __device__  float log10(float a) { return log10f(a); }
   static inline __host__ __device__  float log1p(float a) { return log1pf(a); }
+  static inline __host__ __device__  float log2 (float a) { return  log2f(a); }
   static inline __host__ __device__  float expm1(float a) { return expm1f(a); }
   static inline __host__ __device__  float cos  (float a) { return   cosf(a); }
   static inline __host__ __device__  float sin  (float a) { return   sinf(a); }
@@ -872,7 +900,9 @@ struct THCNumerics<double> {
   static inline __host__ __device__  double exp  (double a) { return   ::exp(a); }
   static inline __host__ __device__  double exp10(double a) { return ::exp10(a); }
   static inline __host__ __device__  double log  (double a) { return   ::log(a); }
+  static inline __host__ __device__  double log10(double a) { return ::log10(a); }
   static inline __host__ __device__  double log1p(double a) { return ::log1p(a); }
+  static inline __host__ __device__  double log2 (double a) { return  ::log2(a); }
   static inline __host__ __device__  double expm1(double a) { return ::expm1(a); }
   static inline __host__ __device__  double cos  (double a) { return   ::cos(a); }
   static inline __host__ __device__  double sin  (double a) { return   ::sin(a); }
