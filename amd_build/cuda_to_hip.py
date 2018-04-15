@@ -556,6 +556,20 @@ def disable_unsupported_function_call(function, input_string, replacement):
     return output_string
 
 
+def disable_module(input_file):
+    """Disable a module entirely except for header includes."""
+    with open(input_file, "r+") as f:
+        txt = f.read()
+        last = list(re.finditer(r"#include .*\n", txt))[-1]
+        end = last.end()
+
+        disabled = "#if !defined(__HIP_PLATFORM_HCC__)\n%s\n#endif" % txt[end:]
+
+        f.seek(0)
+        f.write(disabled)
+        f.truncate()
+
+
 def pytorch_specific_fixes(amd_pytorch_directory):
     """Load the PyTorch specific patches"""
     aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src/")
@@ -583,8 +597,26 @@ def pytorch_specific_fixes(amd_pytorch_directory):
         os.path.join(aten_src_directory, "THC/THCAllocator.c"): {"cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)": "cudaSuccess"}, # Replace with THCudaCheck(hipSuccess)
 
         # Replace "cudaStreamCreateWithPriority(&self->stream, flags, priority)" with cudaStreamCreateWithFlags(&self->stream, flags)
-        os.path.join(aten_src_directory, "THC/THCStream.cpp"): {"cudaStreamCreateWithPriority(&self->stream, flags, priority)": "cudaStreamCreateWithFlags(&self->stream, flags)"}
+        os.path.join(aten_src_directory, "THC/THCStream.cpp"): {"cudaStreamCreateWithPriority(&self->stream, flags, priority)": "cudaStreamCreateWithFlags(&self->stream, flags)"},
+
+        # Replace preprocessor macro to disable functionality.
+        os.path.join(aten_src_directory, "ATen/Error.h"): {"_WIN32": "__HIP_PLATFORM_HCC__"},
+
+        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/CuFFTUtils.h"): {"#include <cufft.h>": "", "#include <cufftXt.h>": ""},
+
+        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/SpectralOps.cu"): {"#include <cufft.h>": "", "#include <cufftXt.h>": ""},
+
+        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/Distributions.cu"): {'#include "ATen/Dispatch.h"': ""},
+
+        os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/TensorCompare.cu"): {'#include "ATen/Dispatch.h"': ""}
     }
+
+    # Disable Module
+    disable_module(os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/CuFFTUtils.h"))
+    disable_module(os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/SpectralOps.cu"))
+    disable_module(os.path.join(aten_src_directory, "aten/src/ATen/native/cuda/Distributions.cu"))
+
+
 
     # Handle the necessary replacements
     for filepath in REPLACEMENTS:
