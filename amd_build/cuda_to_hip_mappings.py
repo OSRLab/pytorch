@@ -1,9 +1,5 @@
 from constants import *
 
-# Define the dictionary mappings below
-PYTORCH_SPECIFIC_MAPPINGS = {
-
-}
 CUDA_TYPE_NAME_MAP = {
      "CUresult": ("hipError_t", CONV_TYPE, API_DRIVER),
      "cudaError_t": ("hipError_t", CONV_TYPE, API_RUNTIME),
@@ -249,6 +245,8 @@ CUDA_INCLUDE_MAP = {
      "curand_precalc.h": ("hiprng_kernel.h", CONV_INCLUDE, API_RAND),
      "curand_uniform.h": ("hiprng_kernel.h", CONV_INCLUDE, API_RAND),
      "cusparse.h": ("hipsparse.h", CONV_INCLUDE, API_RAND),
+     "#include <cufft.h>": ("", CONV_INCLUDE, API_RAND, HIP_UNSUPPORTED),
+     "#include <cufftXt.h>": ("", CONV_INCLUDE, API_RAND, HIP_UNSUPPORTED),
 }
 
 CUDA_IDENTIFIER_MAP = {

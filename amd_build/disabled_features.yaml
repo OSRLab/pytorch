@@ -1,5 +1,32 @@
 {
-  "disabled": [
+  "disabled_hip_function_calls":
+    [
+      {
+        "path": "aten/src/THC/THCBlas.cu",
+        "functions": [
+          {"hipblasSgemmEx": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+          {"hipblasSgetrfBatched": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+          {"hipblasDgetrfBatched": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+          {"hipblasSgetrsBatched": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+          {"hipblasDgetrsBatched": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+          {"hipblasSgetriBatched": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+          {"hipblasDgetriBatched": "HIPBLAS_STATUS_INTERNAL_ERROR"},
+        ],
+        "constants": [
+          {
+            "HIPBLAS_DATA_HALF": 0
+          }
+        ]
+      }
+    ],
+  "disabled_modules": [
+    "aten/src/ATen/cuda/CUDAHalf.cu",
+    "aten/src/ATen/cuda/CUDAHalf.cuh",
+    "aten/src/ATen/native/cuda/CuFFTUtils.h",
+    "aten/src/ATen/native/cuda/SpectralOps.cu",
+    "aten/src/ATen/native/cuda/Distributions.cu"
+  ],
+  "disabled_functions": [
     {
       "path": "aten/src/THC/THCGeneral.cpp",
       "functions": [
