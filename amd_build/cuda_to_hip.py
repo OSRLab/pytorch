@@ -734,14 +734,14 @@ def main():
 
     parser.add_argument(
         '--yaml-settings',
-        nargs='+',
-        default=str,
+        type=str,
+        default="",
         help="The yaml file storing information for disabled functions and modules.",
         required=False)
 
     parser.add_argument(
         '--add-static-casts',
-        nargs=bool,
+        type=bool,
         default=False,
         help="Whether to automatically add static_casts to kernel arguments.",
         required=False)
@@ -791,50 +791,51 @@ def main():
         add_static_casts(args, KernelTemplateParams)
 
     # Open YAML file with disable information.
-    with open(args.disable_yaml, "r") as lines:
-        yaml_data = yaml.load(lines)
+    if args.yaml_settings != "":
+        with open(args.yaml_settings, "r") as lines:
+            yaml_data = yaml.load(lines)
 
-    # Disable functions in certain files according to YAML description
-    for disable_info in yaml_data["disabled_functions"]:
-        filepath = os.path.join(args.output_directory, disable_info["path"])
-        functions = disable_info["functions"]
+        # Disable functions in certain files according to YAML description
+        for disable_info in yaml_data["disabled_functions"]:
+            filepath = os.path.join(args.output_directory, disable_info["path"])
+            functions = disable_info["functions"]
 
-        with open(filepath, "r+") as f:
-            txt = f.read()
-            for func in functions:
-                txt = disable_function(txt, func, 1)
+            with open(filepath, "r+") as f:
+                txt = f.read()
+                for func in functions:
+                    txt = disable_function(txt, func, 1)
 
-            f.seek(0)
-            f.write(txt)
-            f.truncate()
-            f.close()
+                f.seek(0)
+                f.write(txt)
+                f.truncate()
+                f.close()
 
-    # Disable modules
-    disable_modules = yaml_data["disabled_modules"]
-    for module in disable_modules:
-        disable_module(os.path.join(args.output_directory, module))
+        # Disable modules
+        disable_modules = yaml_data["disabled_modules"]
+        for module in disable_modules:
+            disable_module(os.path.join(args.output_directory, module))
 
-    # Disable unsupported HIP functions
-    for disable in yaml_data["disabled_hip_function_calls"]:
-        filepath = os.path.join(args.output_directory, disable["path"])
-        functions = disable["functions"]
-        constants = disable["constants"]
-        with open(filepath, "r+") as f:
-            txt = f.read()
+        # Disable unsupported HIP functions
+        for disable in yaml_data["disabled_hip_function_calls"]:
+            filepath = os.path.join(args.output_directory, disable["path"])
+            functions = disable["functions"]
+            constants = disable["constants"]
+            with open(filepath, "r+") as f:
+                txt = f.read()
 
-            # Disable HIP Functions
-            for func in functions:
-                txt = disable_unsupported_function_call(func, txt, functions[func])
+                # Disable HIP Functions
+                for func in functions:
+                    txt = disable_unsupported_function_call(func, txt, functions[func])
 
-            # Disable Constants
-            for const in constants:
-                txt = re.sub(r"\b%s\b" % const, constants[const])
+                # Disable Constants
+                for const in constants:
+                    txt = re.sub(r"\b%s\b" % const, constants[const], txt)
 
-            # Save Changes
-            f.seek(0)
-            f.write(txt)
-            f.truncate()
-            f.close()
+                # Save Changes
+                f.seek(0)
+                f.write(txt)
+                f.truncate()
+                f.close()
 
 
 if __name__ == '__main__':

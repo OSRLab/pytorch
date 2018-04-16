@@ -12,17 +12,28 @@ exclude_dirs = [
     "third_party"
 ]
 
-yaml_file = os.path.join(cwd, "disabled.yaml")
+yaml_file = os.path.join(cwd, "disabled_funcs.yaml")
 
 # Apply the Patch File.
-subprocess.Popen("git apply --stat", os.path.join(cwd, "patch084e3a7.patch"))
+subprocess.Popen(["git", "apply", "--stat", os.path.join(cwd, "patch084e3a7.patch")], cwd=proj_dir)
 
 # Execute the Hipify Script.
 subprocess.Popen(
-    "/opt/rocm/bin/hipify-python.py",
-    "--project-directory %s" % proj_dir,
-    "--output-directory %s" % out_dir,
-    "--exclude-dirs %s" % " ".join(exclude_dirs),
-    "--yaml-settings %s" % yaml_file,
-    "--add-static-casts %s" % "True"
-)
+    ["/opt/rocm/bin/hipify-python.py",
+    "--project-directory", proj_dir,
+    "--output-directory", out_dir,
+    "--exclude-dirs"] + exclude_dirs +
+    ["--yaml-settings",  yaml_file,
+    "--add-static-casts", "True"])
+
+subprocess.Popen(
+    [os.path.join(cwd,"cuda_to_hip.py"),
+    "--project-directory", proj_dir,
+    "--output-directory", out_dir,
+    "--exclude-dirs"] + exclude_dirs +
+    ["--yaml-settings",  yaml_file,
+    "--add-static-casts", "True"])
+
+python cuda_to_hip.py --project-directory= --output-directory
+
+python2 cuda_to_hip.py --project-directory=/home/rocm-user/pytorch_real --output-directory=/home/rocm-user/pytorch_amd
