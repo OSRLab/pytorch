@@ -446,233 +446,14 @@ index ef5ff049f..4b08d5b63 100644
    AT_ASSERT(cudaGetLastError() == cudaSuccess, "RoiPooling2d_forward_kernel failed");
  
    return gradInput;
-diff --git a/aten/src/ATen/native/cudnn/BatchNorm.cpp b/aten/src/ATen/native/cudnn/BatchNorm.cpp
-deleted file mode 100644
-index 211a9c3a3..000000000
---- a/aten/src/ATen/native/cudnn/BatchNorm.cpp
-+++ /dev/null
-@@ -1,221 +0,0 @@
--#include <ATen/ATen.h>
--#include <ATen/NativeFunctions.h>
--#include <ATen/Config.h>
--
--#if !AT_CUDNN_ENABLED()
--
--namespace at { namespace native {
--
--// See Note [ATen preprocessor philosophy]
--
--std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm(
--    const Tensor& input, const Tensor& weight,
--    const Tensor& bias, const Tensor& running_mean, const Tensor& running_var,
--    bool training, double exponential_average_factor, double epsilon) {
--  throw std::runtime_error("cudnn_batch_norm: ATen not compiled with cuDNN support");
--}
--
--std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm_backward(
--    const Tensor& input, const Tensor& grad_output, const Tensor& weight,
--    const Tensor& running_mean, const Tensor& running_var,
--    const Tensor& save_mean, const Tensor& save_var,
--    double epsilon) {
--  throw std::runtime_error("cudnn_batch_norm_backward: ATen not compiled with cuDNN support");
--}
--
--}}  // namespace at::native
--
--#else // AT_CUDNN_ENABLED
--
--#include <ATen/cudnn/Descriptors.h>
--#include <ATen/cudnn/Types.h>
--#include <ATen/cudnn/Utils.h>
--
--#include <ATen/TensorUtils.h>
--
--namespace at { namespace native {
--
--namespace {
--
--Tensor expandScale(const Tensor& t, int64_t dim) {
--  std::vector<int64_t> size{ 1, t.numel() };
--  while (static_cast<int64_t>(size.size()) < dim) {
--    size.emplace_back(1);
--  }
--  return t.view(size);
--}
--
--}  // namespace
--
--std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm(
--    const Tensor& input_t, const Tensor& weight_t,
--    const Tensor& bias_t, const Tensor& running_mean_t, const Tensor& running_var_t,
--    bool training, double exponential_average_factor, double epsilon)
--{
--  TensorArg input{ input_t, "input", 1 },
--            weight{ weight_t, "weight", 2 },
--            bias{ bias_t, "bias", 3 },
--            running_mean{ running_mean_t, "running_mean", 4 },
--            running_var{ running_var_t, "running_var", 5 };
--  CheckedFrom c = "cudnn_batch_norm";
--  setCuDNNStreamToCurrent();
--
--  checkAllDefined(c, {input, weight, bias});
--  if (!training) {
--    checkAllDefined(c, {running_mean, running_var});
--  }
--  checkAllSameGPU(c, {input, weight, bias, running_mean, running_var});
--  if (input->type().scalarType() == ScalarType::Half) {
--    checkScalarType(c, weight, ScalarType::Float);
--  } else {
--    checkAllSameType(c, {input, weight});
--  }
--  checkAllSameType(c, {weight, bias, running_mean, running_var});
--  // TODO: is weight required to be contiguous?
--  checkAllContiguous(c, {input, weight, bias, running_mean, running_var});
--  checkDimRange(c, input, 2, 6 /* exclusive */);
--  auto num_features = input->size(1);
--  for (auto t : {weight, bias, running_mean, running_var}) {
--    if (t->defined()) {
--      checkNumel(c, t, num_features);
--    }
--  }
--
--  cudnnBatchNormMode_t mode;
--  if (input->dim() == 2) {
--    mode = CUDNN_BATCHNORM_PER_ACTIVATION;
--  } else {
--    mode = CUDNN_BATCHNORM_SPATIAL;
--#if CUDNN_VERSION >= 7003
--    if(training)
--      mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
--#endif
--  }
--
--  auto output_t = input->type().tensor(input->sizes());
--  TensorArg output{ output_t, "output", 0 };
--
--  auto handle = getCudnnHandle();
--  auto dataType = getCudnnDataType(*input);
--  TensorDescriptor idesc{ *input, 4 };  // input descriptor
--  TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
--
--  Constant one(dataType, 1);
--  Constant zero(dataType, 0);
--  Tensor save_mean, save_var;
--
--  if (training) {
--    int64_t num_features = input_t.size(1);
--    save_mean = weight_t.type().tensor({ num_features });
--    save_var = weight_t.type().tensor({ num_features });
--    CUDNN_CHECK(cudnnBatchNormalizationForwardTraining(
--      handle, mode, &one, &zero,
--      idesc.desc(), input->data_ptr(),
--      idesc.desc(), output->data_ptr(),
--      wdesc.desc(),
--      weight->data_ptr(),
--      bias->data_ptr(),
--      exponential_average_factor,
--      at::maybe_data_ptr(running_mean),
--      at::maybe_data_ptr(running_var),
--      epsilon,
--      save_mean.data_ptr(),
--      save_var.data_ptr()));
--  } else {
--    CUDNN_CHECK(cudnnBatchNormalizationForwardInference(
--      handle, mode, &one, &zero,
--      idesc.desc(), input->data_ptr(),
--      idesc.desc(), output->data_ptr(),
--      wdesc.desc(),
--      weight->data_ptr(),
--      bias->data_ptr(),
--      running_mean->data_ptr(),
--      running_var->data_ptr(),
--      epsilon));
--  }
--
--  // save_mean and save_var can be undefined
--  // If this causes problems, we can initialize them to empty tensors
--  // of the correct type
--  return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
--}
--
--// NB: CuDNN only implements the backward algorithm for batchnorm
--// in training mode (evaluation mode batchnorm has a different algorithm),
--// which is why this doesn't accept a 'training' parameter.
--std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm_backward(
--    const Tensor& input_t, const Tensor& grad_output_t, const Tensor& weight_t,
--    // Unused: but we require them to be passed so that double backwards
--    // has access
--    const Tensor& running_mean, const Tensor& running_var,
--    const Tensor& save_mean_t, const Tensor& save_var_t,
--    double epsilon)
--{
--  TensorArg input{ input_t, "input", 1 },
--            grad_output{ grad_output_t, "grad_output", 2 },
--            weight{ weight_t, "weight", 3 },
--            save_mean{ save_mean_t, "save_mean", 4 },
--            save_var{ save_var_t, "save_var", 5 };
--  CheckedFrom c = "cudnn_batch_norm_backward";
--  setCuDNNStreamToCurrent();
--
--  checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
--  checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
--  if (input->type().scalarType() == ScalarType::Half) {
--    checkScalarType(c, weight, ScalarType::Float);
--  } else {
--    checkAllSameType(c, {input, weight});
--  }
--  checkAllSameType(c, {input, grad_output});
--  checkAllSameType(c, {weight, save_mean, save_var});
--  // TODO: is weight required to be contiguous?
--  checkAllContiguous(c, {input, grad_output, save_mean, save_var});
--  checkDimRange(c, input, 2, 6 /* exclusive */);
--  checkSameSize(c, input, grad_output);
--  auto num_features = input->size(1);
--  for (auto t : {weight, save_mean, save_var}) {
--    checkNumel(c, t, num_features);
--  }
--
--  cudnnBatchNormMode_t mode;
--  if (input->dim() == 2) {
--    mode = CUDNN_BATCHNORM_PER_ACTIVATION;
--  } else {
--#if CUDNN_VERSION >= 7003
--    mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
--#else
--    mode = CUDNN_BATCHNORM_SPATIAL;
--#endif
--  }
--
--  auto grad_input_t  = input->type().tensor(input->sizes());
--  auto grad_weight_t = weight->type().tensor(weight->sizes());
--  auto grad_bias_t   = weight->type().tensor(weight->sizes());
--
--  auto handle = getCudnnHandle();
--  auto dataType = getCudnnDataType(*input);
--
--  TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor
--  TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
--
--  Constant one(dataType, 1);
--  Constant zero(dataType, 0);
--
--  CUDNN_CHECK(cudnnBatchNormalizationBackward(
--    handle, mode, &one, &zero, &one, &zero,
--    idesc.desc(), input->data_ptr(),
--    idesc.desc(), grad_output->data_ptr(),
--    idesc.desc(), grad_input_t.data_ptr(),
--    wdesc.desc(), weight->data_ptr(),
--    grad_weight_t.data_ptr(),
--    grad_bias_t.data_ptr(),
--    epsilon,
--    save_mean->data_ptr(),
--    save_var->data_ptr()));
--
--  return std::tuple<Tensor,Tensor,Tensor>{grad_input_t, grad_weight_t, grad_bias_t};
--}
--
--}}  // namespace native
--
--#endif
+diff --git a/aten/src/ATen/native/cudnn/BatchNorm.cpp b/aten/src/ATen/native/cudnn/BatchNormCuDNN.cpp
+similarity index 100%
+rename from aten/src/ATen/native/cudnn/BatchNorm.cpp
+rename to aten/src/ATen/native/cudnn/BatchNormCuDNN.cpp
+diff --git a/aten/src/ATen/native/cudnn/Conv.cpp b/aten/src/ATen/native/cudnn/ConvCuDNN.cpp
+similarity index 100%
+rename from aten/src/ATen/native/cudnn/Conv.cpp
+rename to aten/src/ATen/native/cudnn/ConvCuDNN.cpp
 diff --git a/aten/src/ATen/preprocess_declarations.py b/aten/src/ATen/preprocess_declarations.py
 index 1bc33e533..f9a91947d 100644
 --- a/aten/src/ATen/preprocess_declarations.py
@@ -5796,10 +5577,10 @@ index 6eb74bb43..b02aef610 100644
    THCDeviceTensor<real, 4> cudaOutput;
 diff --git a/patch084e3a7.patch b/patch084e3a7.patch
 new file mode 100644
-index 000000000..8bc8279f1
+index 000000000..a36f21a3e
 --- /dev/null
 +++ b/patch084e3a7.patch
-@@ -0,0 +1,5268 @@
+@@ -0,0 +1,5271 @@
 +diff --git a/aten/CMakeLists.txt b/aten/CMakeLists.txt
 +index 9648d1907..2d9a732cd 100644
 +--- a/aten/CMakeLists.txt
@@ -6248,233 +6029,14 @@ index 000000000..8bc8279f1
 +   AT_ASSERT(cudaGetLastError() == cudaSuccess, "RoiPooling2d_forward_kernel failed");
 + 
 +   return gradInput;
-+diff --git a/aten/src/ATen/native/cudnn/BatchNorm.cpp b/aten/src/ATen/native/cudnn/BatchNorm.cpp
-+deleted file mode 100644
-+index 211a9c3a3..000000000
-+--- a/aten/src/ATen/native/cudnn/BatchNorm.cpp
-++++ /dev/null
-+@@ -1,221 +0,0 @@
-+-#include <ATen/ATen.h>
-+-#include <ATen/NativeFunctions.h>
-+-#include <ATen/Config.h>
-+-
-+-#if !AT_CUDNN_ENABLED()
-+-
-+-namespace at { namespace native {
-+-
-+-// See Note [ATen preprocessor philosophy]
-+-
-+-std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm(
-+-    const Tensor& input, const Tensor& weight,
-+-    const Tensor& bias, const Tensor& running_mean, const Tensor& running_var,
-+-    bool training, double exponential_average_factor, double epsilon) {
-+-  throw std::runtime_error("cudnn_batch_norm: ATen not compiled with cuDNN support");
-+-}
-+-
-+-std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm_backward(
-+-    const Tensor& input, const Tensor& grad_output, const Tensor& weight,
-+-    const Tensor& running_mean, const Tensor& running_var,
-+-    const Tensor& save_mean, const Tensor& save_var,
-+-    double epsilon) {
-+-  throw std::runtime_error("cudnn_batch_norm_backward: ATen not compiled with cuDNN support");
-+-}
-+-
-+-}}  // namespace at::native
-+-
-+-#else // AT_CUDNN_ENABLED
-+-
-+-#include <ATen/cudnn/Descriptors.h>
-+-#include <ATen/cudnn/Types.h>
-+-#include <ATen/cudnn/Utils.h>
-+-
-+-#include <ATen/TensorUtils.h>
-+-
-+-namespace at { namespace native {
-+-
-+-namespace {
-+-
-+-Tensor expandScale(const Tensor& t, int64_t dim) {
-+-  std::vector<int64_t> size{ 1, t.numel() };
-+-  while (static_cast<int64_t>(size.size()) < dim) {
-+-    size.emplace_back(1);
-+-  }
-+-  return t.view(size);
-+-}
-+-
-+-}  // namespace
-+-
-+-std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm(
-+-    const Tensor& input_t, const Tensor& weight_t,
-+-    const Tensor& bias_t, const Tensor& running_mean_t, const Tensor& running_var_t,
-+-    bool training, double exponential_average_factor, double epsilon)
-+-{
-+-  TensorArg input{ input_t, "input", 1 },
-+-            weight{ weight_t, "weight", 2 },
-+-            bias{ bias_t, "bias", 3 },
-+-            running_mean{ running_mean_t, "running_mean", 4 },
-+-            running_var{ running_var_t, "running_var", 5 };
-+-  CheckedFrom c = "cudnn_batch_norm";
-+-  setCuDNNStreamToCurrent();
-+-
-+-  checkAllDefined(c, {input, weight, bias});
-+-  if (!training) {
-+-    checkAllDefined(c, {running_mean, running_var});
-+-  }
-+-  checkAllSameGPU(c, {input, weight, bias, running_mean, running_var});
-+-  if (input->type().scalarType() == ScalarType::Half) {
-+-    checkScalarType(c, weight, ScalarType::Float);
-+-  } else {
-+-    checkAllSameType(c, {input, weight});
-+-  }
-+-  checkAllSameType(c, {weight, bias, running_mean, running_var});
-+-  // TODO: is weight required to be contiguous?
-+-  checkAllContiguous(c, {input, weight, bias, running_mean, running_var});
-+-  checkDimRange(c, input, 2, 6 /* exclusive */);
-+-  auto num_features = input->size(1);
-+-  for (auto t : {weight, bias, running_mean, running_var}) {
-+-    if (t->defined()) {
-+-      checkNumel(c, t, num_features);
-+-    }
-+-  }
-+-
-+-  cudnnBatchNormMode_t mode;
-+-  if (input->dim() == 2) {
-+-    mode = CUDNN_BATCHNORM_PER_ACTIVATION;
-+-  } else {
-+-    mode = CUDNN_BATCHNORM_SPATIAL;
-+-#if CUDNN_VERSION >= 7003
-+-    if(training)
-+-      mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-+-#endif
-+-  }
-+-
-+-  auto output_t = input->type().tensor(input->sizes());
-+-  TensorArg output{ output_t, "output", 0 };
-+-
-+-  auto handle = getCudnnHandle();
-+-  auto dataType = getCudnnDataType(*input);
-+-  TensorDescriptor idesc{ *input, 4 };  // input descriptor
-+-  TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, running_mean, etc.
-+-
-+-  Constant one(dataType, 1);
-+-  Constant zero(dataType, 0);
-+-  Tensor save_mean, save_var;
-+-
-+-  if (training) {
-+-    int64_t num_features = input_t.size(1);
-+-    save_mean = weight_t.type().tensor({ num_features });
-+-    save_var = weight_t.type().tensor({ num_features });
-+-    CUDNN_CHECK(cudnnBatchNormalizationForwardTraining(
-+-      handle, mode, &one, &zero,
-+-      idesc.desc(), input->data_ptr(),
-+-      idesc.desc(), output->data_ptr(),
-+-      wdesc.desc(),
-+-      weight->data_ptr(),
-+-      bias->data_ptr(),
-+-      exponential_average_factor,
-+-      at::maybe_data_ptr(running_mean),
-+-      at::maybe_data_ptr(running_var),
-+-      epsilon,
-+-      save_mean.data_ptr(),
-+-      save_var.data_ptr()));
-+-  } else {
-+-    CUDNN_CHECK(cudnnBatchNormalizationForwardInference(
-+-      handle, mode, &one, &zero,
-+-      idesc.desc(), input->data_ptr(),
-+-      idesc.desc(), output->data_ptr(),
-+-      wdesc.desc(),
-+-      weight->data_ptr(),
-+-      bias->data_ptr(),
-+-      running_mean->data_ptr(),
-+-      running_var->data_ptr(),
-+-      epsilon));
-+-  }
-+-
-+-  // save_mean and save_var can be undefined
-+-  // If this causes problems, we can initialize them to empty tensors
-+-  // of the correct type
-+-  return std::tuple<Tensor, Tensor, Tensor>{output_t, save_mean, save_var};
-+-}
-+-
-+-// NB: CuDNN only implements the backward algorithm for batchnorm
-+-// in training mode (evaluation mode batchnorm has a different algorithm),
-+-// which is why this doesn't accept a 'training' parameter.
-+-std::tuple<Tensor, Tensor, Tensor> cudnn_batch_norm_backward(
-+-    const Tensor& input_t, const Tensor& grad_output_t, const Tensor& weight_t,
-+-    // Unused: but we require them to be passed so that double backwards
-+-    // has access
-+-    const Tensor& running_mean, const Tensor& running_var,
-+-    const Tensor& save_mean_t, const Tensor& save_var_t,
-+-    double epsilon)
-+-{
-+-  TensorArg input{ input_t, "input", 1 },
-+-            grad_output{ grad_output_t, "grad_output", 2 },
-+-            weight{ weight_t, "weight", 3 },
-+-            save_mean{ save_mean_t, "save_mean", 4 },
-+-            save_var{ save_var_t, "save_var", 5 };
-+-  CheckedFrom c = "cudnn_batch_norm_backward";
-+-  setCuDNNStreamToCurrent();
-+-
-+-  checkAllDefined(c, {input, grad_output, weight, save_mean, save_var});
-+-  checkAllSameGPU(c, {input, grad_output, weight, save_mean, save_var});
-+-  if (input->type().scalarType() == ScalarType::Half) {
-+-    checkScalarType(c, weight, ScalarType::Float);
-+-  } else {
-+-    checkAllSameType(c, {input, weight});
-+-  }
-+-  checkAllSameType(c, {input, grad_output});
-+-  checkAllSameType(c, {weight, save_mean, save_var});
-+-  // TODO: is weight required to be contiguous?
-+-  checkAllContiguous(c, {input, grad_output, save_mean, save_var});
-+-  checkDimRange(c, input, 2, 6 /* exclusive */);
-+-  checkSameSize(c, input, grad_output);
-+-  auto num_features = input->size(1);
-+-  for (auto t : {weight, save_mean, save_var}) {
-+-    checkNumel(c, t, num_features);
-+-  }
-+-
-+-  cudnnBatchNormMode_t mode;
-+-  if (input->dim() == 2) {
-+-    mode = CUDNN_BATCHNORM_PER_ACTIVATION;
-+-  } else {
-+-#if CUDNN_VERSION >= 7003
-+-    mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-+-#else
-+-    mode = CUDNN_BATCHNORM_SPATIAL;
-+-#endif
-+-  }
-+-
-+-  auto grad_input_t  = input->type().tensor(input->sizes());
-+-  auto grad_weight_t = weight->type().tensor(weight->sizes());
-+-  auto grad_bias_t   = weight->type().tensor(weight->sizes());
-+-
-+-  auto handle = getCudnnHandle();
-+-  auto dataType = getCudnnDataType(*input);
-+-
-+-  TensorDescriptor idesc{ *input, 4 };  // input, output, grad_output descriptor
-+-  TensorDescriptor wdesc{ expandScale(*weight, input->dim()), 4 };  // descriptor for weight, bias, save_mean, etc.
-+-
-+-  Constant one(dataType, 1);
-+-  Constant zero(dataType, 0);
-+-
-+-  CUDNN_CHECK(cudnnBatchNormalizationBackward(
-+-    handle, mode, &one, &zero, &one, &zero,
-+-    idesc.desc(), input->data_ptr(),
-+-    idesc.desc(), grad_output->data_ptr(),
-+-    idesc.desc(), grad_input_t.data_ptr(),
-+-    wdesc.desc(), weight->data_ptr(),
-+-    grad_weight_t.data_ptr(),
-+-    grad_bias_t.data_ptr(),
-+-    epsilon,
-+-    save_mean->data_ptr(),
-+-    save_var->data_ptr()));
-+-
-+-  return std::tuple<Tensor,Tensor,Tensor>{grad_input_t, grad_weight_t, grad_bias_t};
-+-}
-+-
-+-}}  // namespace native
-+-
-+-#endif
++diff --git a/aten/src/ATen/native/cudnn/BatchNorm.cpp b/aten/src/ATen/native/cudnn/BatchNormCuDNN.cpp
++similarity index 100%
++rename from aten/src/ATen/native/cudnn/BatchNorm.cpp
++rename to aten/src/ATen/native/cudnn/BatchNormCuDNN.cpp
++diff --git a/aten/src/ATen/native/cudnn/Conv.cpp b/aten/src/ATen/native/cudnn/ConvCuDNN.cpp
++similarity index 100%
++rename from aten/src/ATen/native/cudnn/Conv.cpp
++rename to aten/src/ATen/native/cudnn/ConvCuDNN.cpp
 +diff --git a/aten/src/ATen/preprocess_declarations.py b/aten/src/ATen/preprocess_declarations.py
 +index 1bc33e533..f9a91947d 100644
 +--- a/aten/src/ATen/preprocess_declarations.py
@@ -11067,7 +10629,229 @@ index 000000000..8bc8279f1
 +   if (gradBias.numElements() > 0) {
 +     if (threadIdx.x == 0) {
 +-      gradBias[plane] += ScalarConvert<Acctype, Dtype>::to(scale * gradOutputSum);
-++      (gradBias[plane]).template as<Dtype>() += Scala
+++      (gradBias[plane]).template as<Dtype>() += ScalarConvert<Acctype, Dtype>::to(scale * gradOutputSum);
++     }
++   }
++ }
++-
++ #include "generic/BatchNormalization.cu"
++ #include "THCGenerateFloatTypes.h"
++diff --git a/aten/src/THCUNN/ClassNLLCriterion.cu b/aten/src/THCUNN/ClassNLLCriterion.cu
++index 1043454ff..cedd36021 100644
++--- a/aten/src/THCUNN/ClassNLLCriterion.cu
+++++ b/aten/src/THCUNN/ClassNLLCriterion.cu
++@@ -56,7 +56,7 @@ __global__ void ClassNLLCriterion_updateOutput_no_reduce_kernel(
++     assert(cur_target  >= 0 && cur_target  < n_classes);
++     Dtype weight =
++        weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1);
++-    output[index] = -weight * input[index][cur_target];
+++    output[index] = -weight * input[index][cur_target].template as<Dtype>();
++   }
++ }
++ 
++@@ -78,7 +78,7 @@ __global__ void ClassNLLCriterion_updateGradInput_no_reduce_kernel(
++     assert(cur_target  >= 0 && cur_target  < n_classes);
++     Dtype weight =
++        weights ? weights[cur_target] : ScalarConvert<int, Dtype>::to(1);
++-    gradInput[index][cur_target] = -weight * gradOutput[index];
+++    gradInput[index][cur_target] = -weight * gradOutput[index].template as<Dtype>();
++   }
++ }
++ 
++diff --git a/aten/src/THCUNN/FeatureLPPooling.cu b/aten/src/THCUNN/FeatureLPPooling.cu
++index 4ad190fbe..08c277064 100644
++--- a/aten/src/THCUNN/FeatureLPPooling.cu
+++++ b/aten/src/THCUNN/FeatureLPPooling.cu
++@@ -468,6 +468,7 @@ runFeatureLPPoolingUpdateOutput(THCState* state,
++       LP_STRIDE_CASE(4, WIDTH);                 \
++     }
++ 
+++#if !defined(__HIP_PLATFORM_HCC__)
++   if (power == 2.0f) {
++     switch (width) {
++       L2_WIDTH_CASE(2);
++@@ -505,6 +506,7 @@ runFeatureLPPoolingUpdateOutput(THCState* state,
++       LP_WIDTH_CASE(16);
++     }
++   }
+++#endif
++ 
++   // Otherwise, we have an unhandled width and/or stride.
++   return false;
++@@ -602,6 +604,7 @@ runFeatureLPPoolingUpdateGradInput(THCState* state,
++       LP_STRIDE_CASE(4, WIDTH);                 \
++     }
++ 
+++#if !defined(__HIP_PLATFORM_HCC__)
++   if (power == 2.0f) {
++     switch (width) {
++       L2_WIDTH_CASE(2);
++@@ -639,6 +642,7 @@ runFeatureLPPoolingUpdateGradInput(THCState* state,
++       LP_WIDTH_CASE(16);
++     }
++   }
+++#endif
++ 
++   // Otherwise, we have an unhandled width and/or stride.
++   return false;
++diff --git a/aten/src/THCUNN/IndexLinear.cu b/aten/src/THCUNN/IndexLinear.cu
++index 2729f9277..98ac09ece 100644
++--- a/aten/src/THCUNN/IndexLinear.cu
+++++ b/aten/src/THCUNN/IndexLinear.cu
++@@ -22,7 +22,11 @@ __device__ double atomicExch(double *address, double val) {
++ }
++ 
++ template<typename Ty, bool train>
+++#if defined(__HIP_PLATFORM_HCC__)
+++__global__ 
+++#else
++ __global__ static
+++#endif
++ void updateOutput(
++     Ty *output,
++     Ty *normalizedValues,
++@@ -141,7 +145,11 @@ void updateOutput(
++ // to generate gradWeight of size [keysSize x outDim]
++ // nth block along y dimension computes on the non zero elements from the nth batch.
++ template<typename Ty>
+++#if defined(__HIP_PLATFORM_HCC__)
+++__global__ 
+++#else
++ __global__ static
+++#endif
++ void accGradWeight(
++     Ty *gradWeight,
++     const Ty *gradOutput,
++@@ -213,7 +221,11 @@ void accGradWeight(
++ // The gradBias is just a reduction of gradOutput along the batches.
++ // There is only one block along y dimension performing the reduction.
++ template<typename Ty, bool update>
+++#if defined(__HIP_PLATFORM_HCC__)
+++__global__ 
+++#else
++ __global__ static
+++#endif
++ void accGradBias(
++     Ty *buffer,
++     const Ty *gradOutput,
++@@ -267,7 +279,11 @@ void accGradBias(
++ // This kernel is launched batchSize number of times.
++ // At each step in the iteration, the weights are updated in a sparse manner.
++ template<typename Ty>
+++#if defined(__HIP_PLATFORM_HCC__)
+++__global__ 
+++#else
++ __global__ static
+++#endif
++ void updateWeight(
++     Ty *weight,
++     const Ty *gradWeight,
++@@ -336,7 +352,11 @@ void updateWeight(
++ // This kernel is launched batchSize number of times.
++ // At each step in the iteration, the weights are updated in place in a sparse manner.
++ template<typename Ty>
+++#if defined(__HIP_PLATFORM_HCC__)
+++__global__ 
+++#else
++ __global__ static
+++#endif
++ void accUpdateWeight(
++     Ty *weight,
++     const int64_t weightStride,
++diff --git a/aten/src/THCUNN/LogSigmoid.cu b/aten/src/THCUNN/LogSigmoid.cu
++index 8facb5bf4..357b7bf95 100644
++--- a/aten/src/THCUNN/LogSigmoid.cu
+++++ b/aten/src/THCUNN/LogSigmoid.cu
++@@ -3,7 +3,7 @@
++ #include "THCHalfAutoNumerics.cuh"
++ #include <THC/THCApply.cuh>
++ 
++-#ifdef _MSC_VER
+++#if defined(_MSC_VER) || defined(__HIP_PLATFORM_HCC__)
++ #define ZERO_MACRO zero<T>()
++ template <typename T>
++ inline __device__ typename std::enable_if<std::is_same<T, double>::value, T>::type zero() {
++diff --git a/aten/src/THCUNN/LookupTable.cu b/aten/src/THCUNN/LookupTable.cu
++index 854230913..d4ed68e43 100644
++--- a/aten/src/THCUNN/LookupTable.cu
+++++ b/aten/src/THCUNN/LookupTable.cu
++@@ -7,6 +7,7 @@
++ #include "THCTensorSort.cuh"
++ #include "../THC/THCTensorMathReduce.cuh"
++ 
+++#if defined(__NVCC__)
++ const int WARP_SIZE = 32;
++ 
++ __device__ __forceinline__ bool warpHasCollision(int val)
++@@ -184,14 +185,15 @@ struct FastPow<DType, AccType, 2>
++     return xA * xA;
++   }
++ };
+++#endif
++ 
++ /* Calculate norms of the rows of weight_ptr given by idx_ptr and capture them in norms */
++ template <typename DType, typename AccType, typename IndexType, int Norm>
++ __global__
++-void calculate_norms_and_renorm(DType *weights, 
++-                                THCIndex_t *indices, 
+++void calculate_norms_and_renorm(DType *weights,
+++                                THCIndex_t *indices,
++                                 AccType normType,
++-                                AccType maxNorm, 
+++                                AccType maxNorm,
++                                 IndexType dim)
++ {
++   // Some casting hacks since dynamic shared memory and templates don't work together:
++@@ -211,7 +213,7 @@ void calculate_norms_and_renorm(DType *weights,
++         (sdata, blockDim.x, v, ReduceAdd<AccType, AccType>(), accZero);
++ 
++   if (tid == 0) {
++-    sdata[0] = std::pow(v, 
+++    sdata[0] = std::pow(v,
++         THCNumerics<AccType>::div(ScalarConvert<int, AccType>::to(1), normType)
++     );
++   }
++diff --git a/aten/src/THCUNN/RReLU.cu b/aten/src/THCUNN/RReLU.cu
++index bf4503515..4af16463a 100644
++--- a/aten/src/THCUNN/RReLU.cu
+++++ b/aten/src/THCUNN/RReLU.cu
++@@ -2,6 +2,7 @@
++ #include "THCHalf.h"
++ #include "THCHalfAutoNumerics.cuh"
++ #include <THC/THCApply.cuh>
+++#if defined(__NVCC__)
++ #include "common.h"
++ #include <curand.h>
++ #include <curand_kernel.h>
++@@ -119,6 +120,7 @@ struct RReLUupdateGradInputEvalIP_functor
++     }
++   }
++ };
+++#endif
++ 
++ #include "generic/RReLU.cu"
++ #include "THCGenerateFloatTypes.h"
++diff --git a/aten/src/THCUNN/SmoothL1Criterion.cu b/aten/src/THCUNN/SmoothL1Criterion.cu
++index 8e35599ba..8b32c9246 100644
++--- a/aten/src/THCUNN/SmoothL1Criterion.cu
+++++ b/aten/src/THCUNN/SmoothL1Criterion.cu
++@@ -70,6 +70,7 @@ struct smoothl1_updateGradInput_functor
++   const Dtype norm;
++   const Dtype gradOutput;
++ 
+++  __host__ __device__
++   smoothl1_updateGradInput_functor(Dtype norm_, Dtype gradOutput_)
++     : norm(norm_), gradOutput(gradOutput_)
++   {}
++diff --git a/aten/src/THCUNN/SoftMaxCommon.cuh b/aten/src/THCUNN/SoftMaxCommon.cuh
++index 692a08079..f96fee941 100644
++--- a/aten/src/THCUNN/SoftMaxCommon.cuh
+++++ b/aten/src/THCUNN/SoftMaxCommon.cuh
++@@ -50,9 +50,13 @@ void SpatialSoftMax_getLaunchSizes(
++   block = SpatialSoftMax_getBlockSize(outer_size, dim_size, inner_size);
++   uint32_t block_threads = block.x * block.y;
++   smem_size = block.x == 1 ? 0 : block_threads * sizeof(AccumT);
+++#if defined(
 \ No newline at end of file
 diff --git a/setup.py b/setup.py
 index 7e68bbb93..ea27d171b 100644
