@@ -81,7 +81,7 @@ def walk_over_directory(path, extensions, show_detailed=False, exclude_dirs=None
     # Compute the total number of files to be traversed.
     total_files = 0
     for (dirpath, _dirnames, filenames) in os.walk(path):
-        if dirpath not in exclude_dirs:
+        if sum([1 if re.match(r'(%s)\b' % os.path.join(path, exc), dirpath) else 0 for exc in exclude_dirs]) == 0:
             for filename in filenames:
                 total_files += reduce(
                     lambda result, ext: filename.endswith("." + ext) or result,
@@ -93,9 +93,9 @@ def walk_over_directory(path, extensions, show_detailed=False, exclude_dirs=None
     stats = {"unsupported_calls": [], "kernel_launches": []}
 
     # Begin traversing the files.
-    for (dirpath, _dirnames, filenames) in os.walk(path):
+    for (dirpath, _dirnames, filenames) in os.walk(path, topdown=True):
         # Check if file ends with a valid extensions
-        if sum([dirpath.endswith(exclude) for exclude in exclude_dirs]):
+        if sum([1 if re.match(r'(%s)\b' % os.path.join(path, exc), dirpath) else 0  for exc in exclude_dirs]) > 0:
             continue
 
         for filename in filenames:
@@ -225,10 +225,7 @@ def processKernelLaunches(string, stats):
         cuda_kernel = string[params[0]["start"]:paranthesis+1]
 
         # Transform cuda kernel to hip kernel
-        head = cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ").strip()
-        if head.startswith("\n"):
-            head = head[2:].strip()
-        hip_kernel = "hipLaunchKernelGGL(" + head
+        hip_kernel = "hipLaunchKernelGGL(" + cuda_kernel[0:-1].replace("<<<", ", ").replace(">>>", ", ")
 
         # Replace cuda kernel with hip kernel
         output_string = output_string.replace(cuda_kernel, hip_kernel)
@@ -239,16 +236,42 @@ def processKernelLaunches(string, stats):
     return output_string
 
 
+def find_paranthesis_end(input_string, start):
+    inside_paranthesis = False
+    parans = 0
+    pos = start
+    p_start, p_end = -1, -1
+
+    while pos < len(input_string):
+        if input_string[pos] == "(":
+            if inside_paranthesis is False:
+                inside_paranthesis = True
+                parans = 1
+                p_start = pos
+            else:
+                parans += 1
+        elif input_string[pos] == ")" and inside_paranthesis:
+            parans -= 1
+
+            if parans == 0:
+                p_end = pos
+                return p_start, p_end
+
+        pos += 1
+    return None, None
+
+
 def disable_asserts(input_string):
     """ Disables regular assert statements
     e.g. "assert(....)" -> "/*assert(....)*/"
     """
-    def whitelist(input):
-        return input.group(1) + "/*" + input.group(2) + "*/" + input.group(3)
-
-    # Calling asserts from device code results in errors.
-    result = re.sub(r'(^|[^a-zA-Z0-9_.\n]+)(assert\(.*\))([^a-zA-Z0-9_.\n]+)', whitelist, input_string)
-    return result
+    output_string = input_string
+    asserts = list(re.finditer(r"\bassert[ ]*\(", input_string))
+    for assert_item in asserts:
+        p_start, p_end = find_paranthesis_end(input_string, assert_item.end()-1)
+        start = assert_item.start()
+        output_string = output_string.replace(input_string[start:p_end+1], "")
+    return output_string
 
 
 def disable_function(input_string, function, replace_style):
@@ -522,7 +545,7 @@ def get_kernel_template_params(the_file, KernelDictionary):
             KernelDictionary[kernel_name] = {"kernel_with_template": kernel_name, "arg_types": kernel_args}
 
 
-def disable_unsupported_function_call(function, input_string, replace):
+def disable_unsupported_function_call(function, input_string, replacement):
     """Disables calls to an unsupported HIP function"""
     # Prepare output string
     output_string = input_string
@@ -554,80 +577,23 @@ def disable_unsupported_function_call(function, input_string, replace):
             pos += 1
 
         function_call = input_string[start:pos+1]
-        output_string = output_string.replace(function_call, "cudaSuccess")
+        output_string = output_string.replace(function_call, replacement)
 
     return output_string
 
 
-def pytorch_specific_fixes(amd_pytorch_directory):
-    """Load the PyTorch specific patches"""
-    aten_src_directory = os.path.join(amd_pytorch_directory, "aten/src/")
+def disable_module(input_file):
+    """Disable a module entirely except for header includes."""
+    with open(input_file, "r+") as f:
+        txt = f.read()
+        last = list(re.finditer(r"#include .*\n", txt))[-1]
+        end = last.end()
 
-    # The strings in certain files to replace.
-    REPLACEMENTS = {
-        # ATen & TH* files.
-        os.path.join(aten_src_directory, "TH/THAtomic.c"): {"assert(sizeof(int) == sizeof(int32_t));": ""}, # Remove the assert from THAtomic.c
-        os.path.join(aten_src_directory, "TH/generic/THTensorMath.c"): {"_OPENMP": "_OPENMP_STUBBED"}, # Disable OpenMP in aten/src/TH/generic/THTensorMath.c
-        os.path.join(aten_src_directory, "ATen/native/cuda/Embedding.cu"): {"std::pow": "powf", "std::abs": "fabs"}, # Swap the math functions from std:: to hcc device functions.
-        os.path.join(aten_src_directory, "THCUNN/Abs.cu"): {"abs(": "fabs("}, # Swap abs w/ fabsf for device code.
-        os.path.join(aten_src_directory, "THC/THCTensorRandom.cpp"): {"struct curandStateMtgp32*": "curandStateMtgp32*"}, # Remove the "struct" from the return type since hipStageMtgp32* implies pointer to struct.
+        disabled = "%s#if !defined(__HIP_PLATFORM_HCC__)\n%s\n#endif" % (txt[0:end], txt[end:])
 
-        # Torch files
-        os.path.join(amd_pytorch_directory, "torch/csrc/cuda/Module.cpp"): {"CUDA_VERSION": "0"}, # Update CUDA_VERSION to 0.
-
-        # Disable the loading of the CUDA runtime in torch/cuda/__init__.py
-        os.path.join(amd_pytorch_directory, "torch/cuda/__init__.py"): {
-            "_cudart = _load_cudart()": "# _cudart = _load_cudart()",
-            "_cudart.cudaGetErrorName.restype = ctypes.c_char_p": "#_cudart.cudaGetErrorName.restype = ctypes.c_char_p",
-            "_cudart.cudaGetErrorString.restype = ctypes.c_char_p": "#_cudart.cudaGetErrorString.restype = ctypes.c_char_p",
-            "_lazy_call(_check_capability)": "#_lazy_call(_check_capability)"
-        },
-
-        os.path.join(aten_src_directory, "THC/THCAllocator.c"): {"cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)": "cudaSuccess"}, # Replace with THCudaCheck(hipSuccess)
-
-        # Replace "cudaStreamCreateWithPriority(&self->stream, flags, priority)" with cudaStreamCreateWithFlags(&self->stream, flags)
-        os.path.join(aten_src_directory, "THC/THCStream.cpp"): {"cudaStreamCreateWithPriority(&self->stream, flags, priority)": "cudaStreamCreateWithFlags(&self->stream, flags)"}
-    }
-
-    # Handle the necessary replacements
-    for filepath in REPLACEMENTS:
-        for key in REPLACEMENTS[filepath]:
-            file_specific_replacement(filepath, key, REPLACEMENTS[filepath][key])
-
-    # Due to an issue in HCC, change filename of CuDNN batch norm
-    shutil.move(os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNorm.cpp"), os.path.join(aten_src_directory, "ATen/native/cudnn/BatchNormCuDNN.cpp"))
-
-    # Replace WITH_CUDA with WITH_ROCM for all locations inside for /torch/
-    torch_directory = os.path.join(amd_pytorch_directory, 'torch/')
-    extensions = ["h", "cpp", "hpp"]
-    exclude_files = ["torch/csrc/autograd/profiler.h", "torch/csrc/autograd/profiler.cpp", "torch/csrc/cuda/cuda_check.h", "torch/csrc/jit/fusion_compiler.h", "torch/csrc/jit/fusion_compiler.cpp"]
-    for (dirpath, _dirnames, filenames) in os.walk(torch_directory):
-        for filename in filenames:
-            if reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False):
-                the_file = os.sep.join([dirpath, filename])
-                if not reduce(lambda result, exclude: the_file.endswith(exclude) or result, exclude_files, False):
-                    file_specific_replacement(the_file, "WITH_CUDA", "WITH_ROCM")
-
-    # Add include to ATen.h
-    file_add_header(os.path.join(aten_src_directory, "ATen/ATen.h"), "hip/hip_runtime.h")
-
-    # Add include to THCTensorIndex.cu
-    file_add_header(os.path.join(aten_src_directory, "THC/THCTensorIndex.cu"), "<thrust/execution_policy.h>")
-
-    # Add templating to all of the kernel calls inside THCUNN.
-    extensions = ["cu", "cuh", "h"]
-    KernelTemplateParams = {}
-    for (dirpath, _dirnames, filenames) in os.walk(aten_src_directory):
-        for filename in filenames:
-            if reduce(lambda result, ext: filename.endswith("." + ext) or result, extensions, False):
-                the_file = os.sep.join([dirpath, filename])
-
-                # Store param information inside KernelTemplateParams
-                get_kernel_template_params(the_file, KernelTemplateParams)
-
-    # Walk over entire source tree and replace kernel launches with templated kernels.
-    return KernelTemplateParams
-    print("Successfully loaded PyTorch specific modifications.")
+        f.seek(0)
+        f.write(disabled)
+        f.truncate()
 
 
 def add_static_casts(args, KernelTemplateParams):
@@ -727,15 +693,7 @@ def main():
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
-    stats = {"unsupported_calls": [], "kernel_launches": []}
-    with open("/Users/gains/amd_build/gains.cpp", "r+") as f:
-        txt = f.read()
-        o = processKernelLaunches(txt, stats)
-        f.seek(0)
-        f.write(o)
-        f.truncate()
-        f.flush()
-    return
+
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
@@ -767,6 +725,27 @@ def main():
         help="The directory to store the hipified project.",
         required=False)
 
+    parser.add_argument(
+        '--exclude-dirs',
+        nargs='+',
+        default=[],
+        help="The directories that should be excluded from hipify.",
+        required=False)
+
+    parser.add_argument(
+        '--yaml-settings',
+        nargs='+',
+        default=str,
+        help="The yaml file storing information for disabled functions and modules.",
+        required=False)
+
+    parser.add_argument(
+        '--add-static-casts',
+        nargs=bool,
+        default=False,
+        help="Whether to automatically add static_casts to kernel arguments.",
+        required=False)
+
     args = parser.parse_args()
 
     # Sanity check arguments
@@ -790,51 +769,72 @@ def main():
     # Copy the directory
     shutil.copytree(args.project_directory, args.output_directory)
 
-    # PyTorch Specific Modifications
-    KernelTemplateParams = pytorch_specific_fixes(args.output_directory)
-
     # Start Preprocessor
     walk_over_directory(
         args.output_directory,
         extensions=args.extensions,
         show_detailed=args.show_detailed,
-        exclude_dirs=["aten/src/TH", "aten/src/THNN", "aten/src/THS"])
+        exclude_dirs=args.exclude_dirs)
 
     # Add static_casts
-    add_static_casts(args, KernelTemplateParams)
+    if args.add_static_casts:
+        KernelTemplateParams = {}
+        for (dirpath, _dirnames, filenames) in os.walk(args.output_directory):
+            for filename in filenames:
+                if sum([1 if re.match(r'(%s)\b' % os.path.join(args.output_directory, exc), dirpath) else 0 for exc in args.exclude_dirs]) > 0:
+                    if reduce(lambda result, ext: filename.endswith("." + ext) or result, args.extensions, False):
+                        the_file = os.sep.join([dirpath, filename])
 
-    # Disable functions in certain files according to YAML description
-    with open(os.path.join(args.project_directory, "amd_build/disabled_funcs.yaml"), "r") as lines:
+                        # Store param information inside KernelTemplateParams
+                        get_kernel_template_params(the_file, KernelTemplateParams)
+
+        add_static_casts(args, KernelTemplateParams)
+
+    # Open YAML file with disable information.
+    with open(args.disable_yaml, "r") as lines:
         yaml_data = yaml.load(lines)
 
-        for disable_info in yaml_data["disabled"]:
-            filepath = os.path.join(args.output_directory, disable_info["path"])
-            functions = disable_info["functions"]
+    # Disable functions in certain files according to YAML description
+    for disable_info in yaml_data["disabled_functions"]:
+        filepath = os.path.join(args.output_directory, disable_info["path"])
+        functions = disable_info["functions"]
 
-            with open(filepath, "r+") as f:
-                txt = f.read()
-                for func in functions:
-                    txt = disable_function(txt, func, 1)
+        with open(filepath, "r+") as f:
+            txt = f.read()
+            for func in functions:
+                txt = disable_function(txt, func, 1)
 
-                f.seek(0)
-                f.write(txt)
-                f.truncate()
-                f.close()
+            f.seek(0)
+            f.write(txt)
+            f.truncate()
+            f.close()
 
-    # Disable unsupported functions
-    filepath = os.path.join(args.output_directory, "aten/src/THC/THCBlas.cu")
-    functions = ["hipblasSgemmEx", "hipblasSgetrfBatched", "hipblasDgetrfBatched", "hipblasSgetrsBatched", "hipblasDgetrsBatched", "hipblasSgetriBatched", "hipblasDgetriBatched"]
-    with open(filepath, "r+") as f:
-        txt = f.read()
-        for func in functions:
-            txt = disable_unsupported_function_call(func, txt, "HIPBLAS_STATUS_SUCCESS")
-        f.seek(0)
-        f.write(txt)
-        f.truncate()
-        f.close()
+    # Disable modules
+    disable_modules = yaml_data["disabled_modules"]
+    for module in disable_modules:
+        disable_module(os.path.join(args.output_directory, module))
 
-    file_specific_replacement(filepath, 'HIPBLAS_DATA_HALF', '0')
+    # Disable unsupported HIP functions
+    for disable in yaml_data["disabled_hip_function_calls"]:
+        filepath = os.path.join(args.output_directory, disable["path"])
+        functions = disable["functions"]
+        constants = disable["constants"]
+        with open(filepath, "r+") as f:
+            txt = f.read()
 
+            # Disable HIP Functions
+            for func in functions:
+                txt = disable_unsupported_function_call(func, txt, functions[func])
+
+            # Disable Constants
+            for const in constants:
+                txt = re.sub(r"\b%s\b" % const, constants[const])
+
+            # Save Changes
+            f.seek(0)
+            f.write(txt)
+            f.truncate()
+            f.close()
 
 
 if __name__ == '__main__':
