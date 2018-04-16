@@ -236,16 +236,42 @@ def processKernelLaunches(string, stats):
     return output_string
 
 
+def find_paranthesis_end(input_string, start):
+    inside_paranthesis = False
+    parans = 0
+    pos = start
+    p_start, p_end = -1, -1
+
+    while pos < len(input_string):
+        if input_string[pos] == "(":
+            if inside_paranthesis is False:
+                inside_paranthesis = True
+                parans = 1
+                p_start = pos
+            else:
+                parans += 1
+        elif input_string[pos] == ")" and inside_paranthesis:
+            parans -= 1
+
+            if parans == 0:
+                p_end = pos
+                return p_start, p_end
+
+        pos += 1
+    return None, None
+
+
 def disable_asserts(input_string):
     """ Disables regular assert statements
     e.g. "assert(....)" -> "/*assert(....)*/"
     """
-    def whitelist(input):
-        return input.group(1) + "/*" + input.group(2) + "*/" + input.group(3)
-
-    # Calling asserts from device code results in errors.
-    result = re.sub(r'(^|[^a-zA-Z0-9_.\n]+)(assert\(.*\))([^a-zA-Z0-9_.\n]+)', whitelist, input_string)
-    return result
+    output_string = input_string
+    asserts = list(re.finditer(r"\bassert[ ]*\(", input_string))
+    for assert_item in asserts:
+        p_start, p_end = find_paranthesis_end(input_string, assert_item.end()-1)
+        start = assert_item.start()
+        output_string = output_string.replace(input_string[start:p_end+1], "")
+    return output_string
 
 
 def disable_function(input_string, function, replace_style):
@@ -612,11 +638,11 @@ def pytorch_specific_fixes(amd_pytorch_directory):
     }
 
     # Disable Module
+    disable_module(os.path.join(aten_src_directory, "ATen/cuda/CUDAHalf.cu"))
+    disable_module(os.path.join(aten_src_directory, "ATen/cuda/CUDAHalf.cuh"))
     disable_module(os.path.join(aten_src_directory, "ATen/native/cuda/CuFFTUtils.h"))
     disable_module(os.path.join(aten_src_directory, "ATen/native/cuda/SpectralOps.cu"))
     disable_module(os.path.join(aten_src_directory, "ATen/native/cuda/Distributions.cu"))
-
-
 
     # Handle the necessary replacements
     for filepath in REPLACEMENTS:
@@ -757,7 +783,11 @@ def main():
 
     python hipify.py --project-directory /home/myproject/ --extensions cu cuh h cpp --output-directory /home/gains/
     """
+    with open("/Users/gains/amd_build/gains.cpp", "r+") as f:
+        txt = f.read()
+        print(disable_asserts(txt))
 
+    return
     parser = argparse.ArgumentParser(
         description="The Python Hipify Script.")
 
