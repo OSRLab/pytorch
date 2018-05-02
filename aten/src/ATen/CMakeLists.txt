@@ -35,6 +35,11 @@ ELSE()
   SET(VCOMP_LIB "vcompd")
 ENDIF()
 
+IF(NOT MSVC)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-qualifiers")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-ignored-qualifiers")
+ENDIF(NOT MSVC)
+
 ########################
 # SET_SOURCE_FILES_PROPERTIES must be in the same CMakeLists.txt file as the target that includes the file
 # so we need to set these commands here rather than in src/TH
@@ -387,6 +392,13 @@ if (NOT TARGET cpuinfo)
   set_property(TARGET cpuinfo PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 TARGET_LINK_LIBRARIES(ATen cpuinfo)
+
+# ---[ Configure SLEEF
+IF(NOT TARGET sleef)
+  add_subdirectory("cpu/sleef")
+  include_directories(${CMAKE_BINARY_DIR}/include)
+ENDIF()
+TARGET_LINK_LIBRARIES(ATen sleef)
 
 IF(CUDA_FOUND)
   IF ($ENV{ATEN_STATIC_CUDA})
