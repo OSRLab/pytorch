@@ -74,11 +74,11 @@ void THNN_(SpatialSubSampling_updateOutput)(
       nInputPlane, nInputRows, nInputCols, kH, kW, dH, dW);
     THCudaCheck(cudaGetLastError());
   } else {
-    int64_t nInputCols = input->size[3];
-    int64_t nInputRows = input->size[2];
-    int64_t nbatch = input->size[0];
-    int64_t nOutputCols = (nInputCols - kW) / dW + 1;
-    int64_t nOutputRows = (nInputRows - kH) / dH + 1;
+    int32_t nInputCols = input->size[3];
+    int32_t nInputRows = input->size[2];
+    int32_t nbatch = input->size[0];
+    int32_t nOutputCols = (nInputCols - kW) / dW + 1;
+    int32_t nOutputRows = (nInputRows - kH) / dH + 1;
 
     input = THCTensor_(newContiguous)(state, input);
     input_data = THCTensor_(data)(state, input);
