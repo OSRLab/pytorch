@@ -11,7 +11,6 @@
 #include "../THC/THCTensorMathReduce.cuh"
 #endif
 
-#if defined(__NVCC__)
 const int WARP_SIZE = 32;
 
 __device__ __forceinline__ bool warpHasCollision(int val)
@@ -189,7 +188,6 @@ struct FastPow<DType, AccType, 2>
     return xA * xA;
   }
 };
-#endif
 
 /* Calculate norms of the rows of weight_ptr given by idx_ptr and capture them in norms */
 template <typename DType, typename AccType, typename IndexType, int Norm>
