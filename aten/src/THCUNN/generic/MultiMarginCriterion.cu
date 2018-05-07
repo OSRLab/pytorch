@@ -31,7 +31,7 @@ void THNN_(MultiMarginCriterion_updateOutput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        1, input->size[0],
+        (int) 1, (int) input->size[0],
         sizeAverage,
         margin
       );
@@ -43,7 +43,7 @@ void THNN_(MultiMarginCriterion_updateOutput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        1, input->size[0],
+        (int) 1, (int) input->size[0],
         sizeAverage,
         margin
       );
@@ -68,7 +68,7 @@ void THNN_(MultiMarginCriterion_updateOutput)(
           THCTensor_(data)(state, input),
           THCIndexTensor_(data)(state, target),
           weights ? THCTensor_(data)(state, weights) : NULL,
-          nframe, input->size[1],
+          nframe, (int) input->size[1],
           false,
           margin
         );
@@ -80,7 +80,7 @@ void THNN_(MultiMarginCriterion_updateOutput)(
           THCTensor_(data)(state, input),
           THCIndexTensor_(data)(state, target),
           weights ? THCTensor_(data)(state, weights) : NULL,
-          nframe, input->size[1],
+          nframe, (int) input->size[1],
           false,
           margin
         );
@@ -98,7 +98,7 @@ void THNN_(MultiMarginCriterion_updateOutput)(
           THCTensor_(data)(state, input),
           THCIndexTensor_(data)(state, target),
           weights ? THCTensor_(data)(state, weights) : NULL,
-          nframe, input->size[1],
+          nframe, (int) input->size[1],
           sizeAverage,
           margin
         );
@@ -110,7 +110,7 @@ void THNN_(MultiMarginCriterion_updateOutput)(
           THCTensor_(data)(state, input),
           THCIndexTensor_(data)(state, target),
           weights ? THCTensor_(data)(state, weights) : NULL,
-          input->size[0], input->size[1],
+          (int) input->size[0], (int) input->size[1],
           sizeAverage,
           margin
         );
@@ -164,10 +164,10 @@ void THNN_(MultiMarginCriterion_updateGradInput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        1, gradInput->size[0],
+        1, (int) gradInput->size[0],
         sizeAverage,
         margin,
-        reduce
+        (int) reduce
       );
     }
     else if (p == 2)
@@ -178,10 +178,10 @@ void THNN_(MultiMarginCriterion_updateGradInput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        1, gradInput->size[0],
+        1, (int) gradInput->size[0],
         sizeAverage,
         margin,
-        reduce
+        (int) reduce
       );
     }
     THCudaCheck(cudaGetLastError());
@@ -202,10 +202,10 @@ void THNN_(MultiMarginCriterion_updateGradInput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        nframe, gradInput->size[1],
+        nframe, (int) gradInput->size[1],
         sizeAverage,
         margin,
-        reduce
+        (int) reduce
       );
     }
     else if (p == 2)
@@ -216,10 +216,10 @@ void THNN_(MultiMarginCriterion_updateGradInput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         weights ? THCTensor_(data)(state, weights) : NULL,
-        nframe, gradInput->size[1],
+        nframe, (int) gradInput->size[1],
         sizeAverage,
         margin,
-        reduce
+        (int) reduce
       );
     }
     THCudaCheck(cudaGetLastError());

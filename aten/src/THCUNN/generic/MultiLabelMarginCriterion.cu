@@ -122,9 +122,9 @@ void THNN_(MultiLabelMarginCriterion_updateGradInput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         THCTensor_(data)(state, istarget),
-        1, gradInput->size[0],
-        sizeaverage,
-        reduce);
+        (int) 1, (int) gradInput->size[0],
+        (int) sizeaverage,
+        (int) reduce);
 
   }
   else if(gradInput->nDimension == 2)
@@ -145,9 +145,9 @@ void THNN_(MultiLabelMarginCriterion_updateGradInput)(
         THCTensor_(data)(state, input),
         THCIndexTensor_(data)(state, target),
         THCTensor_(data)(state, istarget),
-        gradInput->size[0], gradInput->size[1],
-        sizeaverage,
-        reduce);
+        (int) gradInput->size[0], (int) gradInput->size[1],
+        (int) sizeaverage,
+        (int) reduce);
   }
   else
     THError("vector or matrix expected");
