@@ -80,14 +80,12 @@ void LRNbackward(THCState* state, THCTensor* input, THCTensor* output,
   gradOutput = THCTensor_(newContiguous)(state, gradOutput);
 
   int n_threads = batchSize * imsize_h * imsize_w;
-#if defined(__NVCC__)
   LRNComputeDiff<real, accreal> <<<GET_BLOCKS(n_threads), CUDA_NUM_THREADS, 0, THCState_getCurrentStream(state)>>>(
       n_threads, THCTensor_(data)(state, input), THCTensor_(data)(state, output),
       THCTensor_(data)(state, scale), THCTensor_(data)(state, gradOutput), batchSize, nInputPlane, imsize_h, imsize_w,
       local_size, -beta, ScalarConvert<int, real>::to(2) * alpha * beta / local_size,
       THCTensor_(data)(state, gradInput));
   THCudaCheck(cudaGetLastError());
-#endif
 
   THCTensor_(free)(state, input);
   THCTensor_(free)(state, gradOutput);
