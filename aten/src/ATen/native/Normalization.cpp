@@ -6,6 +6,10 @@
 #include "THC/THC.h"
 #include "ATen/cudnn/cudnn-wrapper.h"
 #endif
+#if AT_MIOPEN_ENABLED()
+#include "THC/THC.h"
+#include "ATen/miopen/miopen-wrapper.h"
+#endif
 #include <vector>
 
 namespace at { namespace native {
@@ -53,6 +57,15 @@ Tensor batch_norm(
                  || (!running_mean.defined() && !running_var.defined() && training))
                && input.size(0) <= 131070
                && cudnn_enabled && CUDNN_VERSION >= 5110L);
+#elif AT_MIOPEN_ENABLED()
+  use_cudnn = (input.type().is_cuda()
+               && (input.type().scalarType() != at::kHalf
+                 || weight.type().scalarType() == at::kFloat)
+               && weight.defined() && bias.defined()
+               && ((running_mean.defined() && running_var.defined())
+                 || (!running_mean.defined() && !running_var.defined() && training))
+               //&& input.size(0) <= 131070
+               && cudnn_enabled);
 #else
   (void)cudnn_enabled; // avoid unused parameter warning
 #endif
@@ -60,6 +73,14 @@ Tensor batch_norm(
 #if AT_CUDNN_ENABLED()
   if (use_cudnn && eps >= CUDNN_BN_MIN_EPSILON) {
     return std::get<0>(at::cudnn_batch_norm(
+                        input, weight, bias,
+                        running_mean, running_var,
+                        training, momentum, eps));
+  }
+#endif
+#if AT_MIOPEN_ENABLED()
+  if (use_cudnn) {
+    return std::get<0>(at::miopen_batch_norm(
                         input, weight, bias,
                         running_mean, running_var,
                         training, momentum, eps));

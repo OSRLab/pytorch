@@ -205,6 +205,7 @@ FILE(GLOB base_h RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
 FILE(GLOB base_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp")
 FILE(GLOB native_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "native/*.cpp")
 FILE(GLOB native_cudnn_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "native/cudnn/*.cpp")
+FILE(GLOB native_miopen_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "native/miopen/*.cpp")
 FILE(GLOB native_cuda_cu RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "native/cuda/*.cu")
 FILE(GLOB native_mkl_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "native/mkl/*.cpp")
 
@@ -213,6 +214,7 @@ FILE(GLOB_RECURSE cuda_h
      "cuda/*.cuh" "cuda/*.h" "cudnn/*.cuh" "cudnn/*.h")
 
 FILE(GLOB cudnn_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "cudnn/*.cpp")
+FILE(GLOB miopen_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "miopen/*.cpp")
 FILE(GLOB mkl_cpp RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "mkl/*.cpp")
 
 FILE(GLOB all_python RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.py")
@@ -259,7 +261,8 @@ ADD_CUSTOM_TARGET(aten_files_are_generated
 )
 
 
-SET(all_cpp ${base_cpp} ${native_cpp} ${native_cudnn_cpp} ${native_mkl_cpp} ${generated_cpp} ${ATen_CPU_SRCS} ${cpu_kernel_cpp})
+#SET(all_cpp ${base_cpp} ${native_cpp} ${native_cudnn_cpp} ${native_miopen_cpp} ${native_mkl_cpp} ${generated_cpp} ${ATen_CPU_SRCS} ${cpu_kernel_cpp})
+SET(all_cpp ${base_cpp} ${native_cpp} ${native_mkl_cpp} ${generated_cpp} ${ATen_CPU_SRCS} ${cpu_kernel_cpp})
 
 INCLUDE_DIRECTORIES(${ATen_CPU_INCLUDE})
 IF(WITH_ROCM)
@@ -269,8 +272,14 @@ IF(WITH_ROCM)
   SET(ATen_CUDA_SRCS ${ATen_CUDA_SRCS} ${aten_cuda_cu} ${native_cuda_cu})
   SET(all_cpp ${all_cpp} ${ATen_CUDA_SRCS})
   IF(CUDNN_FOUND)
-    SET(all_cpp ${all_cpp} ${cudnn_cpp})
+    SET(all_cpp ${all_cpp} ${cudnn_cpp} ${native_cudnn_cpp})
   ENDIF()
+  IF(MIOPEN_FOUND)
+    SET(all_cpp ${all_cpp} ${miopen_cpp} ${native_miopen_cpp})
+  ENDIF()
+#  IF(NOT CUDNN_FOUND AND NOT MIOPEN_FOUND)
+#    SET(all_cpp ${all_cpp} ${cudnn_cpp} ${native_cudnn_cpp})
+#  ENDIF()
   IF(AT_MKL_ENABLED)
     SET(all_cpp ${all_cpp} ${mkl_cpp})
   ENDIF()
@@ -403,6 +412,11 @@ IF(CUDA_FOUND)
     target_link_libraries(ATen ${CUDNN_LIBRARIES})
   endif(CUDNN_FOUND)
 
+  if(MIOPEN_FOUND)
+    target_link_libraries(ATen ${MIOPEN_LIBRARIES})
+    #TARGET_LINK_LIBRARIES(ATen ${MIOPEN_LIBRARY})
+  endif(MIOPEN_FOUND)
+
   IF(USE_MAGMA)
     TARGET_LINK_LIBRARIES(ATen ${MAGMA_LIBRARIES})
     IF ($ENV{TH_BINARY_BUILD})
@@ -426,9 +440,11 @@ ENDIF()
 ### Link in the ROCm stuff ###
 FIND_LIBRARY(HIPBLAS_LIBRARY hipblas HINTS ${HIPBLAS_PATH}/lib)
 FIND_LIBRARY(HIPRNG_LIBRARY hiprng HINTS ${HIPRNG_PATH}/lib)
+FIND_LIBRARY(MIOPEN_LIBRARY MIOpen HINTS ${MIOPEN_PATH}/lib)
 
 IF(WITH_ROCM)
   TARGET_LINK_LIBRARIES(ATen
+    ${MIOPEN_LIBRARY}
     ${HIPBLAS_LIBRARY}
     ${HIPRNG_LIBRARY})
 ENDIF()

@@ -7,6 +7,11 @@
 #include "ATen/cudnn/cudnn-wrapper.h"
 #endif
 
+#if AT_MIOPEN_ENABLED()
+#include "THC/THC.h"
+#include "ATen/miopen/miopen-wrapper.h"
+#endif
+
 #if AT_NNPACK_ENABLED()
 #include "nnpack.h"
 #endif
@@ -32,6 +37,7 @@ struct ConvParams {
   bool is_padding_neg() const;
   void view1d_as_2d();
   bool use_cudnn(const at::Tensor& input) const;
+  bool use_miopen(const at::Tensor& input) const;
   bool use_nnpack(const at::Tensor& input) const;
   bool is_depthwise(const at::Tensor& input, const at::Tensor& weight) const;
 };
@@ -126,6 +132,15 @@ auto ConvParams::use_cudnn(const at::Tensor& input) const -> bool {
   return !is_output_padding_big();
 #else
   (void)input; // avoid unused parameter warning
+#endif
+  return false;
+}
+
+auto ConvParams::use_miopen(const at::Tensor& input) const -> bool {
+#if AT_MIOPEN_ENABLED()
+  if (!input.type().is_cuda() || !cudnn_enabled)
+    return false;
+  return true;
 #endif
   return false;
 }
@@ -367,6 +382,29 @@ at::Tensor _convolution(
           params.padding, params.output_padding, params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
     } else {
       output = at::cudnn_convolution(
+          input, weight, bias,
+          params.padding, params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
+    }
+#endif
+  } else if (params.use_miopen(input)) {
+#if AT_MIOPEN_ENABLED()
+    if (input.type() != weight.type()){
+      std::stringstream ss;
+      ss << "Input type (" << input.type().toString() << ") and weight type (" << weight.type().toString() << ") should be the same";
+      throw std::runtime_error(ss.str());
+    }
+    if (bias.defined() && input.type() != bias.type()){
+      std::stringstream ss;
+      ss << "Input type (" << input.type().toString() << ") and bias type (" << bias.type().toString() << ") should be the same";
+      throw std::runtime_error(ss.str());
+    }
+
+    if (params.transposed) {
+      output = at::miopen_convolution_transpose(
+          input, weight, bias,
+          params.padding, params.output_padding, params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
+    } else {
+      output = at::miopen_convolution(
           input, weight, bias,
           params.padding, params.stride, params.dilation, params.groups, params.benchmark, params.deterministic);
     }
